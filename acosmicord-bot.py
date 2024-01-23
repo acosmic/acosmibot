@@ -24,10 +24,6 @@ MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
 logging.basicConfig(filename='/root/dev/acosmicord-bot/logs/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-# first_role = discord.Guild.get_role(role_id = 1)
-first_role = 1185624613896601640
-
-
 role_level_1 = "Level One"
 role_level_2 = "Level Two"
 role_level_3 = "Level Three"
