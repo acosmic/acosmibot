@@ -21,7 +21,7 @@ TOKEN = os.getenv('TOKEN')
 MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
 
 # Configure the logging settings
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 role_level_1 = "Level One"
