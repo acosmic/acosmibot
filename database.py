@@ -21,6 +21,7 @@ class Database:
                 EXP,
                 EXP_GAINED,
                 EXP_LOST,
+                CURRENCY,
                 MESSAGES_SENT,
                 REACTIONS_SENT,
                 CREATED,
@@ -50,11 +51,12 @@ class Database:
             EXP,
             EXP_GAINED,
             EXP_LOST,
+            CURRENCY,
             MESSAGES_SENT,
             REACTIONS_SENT,
             CREATED,
             LAST_ACTIVE
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
             new_user.id,
@@ -64,6 +66,7 @@ class Database:
             new_user.exp,
             new_user.exp_gained,
             new_user.exp_lost,
+            new_user.currency,
             new_user.messages_sent,
             new_user.reactions_sent,
             new_user.created,
@@ -84,6 +87,7 @@ class Database:
                 EXP = %s,
                 EXP_GAINED = %s,
                 EXP_LOST = %s,
+                CURRENCY = %s,
                 MESSAGES_SENT = %s,
                 REACTIONS_SENT = %s,
                 LAST_ACTIVE = %s
@@ -96,6 +100,7 @@ class Database:
             updated_user.exp,
             updated_user.exp_gained,
             updated_user.exp_lost,
+            updated_user.currency,
             updated_user.messages_sent,
             updated_user.reactions_sent,
             updated_user.last_active,
@@ -119,7 +124,7 @@ class Database:
         user_data = self.mycursor.fetchone()
 
         if user_data:
-            # Assuming you have a User class, create an instance and populate its attributes
+        
             user = User(
                 id=user_data[0],
                 discord_username=user_data[1],
@@ -128,10 +133,11 @@ class Database:
                 exp=user_data[4],
                 exp_gained=user_data[5],
                 exp_lost=user_data[6],
-                messages_sent=user_data[7],
-                reactions_sent=user_data[8],
-                created=user_data[9],
-                last_active=user_data[10]
+                currency=user_data[7],
+                messages_sent=user_data[8],
+                reactions_sent=user_data[9],
+                created=user_data[10],
+                last_active=user_data[11]
             )
             return user
         else:
@@ -152,18 +158,7 @@ class Database:
 
 
 
-  # sql ='''CREATE TABLE IF NOT EXISTS USER(
-  #    ID INT NOT NULL AUTO_INCREMENT,
-  #    DISCORD_USERNAME VARCHAR(255) NOT NULL,
-  #    LEVEL INT,
-  #    STREAK INT,
-  #    EXP INT,
-  #    EXP_GAINED INT,
-  #    EXP_LOST INT,
-  #    CREATED DATETIME,
-  #    LAST_ACTIVE DATETIME,
-  #    PRIMARY KEY (ID)
-  # )'''
+
 
 
   

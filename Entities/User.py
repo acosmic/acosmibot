@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, id, discord_username, level, streak, exp, exp_gained, exp_lost, messages_sent, reactions_sent, created, last_active) -> None:
+    def __init__(self, id, discord_username, level, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active) -> None:
         self.id = id
         self.discord_username = discord_username
         self.level = level
@@ -7,6 +7,7 @@ class User:
         self.exp = exp
         self.exp_gained = exp_gained
         self.exp_lost = exp_lost
+        self.currency = currency
         self.messages_sent = messages_sent
         self.reactions_sent = reactions_sent
         self.created = created
@@ -18,25 +19,21 @@ class User:
 
     @level.setter
     def level(self, value):
-        # Add validation logic if needed
         self._level = value
 
     @property
     def id(self):
         return self._id
-
     @id.setter
     def id(self, value):
-        # Add validation logic if needed
         self._id = value
 
     @property
     def discord_username(self):
         return self._discord_username
-
+    
     @discord_username.setter
     def discord_username(self, value):
-        # Add validation logic if needed
         self._discord_username = value
 
     @property
@@ -45,7 +42,6 @@ class User:
 
     @level.setter
     def level(self, value):
-        # Add validation logic if needed
         self._level = value
 
     @property
@@ -54,7 +50,6 @@ class User:
 
     @streak.setter
     def streak(self, value):
-        # Add validation logic if needed
         self._streak = value
 
     @property
@@ -63,7 +58,6 @@ class User:
 
     @exp.setter
     def exp(self, value):
-        # Add validation logic if needed
         self._exp = value
 
     @property
@@ -72,7 +66,6 @@ class User:
 
     @exp_gained.setter
     def exp_gained(self, value):
-        # Add validation logic if needed
         self._exp_gained = value
 
     @property
@@ -81,8 +74,15 @@ class User:
 
     @exp_lost.setter
     def exp_lost(self, value):
-        # Add validation logic if needed
         self._exp_lost = value
+
+    @property
+    def currency(self):
+        return self._currency
+
+    @currency.setter
+    def currency(self, value):
+        self._currency = value
 
     @property
     def messages_sent(self):
@@ -90,7 +90,6 @@ class User:
 
     @messages_sent.setter
     def messages_sent(self, value):
-        # Add validation logic if needed
         self._messages_sent = value
 
     @property
@@ -99,7 +98,6 @@ class User:
 
     @reactions_sent.setter
     def reactions_sent(self, value):
-        # Add validation logic if needed
         self._reactions_sent = value
 
     @property
@@ -108,7 +106,6 @@ class User:
 
     @created.setter
     def created(self, value):
-        # Add validation logic if needed
         self._created = value
 
     @property
@@ -117,5 +114,4 @@ class User:
 
     @last_active.setter
     def last_active(self, value):
-        # Add validation logic if needed
         self._last_active = value

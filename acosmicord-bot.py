@@ -1,4 +1,7 @@
 #! /usr/bin/python3.8
+from code import interact
+from curses.ascii import US
+from click import option
 import discord
 from discord.ext import commands
 from discord import Message, app_commands
@@ -8,6 +11,7 @@ from datetime import datetime
 import logging
 from dotenv import load_dotenv
 import os
+
 
 load_dotenv()
 db_host = os.getenv('db_host')
@@ -49,7 +53,6 @@ async def on_message(message):
     
     if not message.author.bot:
         logging.info(f'Message from {message.author}: {message.content}')
-
         role1 = discord.utils.get(message.guild.roles, name=role_level_1)
         role2 = discord.utils.get(message.guild.roles, name=role_level_2)
         role3 = discord.utils.get(message.guild.roles, name=role_level_3)
@@ -60,7 +63,6 @@ async def on_message(message):
         role8 = discord.utils.get(message.guild.roles, name=role_level_8)
         role9 = discord.utils.get(message.guild.roles, name=role_level_9)
         role10 = discord.utils.get(message.guild.roles, name=role_level_10)
-
 
         db = Database(db_host, db_user, db_password, db_name)
         current_user = db.get_user(str(message.author))
@@ -74,39 +76,30 @@ async def on_message(message):
             if current_user.exp < 100:
                 role = role1
                 current_user.level = 1
-
             elif current_user.exp >= 100 and current_user.exp < 200:
                 role = role2
                 current_user.level = 2
-
             elif current_user.exp >= 200 and current_user.exp < 300:
                 role = role3
                 current_user.level = 3
-
             elif current_user.exp >= 300 and current_user.exp < 400:
                 role = role4
                 current_user.level = 4
-
             elif current_user.exp >= 400 and current_user.exp < 500:
                 role = role5
                 current_user.level = 5
-
             elif current_user.exp >= 500 and current_user.exp < 600:
                 role = role6
                 current_user.level = 6
-
             elif current_user.exp >= 600 and current_user.exp < 700:
                 role = role7
                 current_user.level = 7
-
             elif current_user.exp >= 700 and current_user.exp < 800:
                 role = role8
                 current_user.level = 8
-
             elif current_user.exp >= 800 and current_user.exp < 900:
                 role = role9
                 current_user.level = 9
-
             elif current_user.exp >= 900:
                 role = role10
                 current_user.level = 10
@@ -132,6 +125,7 @@ async def on_message(message):
             'exp': 0,
             'exp_gained': 0,
             'exp_lost': 0,
+            'currency': 0,
             'messages_sent': 1,
             'reactions_sent': 0,
             'created': formatted_join_date,
@@ -167,8 +161,6 @@ async def on_raw_reaction_add(payload):
 # This function adds new users to the database if they don't already exist and assigns the lvl1 role
 @bot.event
 async def on_member_join(member):
-    
-    
     role = discord.utils.get(member.guild.roles, name=role_level_1)
     join_date = member.joined_at
 
@@ -183,6 +175,7 @@ async def on_member_join(member):
     'exp': 0,
     'exp_gained': 0,
     'exp_lost': 0,
+    'currency': 0,
     'messages_sent': 0,
     'reactions_sent': 0,
     'created': formatted_join_date,
@@ -212,14 +205,11 @@ async def rank_command(interaction: discord.Interaction):
     db = Database(db_host, db_user, db_password, db_name)
     user_rank = db.get_user_rank(discord_username_to_check)
     
-
     current_user = db.get_user(discord_username_to_check)
     current_user_exp = current_user.exp
     current_user_messages_sent = current_user.messages_sent
     current_user_reactions_sent = current_user.reactions_sent
     current_user_level = current_user.level
-
-
 
     if user_rank is not None:
         embed = discord.Embed(
@@ -232,15 +222,10 @@ async def rank_command(interaction: discord.Interaction):
         f"Total Reactions: {current_user_reactions_sent}\n"
         ),
         color=interaction.user.color)
-        # color=discord.Color.dark_purple())  # You can choose a different color
         embed.set_thumbnail(url=interaction.user.avatar)
 
         await interaction.response.send_message(embed=embed)
 
-        # await interaction.response.send_message(\
-        #     f"{discord_username_to_check} is ranked #{user_rank[-1]}. "\
-        #     f"Currently has {current_user_exp} EXP with {current_user_messages_sent} "\
-        #     f"total messages and {current_user_reactions_sent} total reactions sent. Noice!")
     else:
         logging.info(f"The user with Discord username {discord_username_to_check} was not found in the database.")
         
@@ -259,6 +244,7 @@ async def rank_command(interaction: discord.Interaction):
         'exp': 0,
         'exp_gained': 0,
         'exp_lost': 0,
+        'currency': 0,
         'messages_sent': 1,
         'reactions_sent': 0,
         'created': formatted_join_date,
@@ -267,16 +253,26 @@ async def rank_command(interaction: discord.Interaction):
 
         new_user = User(**user_data)
         db.add_new_user(new_user)
-
-
         logging.info(f'{new_user.discord_username} added to the database.')
         await interaction.response.send_message(f'{discord_username_to_check} was not found in the database. {new_user.discord_username} added to the database.')
-    
-    
     db.close_connection()
     # await interaction.response.send_message("Hello!") 
     logging.info(f"{interaction.user.name} used /rank command")
     
+@bot.tree.command(name = "give", description = "give currency", guild=MY_GUILD) 
+async def give_command(interaction: discord.Interaction, target: discord.Member, amount: int):
+    role = discord.utils.get(interaction.guild.roles, name="Acosmic")
+    
+    if role in interaction.user.roles:
+        await interaction.response.send_message(f'you have given {target} {amount} currency!')
+    else:
+        await interaction.response.send_message(f'only {role} can run this command. lol')
+        
+    
+
+
+
+
 
 if __name__ == "__main__":
     bot.run(TOKEN)
