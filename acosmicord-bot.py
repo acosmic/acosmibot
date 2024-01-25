@@ -5,6 +5,7 @@ from click import option
 import discord
 from discord.ext import commands
 from discord import Message, app_commands
+from Dao.UserDao import UserDao
 from database import Database
 from Entities.User import User
 from datetime import datetime
@@ -64,8 +65,10 @@ async def on_message(message):
         role9 = discord.utils.get(message.guild.roles, name=role_level_9)
         role10 = discord.utils.get(message.guild.roles, name=role_level_10)
 
-        db = Database(db_host, db_user, db_password, db_name)
-        current_user = db.get_user(str(message.author))
+        dao = UserDao()
+
+        current_user = dao.get_user(str(message.author))
+        logging.info(f'{str(message.author)} grabbed from get_user() in on_message()')
         if current_user is not None:
             current_user.exp += 2
             current_user.exp_gained += 2
@@ -108,8 +111,11 @@ async def on_message(message):
             if current_user.level > current_level:
                 await message.reply(f'GG! You have been promoted up to {str(role)}!')
                 
-            
-            db.modify_user(current_user)
+            try:
+                dao.update_user(current_user)
+                logging.info(f'{str(message.author)} updated in database in on_message()')
+            except Exception as e: 
+                logging.error(f'Error updating {message.author} to the database: {e}')
             await message.author.add_roles(role)
         else:
             join_date = message.author.joined_at
@@ -133,29 +139,32 @@ async def on_message(message):
             }
             new_user = User(**new_user_data)
             try:
-                db.add_new_user(new_user)
+                dao.add_user(new_user)
                 logging.info(f'{message.author} added to the database.')
             except Exception as e:
-                logging.error(f'Error adding user to the database: {e}')
+                logging.error(f'on_message() - Error adding user to the database: {e}')
 
 
 @bot.event 
 async def on_raw_reaction_add(payload):
-
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
     user = await bot.fetch_user(payload.user_id)
     emoji = payload.emoji
+    dao = UserDao()
 
     discord_username = user.name
-    db = Database(db_host, db_user, db_password, db_name)
-    current_user=db.get_user(discord_username)
+    current_user=dao.get_user(discord_username)
 
+    # Increment user total reactions 
     current_user.reactions_sent += 1
 
-    db.modify_user(current_user)
-    logging.info(f"{discord_username} added {emoji} to {message.author}'s message .")
-    logging.info(f"incremented and updated db reactions_sent for {discord_username}")
+    try:
+        dao.update_user(current_user)
+        logging.info(f"{discord_username} added {emoji} to {message.author}'s message .")
+        logging.info(f"incremented and updated db reactions_sent for {discord_username}")
+    except Exception as e:
+        logging.error(f'on_raw_reaction_add() - Error updating user to the database: {e}')
     
 
 # This function adds new users to the database if they don't already exist and assigns the lvl1 role
@@ -163,6 +172,7 @@ async def on_raw_reaction_add(payload):
 async def on_member_join(member):
     role = discord.utils.get(member.guild.roles, name=role_level_1)
     join_date = member.joined_at
+    dao = UserDao()
 
     # Convert join_date to a format suitable for database insertion (e.g., as a string)
     formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -182,44 +192,37 @@ async def on_member_join(member):
     'last_active': formatted_join_date
     }
     new_user = User(**member_data)
-
-    # Check if the user already exists
-    check_user_sql = "SELECT ID FROM Users WHERE DISCORD_USERNAME = %s"
-    db = Database(db_host, db_user, db_password, db_name)
-    db.mycursor.execute(check_user_sql, (new_user.discord_username,))
-    existing_user = db.mycursor.fetchone()
+    existing_user = dao.get_user(new_user.discord_username)
 
     if existing_user is None:
         await member.add_roles(role)
         logging.info(f'Auto assigned {role} role to {member}')
 
         # add new user to database
-        db.add_new_user(new_user)
-        logging.info(f'{new_user.discord_username} added to the database.')
+        try:
+            dao.add_user(new_user)
+            logging.info(f'{new_user.discord_username} added to the database.')
+        except Exception as e:
+            logging.error(f'on_member_join() - Error adding user to the database: {e}')
     else:
         logging.info(f'{new_user.discord_username} already exists, so was not added again.')
 
 @bot.tree.command(name = "rank", description = "returns your rank based on current EXP.", guild=MY_GUILD) 
 async def rank_command(interaction: discord.Interaction):
-    discord_username_to_check = interaction.user.name
-    db = Database(db_host, db_user, db_password, db_name)
-    user_rank = db.get_user_rank(discord_username_to_check)
+    dao = UserDao()
+    user_rank = dao.get_user_rank(interaction.user.name)
     
-    current_user = db.get_user(discord_username_to_check)
-    current_user_exp = current_user.exp
-    current_user_messages_sent = current_user.messages_sent
-    current_user_reactions_sent = current_user.reactions_sent
-    current_user_level = current_user.level
+    current_user = dao.get_user(interaction.user.name)
 
     if user_rank is not None:
         embed = discord.Embed(
-        title=f"{discord_username_to_check}'s Stats",
+        title=f"{interaction.user.name}'s Stats",
         description=(
         f"Ranked #{user_rank[-1]}\n"
-        f"Current Level: {current_user_level}\n"
-        f"Current EXP: {current_user_exp}\n"
-        f"Total Messages: {current_user_messages_sent}\n"
-        f"Total Reactions: {current_user_reactions_sent}\n"
+        f"Current Level: {current_user.level}\n"
+        f"Current EXP: {current_user.exp}\n"
+        f"Total Messages: {current_user.messages_sent}\n"
+        f"Total Reactions: {current_user.reactions_sent}\n"
         ),
         color=interaction.user.color)
         embed.set_thumbnail(url=interaction.user.avatar)
@@ -227,7 +230,7 @@ async def rank_command(interaction: discord.Interaction):
         await interaction.response.send_message(embed=embed)
 
     else:
-        logging.info(f"The user with Discord username {discord_username_to_check} was not found in the database.")
+        logging.info(f"The user with Discord username {interaction.user.name} was not found in the database.")
         
         role = discord.utils.get(interaction.user.guild.roles, name=role_level_1)
         await interaction.user.add_roles(role)
@@ -252,10 +255,9 @@ async def rank_command(interaction: discord.Interaction):
         }
 
         new_user = User(**user_data)
-        db.add_new_user(new_user)
+        dao.add_user(new_user)
         logging.info(f'{new_user.discord_username} added to the database.')
-        await interaction.response.send_message(f'{discord_username_to_check} was not found in the database. {new_user.discord_username} added to the database.')
-    db.close_connection()
+        await interaction.response.send_message(f'{interaction.user.name} was not found in the database. {new_user.discord_username} added to the database.')
     # await interaction.response.send_message("Hello!") 
     logging.info(f"{interaction.user.name} used /rank command")
     
@@ -268,11 +270,8 @@ async def give_command(interaction: discord.Interaction, target: discord.Member,
     else:
         await interaction.response.send_message(f'only {role} can run this command. lol')
         
-    
 
-
-
-
+        
 
 if __name__ == "__main__":
     bot.run(TOKEN)
