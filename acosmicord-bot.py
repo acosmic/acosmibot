@@ -1,10 +1,14 @@
 #! /usr/bin/python3.8
+from ast import alias
 from code import interact
 from curses.ascii import US
+import random
+from urllib import response
 from click import option
 import discord
 from discord.ext import commands
 from discord import Message, app_commands
+from numpy import True_
 from Dao.UserDao import UserDao
 from database import Database
 from Entities.User import User
@@ -264,14 +268,84 @@ async def rank_command(interaction: discord.Interaction):
 @bot.tree.command(name = "give", description = "give currency", guild=MY_GUILD) 
 async def give_command(interaction: discord.Interaction, target: discord.Member, amount: int):
     role = discord.utils.get(interaction.guild.roles, name="Acosmic")
-    
+    dao = UserDao()
     if role in interaction.user.roles:
-        await interaction.response.send_message(f'you have given {target} {amount} currency!')
+        target_user = dao.get_user(target.name)
+        target_user.currency += amount
+        try:
+            dao.update_user(target_user)
+            await interaction.response.send_message(f'{interaction.user.name} has given {target.mention} {amount} credits! <a:pepesith:1165101386921418792>')
+        except Exception as e:
+            logging.info(f'/give command - target = {target.name} - {e}.')
     else:
-        await interaction.response.send_message(f'only {role} can run this command. lol')
+        await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>')
         
+@bot.tree.command(name = "balance", description = "check your Credit balance.", guild=MY_GUILD) 
+async def give_command(interaction: discord.Interaction):
+    dao = UserDao()
+    user = dao.get_user(interaction.user.name)
 
+    await interaction.response.send_message(f'Your balance: {user.currency} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}')
+
+
+@bot.tree.command(name = "8ball", description = "Ask the magic 8ball your yes/no questions for 10 Credits", guild=MY_GUILD) 
+async def give_command(interaction: discord.Interaction, question: str):
+    # List of 8-ball responses
+    responses = [
+        "It is certain.",
+        "It is decidedly so.",
+        "Without a doubt.",
+        "Yes - definitely.",
+        "You may rely on it.",
+        "As I see it, yes.",
+        "Most likely.",
+        "Outlook good.",
+        "Yes.",
+        "Signs point to yes.",
+        "Reply hazy, try again.",
+        "Ask again later.",
+        "Better not tell you now.",
+        "Cannot predict now.",
+        "Concentrate and ask again.",
+        "Don't count on it.",
+        "My reply is no.",
+        "My sources say no.",
+        "Outlook not so good.",
+        "Very doubtful."
+    ]
+    dao = UserDao()
+    cost = 10
+    user = dao.get_user(interaction.user.name)
+
+    if user.currency >= cost:
         
+        eightball = random.choice(responses) 
+        await interaction.response.send_message(f"{interaction.user.name} asks: {question}\n\n <:PepeWizard:1200288529138327662> {eightball} 🎱  \n\n*{cost} Credits have been withdrawn from your balance*")
+        user.currency -= cost
+        dao.update_user(user)
+    else:
+        await interaction.response.send_message(f"You're too broke to use the magic 8ball. <:OhGodMan:1200262332392157184>")
+
+@bot.tree.command(name = "polymorph", description = "Change your target's display name for 1000 Credits... please be nice", guild=MY_GUILD) 
+async def give_command(interaction: discord.Interaction,target: discord.Member, nick: str):
+    dao = UserDao()
+    cost = 1000
+    user = dao.get_user(interaction.user.name)
+
+    if user.currency >= cost:
+        try:
+            await target.edit(nick=nick)
+            await interaction.response.send_message(f"🐏 {interaction.user.name} poly'd {target.name} into {nick} for 1000 Credits. 🐏")
+            user.currency -= cost
+            dao.update_user(user)
+            logging.info(f'{user.name} used /polymorph on {target.name}')
+        except Exception as e:
+            logging.error(f'{user.name} tried to use /polymorph on {target.name} - {e}')
+    else:
+        await interaction.response.send_message(f"You're much too broke to polymorph anyone. <:PepePathetic:1200268253021360128>")
+
+
+
 
 if __name__ == "__main__":
     bot.run(TOKEN)
