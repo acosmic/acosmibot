@@ -78,6 +78,7 @@ async def on_message(message):
             current_user.exp_gained += 2
             current_user.messages_sent += 1
             current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            logging.info(f'CURRENT TIME = {current_user.last_active}')
             current_level = current_user.level
 
             if current_user.exp < 100:
@@ -110,8 +111,21 @@ async def on_message(message):
             elif current_user.exp >= 900:
                 role = role10
                 current_user.level = 10
-            
 
+
+
+
+            # CHECK IF - DAILY REWARD
+            if current_user.daily == 0:
+                logging.info(f"CONGRATS - REWARD FOR FIRST MESSAGE OF THE DAY")
+
+                current_user.currency += 100
+                current_user.daily = 1
+                await message.reply(f'<:PepeCelebrate:1165105393362555021> {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+            else:
+                logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
+            
+            # CHECK IF _ LEVELING UP
             if current_user.level > current_level:
                 await message.reply(f'GG! You have been promoted up to {str(role)}!')
                 
@@ -121,6 +135,11 @@ async def on_message(message):
             except Exception as e: 
                 logging.error(f'Error updating {message.author} to the database: {e}')
             await message.author.add_roles(role)
+
+
+
+
+         
         else:
             join_date = message.author.joined_at
 
@@ -139,14 +158,18 @@ async def on_message(message):
             'messages_sent': 1,
             'reactions_sent': 0,
             'created': formatted_join_date,
-            'last_active': formatted_join_date
+            'last_active': formatted_join_date,
+            'daily': 0
+
             }
             new_user = User(**new_user_data)
-            try:
-                dao.add_user(new_user)
-                logging.info(f'{message.author} added to the database.')
-            except Exception as e:
-                logging.error(f'on_message() - Error adding user to the database: {e}')
+            logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')
+            # try:
+            #     # dao.add_user(new_user)
+            #     logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')
+            # except Exception as e:
+            #     logging.error(f'on_message() - Error adding user to the database: {e}')
+        
 
 
 @bot.event 
@@ -193,7 +216,8 @@ async def on_member_join(member):
     'messages_sent': 0,
     'reactions_sent': 0,
     'created': formatted_join_date,
-    'last_active': formatted_join_date
+    'last_active': formatted_join_date,
+    'daily': 0
     }
     new_user = User(**member_data)
     existing_user = dao.get_user(new_user.discord_username)
@@ -205,13 +229,13 @@ async def on_member_join(member):
         # add new user to database
         try:
             dao.add_user(new_user)
-            logging.info(f'{new_user.discord_username} added to the database.')
+            logging.info(f'{new_user.discord_username} added to the database. on_member_join()')
         except Exception as e:
             logging.error(f'on_member_join() - Error adding user to the database: {e}')
     else:
         logging.info(f'{new_user.discord_username} already exists, so was not added again.')
 
-@bot.tree.command(name = "rank", description = "returns your rank based on current EXP.", guild=MY_GUILD) 
+@bot.tree.command(name = "rank", description = "Returns your rank based on current EXP and general stats.", guild=MY_GUILD) 
 async def rank_command(interaction: discord.Interaction):
     dao = UserDao()
     user_rank = dao.get_user_rank(interaction.user.name)
@@ -220,7 +244,7 @@ async def rank_command(interaction: discord.Interaction):
 
     if user_rank is not None:
         embed = discord.Embed(
-        title=f"{interaction.user.name}'s Stats",
+        title=f"{interaction.user.name}'s stats",
         description=(
         f"Ranked #{user_rank[-1]}\n"
         f"Current Level: {current_user.level}\n"
@@ -255,7 +279,8 @@ async def rank_command(interaction: discord.Interaction):
         'messages_sent': 1,
         'reactions_sent': 0,
         'created': formatted_join_date,
-        'last_active': formatted_join_date 
+        'last_active': formatted_join_date,
+        'daily': 0
         }
 
         new_user = User(**user_data)
@@ -265,7 +290,7 @@ async def rank_command(interaction: discord.Interaction):
     # await interaction.response.send_message("Hello!") 
     logging.info(f"{interaction.user.name} used /rank command")
     
-@bot.tree.command(name = "give", description = "give currency", guild=MY_GUILD) 
+@bot.tree.command(name = "give", description = "Give currency - not working currently", guild=MY_GUILD) 
 async def give_command(interaction: discord.Interaction, target: discord.Member, amount: int):
     role = discord.utils.get(interaction.guild.roles, name="Acosmic")
     dao = UserDao()
@@ -280,7 +305,7 @@ async def give_command(interaction: discord.Interaction, target: discord.Member,
     else:
         await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>')
         
-@bot.tree.command(name = "balance", description = "check your Credit balance.", guild=MY_GUILD) 
+@bot.tree.command(name = "balance", description = "Check your Credit balance.", guild=MY_GUILD) 
 async def give_command(interaction: discord.Interaction):
     dao = UserDao()
     user = dao.get_user(interaction.user.name)

@@ -27,8 +27,9 @@ class UserDao:
             MESSAGES_SENT,
             REACTIONS_SENT,
             CREATED,
-            LAST_ACTIVE
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            LAST_ACTIVE,
+            DAILY
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
             new_user.id,
@@ -42,7 +43,8 @@ class UserDao:
             new_user.messages_sent,
             new_user.reactions_sent,
             new_user.created,
-            new_user.last_active
+            new_user.last_active,
+            new_user.daily
         )
 
         self.db.mycursor.execute(sql, values)
@@ -62,7 +64,8 @@ class UserDao:
                 CURRENCY = %s,
                 MESSAGES_SENT = %s,
                 REACTIONS_SENT = %s,
-                LAST_ACTIVE = %s
+                LAST_ACTIVE = %s,
+                DAILY = %s
             WHERE ID = %s
         '''
         values = (
@@ -76,7 +79,8 @@ class UserDao:
             updated_user.messages_sent,
             updated_user.reactions_sent,
             updated_user.last_active,
-            updated_user.id
+            updated_user.daily,
+            updated_user.id,
         )
         self.db.mycursor.execute(sql, values)
         self.db.mydb.commit()
@@ -104,7 +108,8 @@ class UserDao:
                 messages_sent=user_data[8],
                 reactions_sent=user_data[9],
                 created=user_data[10],
-                last_active=user_data[11]
+                last_active=user_data[11],
+                daily=user_data[12]
             )
             return user
         else:
@@ -125,6 +130,7 @@ class UserDao:
                 REACTIONS_SENT,
                 CREATED,
                 LAST_ACTIVE,
+                DAILY,
                 (SELECT COUNT(*) + 1 FROM Users u2 WHERE u2.EXP > u1.EXP) AS user_rank
             FROM Users u1
             WHERE DISCORD_USERNAME = %s;
