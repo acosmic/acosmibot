@@ -4,6 +4,7 @@ from discord import app_commands
 from Dao.UserDao import UserDao
 import random
 import logging
+import typing
 
 class Coin(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -11,11 +12,11 @@ class Coin(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="coinflip", description="Flip a coin for a chance to win credits")
-    async def coin_flip(self, interaction: discord.Interaction, call: str, bet: int):
-        call = call.lower()
+    async def coin_flip(self, interaction: discord.Interaction, call: typing.Literal['Heads', 'Tails'], bet: int):
+        
 
-        if call not in ['heads', 'tails']:
-            await interaction.response.send_message("Invalid choice. Please choose either 'heads' or 'tails'.", ephemeral=True)
+        if call not in ['Heads', 'Tails']:
+            await interaction.response.send_message("Invalid choice. Please choose either 'Heads' or 'Tails'.", ephemeral=True)
             return
 
         dao = UserDao()
@@ -27,7 +28,7 @@ class Coin(commands.Cog):
             return
 
         # Flip the coin
-        result = random.choice(['heads', 'tails'])
+        result = random.choice(['Heads', 'Tails'])
 
         if result == call:
             user.currency += cost
