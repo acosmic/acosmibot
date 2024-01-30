@@ -23,7 +23,6 @@ client_secret =  os.getenv('client_secret')
 MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
 TOKEN = os.getenv('TOKEN')
 
-# Configure the logging settings
 logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Bot(commands.Bot):
@@ -35,6 +34,7 @@ class Bot(commands.Bot):
             "Cogs.Give",
             "Cogs.Eightball",
             "Cogs.Polymorph",
+            "Cogs.Coin",
             "Cogs.On_Message",
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
