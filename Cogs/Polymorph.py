@@ -13,15 +13,15 @@ class Polymorph(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name = "polymorph", description = "Change your target's display name for 1000 Credits... please be nice") 
-    async def polymorph_command(self, interaction: discord.Interaction,target: discord.Member, nick: str):
+    async def polymorph_command(self, interaction: discord.Interaction, target: discord.Member, rename: str):
         dao = UserDao()
         cost = 1000
         user = dao.get_user(interaction.user.name)
 
         if user.currency >= cost:
             try:
-                await target.edit(nick=nick)
-                await interaction.response.send_message(f"🐏 {interaction.user.name} poly'd {target.name} into {nick} for 1000 Credits. 🐏")
+                await target.edit(nick=rename)
+                await interaction.response.send_message(f"🐏 {interaction.user.name} poly'd {target.name} into {rename} for 1000 Credits. 🐏")
                 user.currency -= cost
                 dao.update_user(user)
                 logging.info(f'{user.discord_username} used /polymorph on {target.name}')
