@@ -10,7 +10,7 @@ class Coin(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="coin", description="Flip a coin for a chance to win credits")
+    @app_commands.command(name="coinflip", description="Flip a coin for a chance to win credits")
     async def coin_flip(self, interaction: discord.Interaction, call: str, bet: int):
         call = call.lower()
 
