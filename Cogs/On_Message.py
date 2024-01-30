@@ -84,7 +84,7 @@ class On_Message(commands.Cog):
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
-                    logging.info(f"CONGRATS - REWARD FOR FIRST MESSAGE OF THE DAY")
+                    logging.info(f"{current_user.discord_username} - COMPLETED DAILY REWARD")
 
                     current_user.currency += 100
                     current_user.daily = 1
@@ -94,7 +94,8 @@ class On_Message(commands.Cog):
                 
                 # CHECK IF _ LEVELING UP
                 if current_user.level > current_level:
-                    await message.reply(f'GG! You have been promoted up to {str(role)}!')
+                    current_user.currency += 500
+                    await message.reply(f'<:FeelsGroovy:1199735360616407041> LEVEL UP! You have reached {str(role)}! You have been awarded 500 Credits!')
                     
                 try:
                     dao.update_user(current_user)

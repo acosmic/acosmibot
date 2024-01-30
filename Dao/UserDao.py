@@ -146,4 +146,16 @@ class UserDao:
             # User not found
             return None
         
+    def get_top_users(self, column, limit=5):
+        sql = f'''
+        SELECT ID, DISCORD_USERNAME, {column}
+        FROM Users
+        ORDER BY {column} DESC
+        LIMIT {limit}
+        '''
+        self.db.mycursor.execute(sql)
+        top_users = self.db.mycursor.fetchall()
+        self.db.close_connection()
+        return top_users
+        
         
