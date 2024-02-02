@@ -34,7 +34,7 @@ class Give(commands.Cog):
             target_user = dao.get_user(target.id)
 
             if amount > giving_user.currency:
-                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} to give. ")
+                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} to give. <:FeelsBigSad:1199734765230768139>")
 
             else:
                 giving_user.currency -= amount
