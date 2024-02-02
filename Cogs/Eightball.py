@@ -37,7 +37,7 @@ class Eightball(commands.Cog):
         ]
         dao = UserDao()
         cost = 10
-        user = dao.get_user(interaction.user.name)
+        user = dao.get_user(interaction.user.id)
 
         if user.currency >= cost:
             

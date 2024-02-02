@@ -1,3 +1,4 @@
+from code import interact
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -28,9 +29,9 @@ class Rank(commands.Cog):
     @app_commands.command(name = "rank", description = "Returns your rank based on current EXP and general stats.") 
     async def rank(self, interaction: discord.Interaction):
         dao = UserDao()
-        user_rank = dao.get_user_rank(interaction.user.name)
+        user_rank = dao.get_user_rank(interaction.user.id)
         
-        current_user = dao.get_user(interaction.user.name)
+        current_user = dao.get_user(interaction.user.id)
 
         if user_rank is not None:
             embed = discord.Embed(
@@ -58,7 +59,7 @@ class Rank(commands.Cog):
             formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
 
             user_data = {
-            'id': 0,
+            'id': interaction.user.id,
             'discord_username': str(interaction.user.name),
             'level': 1,
             'streak': 0,

@@ -20,7 +20,7 @@ class On_Reaction(commands.Cog):
         dao = UserDao()
 
         discord_username = user.name
-        current_user=dao.get_user(discord_username)
+        current_user=dao.get_user(user.id)
 
         # Increment user total reactions 
         current_user.reactions_sent += 1

@@ -16,7 +16,7 @@ class Polymorph(commands.Cog):
     async def polymorph_command(self, interaction: discord.Interaction, target: discord.Member, rename: str):
         dao = UserDao()
         cost = 1000
-        user = dao.get_user(interaction.user.name)
+        user = dao.get_user(interaction.user.id)
 
         if user.currency >= cost:
             try:

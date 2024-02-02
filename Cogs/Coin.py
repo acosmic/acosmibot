@@ -20,7 +20,7 @@ class Coin(commands.Cog):
             return
 
         dao = UserDao()
-        user = dao.get_user(interaction.user.name)
+        user = dao.get_user(interaction.user.id)
         cost = abs(bet)  # Make sure bet is positive
 
         if user.currency < cost:
@@ -39,7 +39,7 @@ class Coin(commands.Cog):
 
         dao.update_user(user)
         await interaction.response.send_message(message)
-        logging.info(f"{interaction.user.name} used /coin command")
+        logging.info(f"{interaction.user.name} used /coinflip command")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Coin(bot))

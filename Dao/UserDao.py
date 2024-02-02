@@ -16,19 +16,19 @@ class UserDao:
     def add_user(self, new_user):
         sql = '''
         INSERT INTO Users (
-            ID,
-            DISCORD_USERNAME,
-            LEVEL,
-            STREAK,
-            EXP,
-            EXP_GAINED,
-            EXP_LOST,
-            CURRENCY,
-            MESSAGES_SENT,
-            REACTIONS_SENT,
-            CREATED,
-            LAST_ACTIVE,
-            DAILY
+            id,
+            discord_username,
+            level,
+            streak,
+            exp,
+            exp_gained,
+            exp_lost,
+            currency,
+            messages_sent,
+            reactions_sent,
+            created,
+            last_active,
+            daily
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
@@ -55,18 +55,18 @@ class UserDao:
         sql = '''
             UPDATE Users
             SET
-                DISCORD_USERNAME = %s,
-                LEVEL = %s,
-                STREAK = %s,
-                EXP = %s,
-                EXP_GAINED = %s,
-                EXP_LOST = %s,
-                CURRENCY = %s,
-                MESSAGES_SENT = %s,
-                REACTIONS_SENT = %s,
-                LAST_ACTIVE = %s,
-                DAILY = %s
-            WHERE ID = %s
+                discord_username = %s,
+                level = %s,
+                streak = %s,
+                exp = %s,
+                exp_gained = %s,
+                exp_lost = %s,
+                currency = %s,
+                messages_sent = %s,
+                reactions_sent = %s,
+                last_active = %s,
+                daily = %s
+            WHERE id = %s
         '''
         values = (
             updated_user.discord_username,
@@ -86,13 +86,13 @@ class UserDao:
         self.db.mydb.commit()
         self.db.close_connection()
 
-    def get_user(self, discord_username):
+    def get_user(self, id):
         sql = '''
             SELECT *
             FROM Users
-            WHERE DISCORD_USERNAME = %s
+            WHERE id = %s
         '''
-        values = (discord_username,)
+        values = (id,)
         self.db.mycursor.execute(sql, values)
         user_data = self.db.mycursor.fetchone()
         if user_data:
@@ -115,28 +115,28 @@ class UserDao:
         else:
             return None
         
-    def get_user_rank(self, discord_username):
+    def get_user_rank(self, id):
         rank_query = '''
             SELECT
-                ID,
-                DISCORD_USERNAME,
-                LEVEL,
-                STREAK,
-                EXP,
-                EXP_GAINED,
-                EXP_LOST,
-                CURRENCY,
-                MESSAGES_SENT,
-                REACTIONS_SENT,
-                CREATED,
-                LAST_ACTIVE,
-                DAILY,
-                (SELECT COUNT(*) + 1 FROM Users u2 WHERE u2.EXP > u1.EXP) AS user_rank
+                id,
+                discord_username,
+                level,
+                streak,
+                exp,
+                exp_gained,
+                exp_lost,
+                currency,
+                messages_sent,
+                reactions_sent,
+                created,
+                last_active,
+                daily,
+                (SELECT COUNT(*) + 1 FROM Users u2 WHERE u2.exp > u1.exp) AS user_rank
             FROM Users u1
-            WHERE DISCORD_USERNAME = %s;
+            WHERE id = %s;
         '''
 
-        self.db.mycursor.execute(rank_query, (discord_username,))
+        self.db.mycursor.execute(rank_query, (id,))
         user_data = self.db.mycursor.fetchone()
 
         if user_data:
@@ -148,7 +148,7 @@ class UserDao:
         
     def get_top_users(self, column, limit=5):
         sql = f'''
-        SELECT ID, DISCORD_USERNAME, {column}
+        SELECT id, discord_username, {column}
         FROM Users
         ORDER BY {column} DESC
         LIMIT {limit}
@@ -157,5 +157,16 @@ class UserDao:
         top_users = self.db.mycursor.fetchall()
         self.db.close_connection()
         return top_users
+    
+    # temporary - DO NOT KEEP
+    # def update_user_id(self, discord_username, discord_id):
+    #     sql = '''
+    #         UPDATE Users
+    #         SET id = %s
+    #         WHERE discord_username = %s
+    #     '''
+    #     values = (discord_id, discord_username)
+    #     self.db.mycursor.execute(sql, values)
+    #     self.db.mydb.commit()
         
         

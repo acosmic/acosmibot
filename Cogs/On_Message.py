@@ -41,8 +41,8 @@ class On_Message(commands.Cog):
 
             dao = UserDao()
 
-            current_user = dao.get_user(str(message.author))
-            logging.info(f'{str(message.author)} grabbed from get_user() in on_message()')
+            current_user = dao.get_user(message.author.id)
+            logging.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
             if current_user is not None:
                 current_user.exp += 2
                 current_user.exp_gained += 2
@@ -111,7 +111,7 @@ class On_Message(commands.Cog):
                 formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
 
                 new_user_data = {
-                'id': 0,
+                'id': message.author.id,
                 'discord_username': str(message.author),
                 'level': 1,
                 'streak': 0,

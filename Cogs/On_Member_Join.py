@@ -33,7 +33,7 @@ class On_Member_Join(commands.Cog):
         formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
 
         member_data = {
-        'id': 0,
+        'id': member.id,
         'discord_username': member.name,
         'level': 1,
         'streak': 0,
