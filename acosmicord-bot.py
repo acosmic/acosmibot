@@ -34,7 +34,7 @@ class Bot(commands.Bot):
             "Cogs.Give",
             "Cogs.Eightball",
             "Cogs.Polymorph",
-            "Cogs.Coin",
+            "Cogs.Coinflip",
             "Cogs.Leaderboard",
             "Cogs.On_Message",
             "Cogs.On_Reaction",

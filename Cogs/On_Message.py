@@ -127,7 +127,7 @@ class On_Message(commands.Cog):
 
                 }
                 new_user = User(**new_user_data)
-                logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')
+                logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY nothing added to db')
                 # try:
                 #     # dao.add_user(new_user)
                 #     logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')

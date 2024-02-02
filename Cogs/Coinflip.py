@@ -1,12 +1,16 @@
+from sqlite3 import Timestamp
 import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
+from Dao.CoinflipDao import CoinflipDao
+from Entities.CoinflipEvent import CoinflipEvent
 import random
 import logging
 import typing
+from datetime import datetime
 
-class Coin(commands.Cog):
+class Coinflip(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
@@ -20,6 +24,7 @@ class Coin(commands.Cog):
             return
 
         dao = UserDao()
+        cfdao = CoinflipDao()
         user = dao.get_user(interaction.user.id)
         cost = abs(bet)  # Make sure bet is positive
 
@@ -29,17 +34,26 @@ class Coin(commands.Cog):
 
         # Flip the coin
         result = random.choice(['Heads', 'Tails'])
+        
 
         if result == call:
             user.currency += cost
+            amount_won = cost
+            amount_lost = 0
             message = f"{interaction.user.name} called {call} and won {cost} credits! <:PepeDank:1200292095131406388>"
         else:
             user.currency -= cost
+            amount_won = 0
+            amount_lost = cost
             message = f"{interaction.user.name} called {call} but lost {cost} credits. Better luck next time! <a:giggle:1165098258968879134>"
 
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_event = CoinflipEvent(0, interaction.user.id, call, result, amount_won, amount_lost, timestamp)
+
         dao.update_user(user)
+        cfdao.add_new_event(new_event)
         await interaction.response.send_message(message)
         logging.info(f"{interaction.user.name} used /coinflip command")
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Coin(bot))
+    await bot.add_cog(Coinflip(bot))

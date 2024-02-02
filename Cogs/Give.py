@@ -21,7 +21,7 @@ class Give(commands.Cog):
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")
         dao = UserDao()
         if role in interaction.user.roles:
-            target_user = dao.get_user(target.name)
+            target_user = dao.get_user(target.id)
             target_user.currency += amount
             try:
                 dao.update_user(target_user)
