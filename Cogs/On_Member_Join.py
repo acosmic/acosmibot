@@ -48,7 +48,7 @@ class On_Member_Join(commands.Cog):
         'daily': 0
         }
         new_user = User(**member_data)
-        existing_user = dao.get_user(new_user.discord_username)
+        existing_user = dao.get_user(new_user.id)
 
         if existing_user is None:
             await member.add_roles(role)
