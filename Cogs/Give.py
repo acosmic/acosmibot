@@ -29,7 +29,23 @@ class Give(commands.Cog):
             except Exception as e:
                 logging.info(f'/give command - target = {target.name} - {e}.')
         else:
-            await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>')
+            # await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>')
+            giving_user = dao.get_user(interaction.user.id)
+            target_user = dao.get_user(target.id)
+
+            if amount > giving_user.currency:
+                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} to give. ")
+
+            else:
+                giving_user.currency -= amount
+                target_user.currency += amount
+                dao.update_user(giving_user)
+                dao2 = UserDao()
+                dao2.update_user(target_user)
+                await interaction.response.send_message(f'{interaction.user.name} has given {target.mention} {amount} credits! <:PepePimp:1200268145693302854>')
+                
+
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Give(bot))
