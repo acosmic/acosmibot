@@ -40,9 +40,9 @@ class Leaderboard(commands.Cog):
 
             embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
 
-            for i, (discord_id, amount_won, timestamp) in enumerate(leaders, start=1):
-                current_user = dao.get_user(discord_id)
-                embed.add_field(name=f"{i}. {current_user.discord_username} | {timestamp.date()}", value=f"{amount_won} Credits", inline=False)
+            for i, (discord_username, amount_won, timestamp) in enumerate(leaders, start=1):
+                formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
+                embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST", value=f"{amount_won} Credits", inline=False)
 
             await interaction.response.send_message(embed=embed)
             logging.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
@@ -54,9 +54,9 @@ class Leaderboard(commands.Cog):
 
             embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
 
-            for i, (discord_id, amount_lost, timestamp) in enumerate(leaders, start=1):
-                current_user = dao.get_user(discord_id)
-                embed.add_field(name=f"{i}. {current_user.discord_username} | {timestamp.date()}", value=f"{amount_lost} Credits", inline=False)
+            for i, (discord_username, amount_lost, timestamp) in enumerate(leaders, start=1):
+                formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
+                embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST", value=f"{amount_lost} Credits", inline=False)
 
             await interaction.response.send_message(embed=embed)
             logging.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
