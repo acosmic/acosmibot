@@ -37,9 +37,9 @@ class View_Start_RPS(discord.ui.View):
         
 
     def reset_game(self):
-        self.joined_users = []
-        self.declined_users = []
-        self.tentative_users = []
+        self.joined_users.clear()
+        self.declined_users.clear()
+        self.tentative_users.clear()
         self.initiator = None
         self.acceptor = None
         self.players = 0
