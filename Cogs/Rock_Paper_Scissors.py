@@ -24,7 +24,7 @@ class Rock_Paper_Scissors(commands.Cog):
             dao = UserDao()
             if role in interaction.user.roles:
                 players = 2
-                view = View_Start_RPS(timeout=300)
+                view = View_Start_RPS(timeout=120)
                 view.initiator = interaction.user
                 view.players = players
                 view.bet = bet

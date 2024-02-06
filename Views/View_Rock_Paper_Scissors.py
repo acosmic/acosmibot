@@ -86,9 +86,17 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         return embed
     
     async def on_timeout(self):
+        gamesDao = GamesDao()
         # Disable all buttons
         for child in self.children:
             child.disabled = True
+        gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
+        message = self.message
+        timeout_message = "The Rock, Paper, Scissors match has timed out."
+        self.disable_all_buttons()
+        await self.reset_game()
+        await message.edit(content=timeout_message, embed=None)
+        
     
     def check_players_decided(self):
         if len(self.decided_users) >= 2:
@@ -139,7 +147,32 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         return False
 
 
+
     async def reset_game(self):
+        gamesDao = GamesDao()
+        # Reset all attributes to initial states
+        self.decided_users.clear()
+        self.round_results.clear()
+        self.winner_list.clear()
+        self.players = 0
+        self.player_one = None
+        self.player_two = None
+        self.round_number = 1
+        self.player_one_choice = ""
+        self.player_two_choice = ""
+        self.player_one_decision = "Choosing..."
+        self.player_two_decision = "Choosing..."
+        self.player_one_wins = 0
+        self.player_two_wins = 0
+        self.draws = 0
+        self.match_winner = ""
+        self.match_loser = ""
+        self.message = None
+        self.interaction = None
+        gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
+        logging.info(f"GAME TIMEOUT RESET \n\n")
+
+    async def complete_game(self):
         gamesDao = GamesDao()
         await self.announce_winner()
         self.winner_payout()
@@ -164,7 +197,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         self.interaction = None
         gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
         await self.announce_winner()
-        logging.info(f"GAME RESET \n\n")
+        logging.info(f"GAME COMPLETED \n\n")
     
     def disable_all_buttons(self):
         self.rock_button.disabled = True
@@ -225,7 +258,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
 
             if self.check_if_winner():
             # If there's a winner, reset the game
-                await self.reset_game()
+                await self.complete_game()
         
         else:
             embed = self.create_embed()

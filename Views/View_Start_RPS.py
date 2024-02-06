@@ -1,4 +1,5 @@
 import discord
+from Dao.GamesDao import GamesDao
 from Views.View_Rock_Paper_Scissors import View_Rock_Paper_Scissors
 from Dao.UserDao import UserDao
 
@@ -19,13 +20,39 @@ class View_Start_RPS(discord.ui.View):
         await interaction.response.send_message(view=self, embed=embed)
         self.message = await interaction.original_response()
 
+
+    async def on_timeout(self):
+        gamesDao = GamesDao()
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+        
+        gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
+        self.disable_all_buttons()
+
+        message = self.message
+        self.reset_game()
+        timeout_message = "The Rock, Paper, Scissors match has timed out."
+        await message.edit(content=timeout_message, embed=None)
+        
+
+    def reset_game(self):
+        self.joined_users = []
+        self.declined_users = []
+        self.tentative_users = []
+        self.initiator = None
+        self.acceptor = None
+        self.players = 0
+        self.bet = 0
+        
+
     def convert_user_list_to_str(self, user_list, defualt_str="No one"):
         if len(user_list):
             return "\n".join(user_list)
         return defualt_str
 
     def create_embed(self):
-        desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet}"
+        desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet} Credits!"
         embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
         rps_image = "https://cdn.discordapp.com/attachments/144298205301964800/1203574032226848778/acosmic_rock-paper-scissors.png?ex=65d196aa&is=65bf21aa&hm=b383189cbea29a0ca0e4b041aa3be04bb6e54266076962835e345188a350a11f&"
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
@@ -49,7 +76,7 @@ class View_Start_RPS(discord.ui.View):
         if self.check_players_full():
             self.disable_all_buttons()
             # THIS IS THE START OF THE GAME SEND TO NEW VIEW
-            game_view = View_Rock_Paper_Scissors(timeout=300)
+            game_view = View_Rock_Paper_Scissors(timeout=120)
             game_view.player_one = self.initiator
             game_view.player_two = self.acceptor
             game_view.players = self.players
