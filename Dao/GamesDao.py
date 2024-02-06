@@ -23,9 +23,9 @@ class GamesDao:
         else:
             return False
         
-    def set_game_inprogress(self, game_name, int):
+    def set_game_inprogress(self, game_name, inprogress):
         query = "UPDATE Games SET inprogress = %s WHERE name = %s"
-        values = (int, game_name)
+        values = (inprogress, game_name)
         self.db.mycursor.execute(query, values)
         self.db.mydb.commit()
         self.db.close_connection()

@@ -1,6 +1,7 @@
 import discord
 import logging
 from Dao.GamesDao import GamesDao
+from Dao.UserDao import UserDao
 
 class View_Rock_Paper_Scissors(discord.ui.View):
 
@@ -20,18 +21,31 @@ class View_Rock_Paper_Scissors(discord.ui.View):
     player_two_wins = 0
     draws = 0
     match_winner = ""
+    match_loser = ""
+    bet = int = 0
 
 
 
     message = interaction = None
+    
 
     async def send(self, interaction: discord.Interaction):
         return
         
     
+    async def announce_winner(self):
+
+
+        await self.message.channel.send(f"{self.match_winner.mention} has defeated {self.match_loser.mention} in a match of 🪨📄✂️ and won {self.bet} Credits! <a:LeoHYPE:1203568518302400512>")
+
     def create_embed(self):
         title = f" Round {self.round_number}: {self.player_one.display_name} vs. {self.player_two.display_name}"
         desc = f"Rock, Paper, Scissors, Shoot!"
+        if self.check_if_winner():
+            title = f"{self.match_winner.display_name} won in {self.round_number - 1} rounds!"
+            desc = f"{self.player_one.display_name} vs. {self.player_two.display_name}"
+            
+
         embed = discord.Embed(title=title, description=desc)
         if self.player_one_choice != "":
             self.player_one_decision = "Locked in!"
@@ -71,20 +85,53 @@ class View_Rock_Paper_Scissors(discord.ui.View):
 
         return embed
     
+    async def on_timeout(self):
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+    
     def check_players_decided(self):
         if len(self.decided_users) >= 2:
             return True
         return False
     
+    def winner_payout(self):
+        if self.player_one_wins >= 3:
+            self.match_winner = self.player_one
+            self.match_loser = self.player_two
+            userDao_one = UserDao()
+            userDao_two = UserDao()
+            user_one = userDao_one.get_user(self.player_one.id)
+            user_two = userDao_two.get_user(self.player_two.id)
+            user_one.currency += self.bet
+            user_two.currency -= self.bet
+            userDao_one.update_user(user_one)
+            userDao_two.update_user(user_two)
+            
+        elif self.player_two_wins >= 3:
+            self.match_winner = self.player_two
+            self.match_loser = self.player_one
+            userDao_one = UserDao()
+            userDao_two = UserDao()
+            user_one = userDao_one.get_user(self.player_one.id)
+            user_two = userDao_two.get_user(self.player_two.id)
+            user_one.currency -= self.bet
+            user_two.currency += self.bet
+            userDao_one.update_user(user_one)
+            userDao_two.update_user(user_two)
+            
+
     def check_if_winner(self):
         if self.player_one_wins >= 3:
             self.match_winner = self.player_one
+            self.match_loser = self.player_two
             self.player_one_decision = "🏆 WINNER! 🏆"
             self.player_two_decision = "<:FeelsBigSad:1199734765230768139>"
             
             return True 
         elif self.player_two_wins >= 3:
             self.match_winner = self.player_two
+            self.match_loser = self.player_one
             self.player_one_decision = "<:FeelsBigSad:1199734765230768139>"
             self.player_two_decision = "🏆 WINNER! 🏆"
             
@@ -92,8 +139,10 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         return False
 
 
-    def reset_game(self):
+    async def reset_game(self):
         gamesDao = GamesDao()
+        await self.announce_winner()
+        self.winner_payout()
         # Reset all attributes to initial states
         self.decided_users.clear()
         self.round_results.clear()
@@ -110,9 +159,11 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         self.player_two_wins = 0
         self.draws = 0
         self.match_winner = ""
+        self.match_loser = ""
         self.message = None
         self.interaction = None
-        gamesDao.set_game_inprogress(game_name="rps", int=0)
+        gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
+        await self.announce_winner()
         logging.info(f"GAME RESET \n\n")
     
     def disable_all_buttons(self):
@@ -125,12 +176,12 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         if (self.player_one_choice == "🪨" and self.player_two_choice == "✂️") or \
            (self.player_one_choice == "📄" and self.player_two_choice == "🪨") or \
            (self.player_one_choice == "✂️" and self.player_two_choice == "📄"):
-            winner = self.player_one
+            winner = self.player_one.display_name
             self.player_one_wins += 1
         elif (self.player_two_choice == "🪨" and self.player_one_choice == "✂️") or \
              (self.player_two_choice == "📄" and self.player_one_choice == "🪨") or \
              (self.player_two_choice == "✂️" and self.player_one_choice == "📄"):
-            winner = self.player_two
+            winner = self.player_two.display_name
             self.player_two_wins += 1
         else:
             winner = "Draw"
@@ -174,7 +225,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
 
             if self.check_if_winner():
             # If there's a winner, reset the game
-                self.reset_game()
+                await self.reset_game()
         
         else:
             embed = self.create_embed()

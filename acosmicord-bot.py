@@ -40,7 +40,8 @@ class Bot(commands.Bot):
             "Cogs.On_Message",
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
-            
+            "Cogs.Reset_RPS",
+            "Cogs.Burn",
         ]
     
     async def setup_hook(self):

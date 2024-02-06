@@ -12,14 +12,14 @@ class Rock_Paper_Scissors(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="rockpaperscissors", description="NOT WORKING YET - Challenge another member to a game of Rock, Paper, Scissors. Best of 3 wins!")
+    @app_commands.command(name="rockpaperscissors", description="TESTING - Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!")
     async def rock_paper_scissors(self, interaction: discord.Interaction, bet: int):
         gamesDao = GamesDao()
         if gamesDao.check_game_inprogress(game_name="rps"):
             await interaction.response.send_message(f"This is already a match in progress. Please allow it to finish before starting another match.", ephemeral=True)
 
         else:
-            gamesDao.set_game_inprogress(game_name="rps", int=1)
+            gamesDao.set_game_inprogress(game_name="rps", inprogress=1)
             role = discord.utils.get(interaction.guild.roles, name="Acosmic")
             dao = UserDao()
             if role in interaction.user.roles:
@@ -27,6 +27,7 @@ class Rock_Paper_Scissors(commands.Cog):
                 view = View_Start_RPS(timeout=300)
                 view.initiator = interaction.user
                 view.players = players
+                view.bet = bet
                 await view.send(interaction)
 
 async def setup(bot: commands.Bot):

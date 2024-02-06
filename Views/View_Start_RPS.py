@@ -1,5 +1,6 @@
 import discord
 from Views.View_Rock_Paper_Scissors import View_Rock_Paper_Scissors
+from Dao.UserDao import UserDao
 
 class View_Start_RPS(discord.ui.View):
 
@@ -10,6 +11,7 @@ class View_Start_RPS(discord.ui.View):
     initiator: discord.User = None
     acceptor: discord.User = None
     players: int = 0
+    bet: int = 0
     
     async def send(self, interaction: discord.Interaction):
         self.joined_users.append(interaction.user.display_name)
@@ -23,8 +25,8 @@ class View_Start_RPS(discord.ui.View):
         return defualt_str
 
     def create_embed(self):
-        desc = f"{self.initiator.display_name} is looking for a match."
-        embed = discord.Embed(title="TESTING - Accept Rock Paper Scissors Match!? - TESTING", description=desc)
+        desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet}"
+        embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
         rps_image = "https://cdn.discordapp.com/attachments/144298205301964800/1203574032226848778/acosmic_rock-paper-scissors.png?ex=65d196aa&is=65bf21aa&hm=b383189cbea29a0ca0e4b041aa3be04bb6e54266076962835e345188a350a11f&"
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
         embed.add_field(inline=True, name="❌ Declined", value=self.convert_user_list_to_str(self.declined_users))
@@ -52,6 +54,7 @@ class View_Start_RPS(discord.ui.View):
             game_view.player_two = self.acceptor
             game_view.players = self.players
             game_view.message = self.message
+            game_view.bet = self.bet
             # game_view.undecided_users.append(game_view.player_one.display_name)
             # game_view.undecided_users.append(game_view.player_two.display_name)
             await self.message.edit(view=game_view, embed=game_view.create_embed())
@@ -63,15 +66,21 @@ class View_Start_RPS(discord.ui.View):
     
     @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
     async def join_button(self, interaction: discord.Interaction, button = discord.ui.Button):
-        await interaction.response.defer()
-
-        if interaction.user.display_name not in self.joined_users:
-            self.joined_users.append(interaction.user.display_name)
-            self.acceptor = interaction.user
-        # if interaction.user.display_name in self.tentative_users:
-        #     self.tentative_users.remove(interaction.user.display_name)
-        if interaction.user.display_name in self.declined_users:
-            self.declined_users.remove(interaction.user.display_name)
+        
+        userDao = UserDao()
+        current_user = userDao.get_user(interaction.user.id)
+        current_user_credit = current_user.currency
+        if current_user_credit >= self.bet:
+            await interaction.response.defer()
+            if interaction.user.display_name not in self.joined_users:
+                self.joined_users.append(interaction.user.display_name)
+                self.acceptor = interaction.user
+            # if interaction.user.display_name in self.tentative_users:
+            #     self.tentative_users.remove(interaction.user.display_name)
+            if interaction.user.display_name in self.declined_users:
+                self.declined_users.remove(interaction.user.display_name)
+        else:
+            await interaction.response.send_message("You don't have enough Credits to accept this match.", ephemeral=True)
 
         await self.update_message()
 
