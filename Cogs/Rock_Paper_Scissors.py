@@ -19,10 +19,15 @@ class Rock_Paper_Scissors(commands.Cog):
             await interaction.response.send_message(f"This is already a match in progress. Please allow it to finish before starting another match.", ephemeral=True)
 
         else:
-            gamesDao.set_game_inprogress(game_name="rps", inprogress=1)
-            role = discord.utils.get(interaction.guild.roles, name="Acosmic")
+            # gamesDao.set_game_inprogress(game_name="rps", inprogress=1)
+            # role = discord.utils.get(interaction.guild.roles, name="Acosmic")
             dao = UserDao()
-            if role in interaction.user.roles:
+            current_user = dao.get_user(interaction.user.id)
+            if bet > current_user.currency:
+                await interaction.response.send_message(f"You don't have enough to make this bet!", ephemeral=True)
+
+            else:
+                # if role in interaction.user.roles:
                 players = 2
                 view = View_Start_RPS(timeout=120)
                 view.initiator = interaction.user
