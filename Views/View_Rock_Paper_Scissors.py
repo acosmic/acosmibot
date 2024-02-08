@@ -23,6 +23,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
     match_winner = ""
     match_loser = ""
     bet = int = 0
+    match_complete = bool = False
 
 
 
@@ -34,8 +35,6 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         
     
     async def announce_winner(self):
-
-
         await self.message.channel.send(f"{self.match_winner.mention} has defeated {self.match_loser.mention} in a match of 🪨📄✂️ and won {self.bet} Credits! <a:LeoHYPE:1203568518302400512>")
 
     def create_embed(self):
@@ -86,16 +85,17 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         return embed
     
     async def on_timeout(self):
-        gamesDao = GamesDao()
-        # Disable all buttons
-        for child in self.children:
-            child.disabled = True
-        gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
-        message = self.message
-        timeout_message = "The Rock, Paper, Scissors match has timed out."
-        self.disable_all_buttons()
-        await self.reset_game()
-        await message.edit(content=timeout_message, embed=None)
+        if not self.match_complete:
+            gamesDao = GamesDao()
+            # Disable all buttons
+            for child in self.children:
+                child.disabled = True
+            gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
+            message = self.message
+            timeout_message = "The Rock, Paper, Scissors match has timed out. - View_Rock_Paper_Scissors"
+            self.disable_all_buttons()
+            await self.reset_game()
+            await message.edit(content=timeout_message, embed=None)
         
     
     def check_players_decided(self):
@@ -135,6 +135,8 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             self.match_loser = self.player_two
             self.player_one_decision = "🏆 WINNER! 🏆"
             self.player_two_decision = "<:FeelsBigSad:1199734765230768139>"
+            self.match_complete = True
+
             
             return True 
         elif self.player_two_wins >= 3:
@@ -142,6 +144,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             self.match_loser = self.player_one
             self.player_one_decision = "<:FeelsBigSad:1199734765230768139>"
             self.player_two_decision = "🏆 WINNER! 🏆"
+            self.match_complete = True
             
             return True
         return False
@@ -169,6 +172,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         self.match_loser = ""
         self.message = None
         self.interaction = None
+        self.match_complete = False
         gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
         logging.info(f"GAME TIMEOUT RESET \n\n")
 
@@ -196,7 +200,6 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         self.message = None
         self.interaction = None
         gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
-        await self.announce_winner()
         logging.info(f"GAME COMPLETED \n\n")
     
     def disable_all_buttons(self):

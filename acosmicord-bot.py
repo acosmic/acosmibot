@@ -1,11 +1,9 @@
 #! /usr/bin/python3.8
 
-from curses.ascii import US
+import asyncio
 import discord
 from discord.app_commands.tree import CommandTree
 from discord.ext import commands
-from Dao.UserDao import UserDao
-from Entities.User import User
 from datetime import datetime
 import logging
 from dotenv import load_dotenv
@@ -45,6 +43,7 @@ class Bot(commands.Bot):
         ]
     
     async def setup_hook(self):
+        self.bg_task = self.loop.create_task(self.bg_task())
         for ext in self.cogslist:
             await self.load_extension(ext)
 
@@ -52,6 +51,17 @@ class Bot(commands.Bot):
         logging.info(f'Logged on as {bot.user}!')
         synced = await self.tree.sync()
         logging.info(f"slash cmd's synced: {str(len(synced))}")
+
+    async def bg_task(self):
+        await self.wait_until_ready()
+        channel = self.get_channel(1186805143296020520) # channel ID goes here
+        while not self.is_closed():
+            # logging.info('bg_task running')
+            if datetime.now().hour == 22 and datetime.now().minute == 0:
+                pass
+                # logging.info('bg_task running at 10:00 PM')
+                # await channel.send('Goodnight! background task test')
+            await asyncio.sleep(60)
 
 bot = Bot()
 bot.setup_hook()

@@ -13,6 +13,7 @@ class View_Start_RPS(discord.ui.View):
     acceptor: discord.User = None
     players: int = 0
     bet: int = 0
+    match_started = bool = False
     
     async def send(self, interaction: discord.Interaction):
         self.joined_users.append(interaction.user.display_name)
@@ -20,26 +21,35 @@ class View_Start_RPS(discord.ui.View):
         await interaction.response.send_message(view=self, embed=embed)
         self.message = await interaction.original_response()
 
+    async def announce_game_start(self):
+        self.match_started = True
+        await self.message.channel.send(f"{self.acceptor.mention} has accepted {self.initiator.mention}'s match. The match has started! <:Smirk:1200297264502034533>")
+
+
 
     async def on_timeout(self):
-        gamesDao = GamesDao()
-        # Disable all buttons
-        for child in self.children:
-            child.disabled = True
-        
-        gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
-        self.disable_all_buttons()
+        if not self.match_started:
+            gamesDao = GamesDao()
+            # Disable all buttons
+            for child in self.children:
+                child.disabled = True
+            
+            gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
+            self.disable_all_buttons()
 
-        message = self.message
-        self.reset_game()
-        timeout_message = "The Rock, Paper, Scissors match has timed out."
-        await message.edit(content=timeout_message, embed=None)
+            message = self.message
+            self.reset_game()
+            timeout_message = "The Rock, Paper, Scissors match has timed out. - View_Start_RPS"
+            await message.edit(content=timeout_message, embed=None)
+        
+
         
 
     def reset_game(self):
         self.joined_users.clear()
         self.declined_users.clear()
         self.tentative_users.clear()
+        self.match_started = False
         self.initiator = None
         self.acceptor = None
         self.players = 0
@@ -76,6 +86,7 @@ class View_Start_RPS(discord.ui.View):
         if self.check_players_full():
             self.disable_all_buttons()
             # THIS IS THE START OF THE GAME SEND TO NEW VIEW
+            await self.announce_game_start()
             game_view = View_Rock_Paper_Scissors(timeout=120)
             game_view.player_one = self.initiator
             game_view.player_two = self.acceptor
