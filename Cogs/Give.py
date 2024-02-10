@@ -16,7 +16,7 @@ class Give(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "give", description = "Give currency - not working currently") 
+    @app_commands.command(name = "give", description = "Give Credits to your target user.") 
     async def give(self, interaction: discord.Interaction, target: discord.Member, amount: int):
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")
         dao = UserDao()
@@ -34,7 +34,7 @@ class Give(commands.Cog):
             target_user = dao.get_user(target.id)
 
             if amount > giving_user.currency:
-                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} to give. <:FeelsBigSad:1199734765230768139>")
+                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} Credits to give. <:FeelsBigSad:1199734765230768139>")
 
             else:
                 giving_user.currency -= amount

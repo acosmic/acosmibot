@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.CoinflipDao import CoinflipDao
+from Dao.VaultDao import VaultDao
 from Entities.CoinflipEvent import CoinflipEvent
 import random
 import logging
@@ -41,10 +42,14 @@ class Coinflip(commands.Cog):
             amount_lost = 0
             message = f"{interaction.user.name} called {call} and won {cost} credits! <:PepeDank:1200292095131406388>"
         else:
+            vdao = VaultDao()
+            vcredits = vdao.get_currency()
+            vcredits += cost
+            vdao.update_currency(vcredits)
             user.currency -= cost
             amount_won = 0
             amount_lost = cost
-            message = f"{interaction.user.name} called {call} but lost {cost} credits. Better luck next time! <a:giggle:1165098258968879134>"
+            message = f"{interaction.user.name} called {call} but lost {cost} credits. Better luck next time! <a:giggle:1165098258968879134>\n\n{cost} Credits have been added to the vault! 🏦"
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         new_event = CoinflipEvent(0, interaction.user.id, call, result, amount_won, amount_lost, timestamp)
