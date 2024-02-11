@@ -70,7 +70,6 @@ class View_Start_RPS(discord.ui.View):
         embed.add_field(inline=True, name="🔄 Joined - 0 Bet", value=self.convert_user_list_to_str(self.tentative_users))
         embed.add_field(inline=True, name="❌ Declined", value=self.convert_user_list_to_str(self.declined_users))
         embed.set_image(url=rps_image)
-        # embed.add_field(inline=True, name="🔄 Tentative", value=self.convert_user_list_to_str(self.tentative_users))
 
         return embed
     
