@@ -12,7 +12,7 @@ class Rock_Paper_Scissors(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="rockpaperscissors", description="TESTING - Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!")
+    @app_commands.command(name="rockpaperscissors", description="Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!")
     async def rock_paper_scissors(self, interaction: discord.Interaction, bet: int):
         gamesDao = GamesDao()
         if gamesDao.check_game_inprogress(game_name="rps"):

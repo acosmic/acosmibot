@@ -1,3 +1,4 @@
+from tabnanny import check
 import discord
 from Dao.GamesDao import GamesDao
 from Views.View_Rock_Paper_Scissors import View_Rock_Paper_Scissors
@@ -66,24 +67,30 @@ class View_Start_RPS(discord.ui.View):
         embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
         rps_image = "https://cdn.discordapp.com/attachments/144298205301964800/1203574032226848778/acosmic_rock-paper-scissors.png?ex=65d196aa&is=65bf21aa&hm=b383189cbea29a0ca0e4b041aa3be04bb6e54266076962835e345188a350a11f&"
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
+        embed.add_field(inline=True, name="🔄 Joined - 0 Bet", value=self.convert_user_list_to_str(self.tentative_users))
         embed.add_field(inline=True, name="❌ Declined", value=self.convert_user_list_to_str(self.declined_users))
         embed.set_image(url=rps_image)
         # embed.add_field(inline=True, name="🔄 Tentative", value=self.convert_user_list_to_str(self.tentative_users))
 
         return embed
     
-    def check_players_full(self):
+    def check_players_full_bet(self):
         if len(self.joined_users) >= self.players:
+            return True
+        return False
+    
+    def check_players_no_bet(self):
+        if len(self.tentative_users) >= self.players:
             return True
         return False
     
     def disable_all_buttons(self):
         self.join_button.disabled = True
         self.decline_button.disabled = True
-        # self.tentative_button.disabled = True
+        self.no_bet_button.disabled = True
 
     async def update_message(self):
-        if self.check_players_full():
+        if self.check_players_full_bet():
             self.disable_all_buttons()
             # THIS IS THE START OF THE GAME SEND TO NEW VIEW
             await self.announce_game_start()
@@ -98,6 +105,20 @@ class View_Start_RPS(discord.ui.View):
             await self.message.edit(view=game_view, embed=game_view.create_embed())
             self.joined_users.clear()
             self.declined_users.clear()
+            self.tentative_users.clear()
+        elif self.check_players_no_bet():
+            self.disable_all_buttons()
+            await self.announce_game_start()
+            game_view = View_Rock_Paper_Scissors(timeout=120)
+            game_view.player_one = self.initiator
+            game_view.player_two = self.acceptor
+            game_view.players = self.players
+            game_view.message = self.message
+            game_view.bet = 0
+            await self.message.edit(view=game_view, embed=game_view.create_embed())
+            self.joined_users.clear()
+            self.declined_users.clear()
+            self.tentative_users.clear()
         else:
             embed = self.create_embed()
             await self.message.edit(view=self, embed=embed)
@@ -113,13 +134,26 @@ class View_Start_RPS(discord.ui.View):
             if interaction.user.display_name not in self.joined_users:
                 self.joined_users.append(interaction.user.display_name)
                 self.acceptor = interaction.user
-            # if interaction.user.display_name in self.tentative_users:
-            #     self.tentative_users.remove(interaction.user.display_name)
+            if interaction.user.display_name in self.tentative_users:
+                self.tentative_users.remove(interaction.user.display_name)
             if interaction.user.display_name in self.declined_users:
                 self.declined_users.remove(interaction.user.display_name)
         else:
             await interaction.response.send_message("You don't have enough Credits to accept this match.", ephemeral=True)
 
+        await self.update_message()
+
+    @discord.ui.button(label="Join - 0 Bet", style=discord.ButtonStyle.blurple)
+    async def no_bet_button(self, interaction: discord.Interaction, button = discord.ui.Button):
+        await interaction.response.defer()
+        if interaction.user.display_name not in self.tentative_users:
+            self.tentative_users.append(interaction.user.display_name)
+            if interaction.user != self.initiator:
+                self.acceptor = interaction.user
+        if interaction.user.display_name in self.joined_users:
+            self.joined_users.remove(interaction.user.display_name)
+        if interaction.user.display_name in self.declined_users:
+            self.declined_users.remove(interaction.user.display_name)
         await self.update_message()
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.red)
@@ -128,8 +162,8 @@ class View_Start_RPS(discord.ui.View):
 
         if interaction.user.display_name not in self.declined_users:
             self.declined_users.append(interaction.user.display_name)
-        # if interaction.user.display_name in self.tentative_users:
-        #     self.tentative_users.remove(interaction.user.display_name)
+        if interaction.user.display_name in self.tentative_users:
+            self.tentative_users.remove(interaction.user.display_name)
         if interaction.user.display_name in self.joined_users:
             self.joined_users.remove(interaction.user.display_name)
 
