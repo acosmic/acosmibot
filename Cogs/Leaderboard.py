@@ -28,7 +28,8 @@ class Leaderboard(commands.Cog):
             embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
 
             for i, (user_id, username, value) in enumerate(leaders, start=1):
-                embed.add_field(name=f"{i}. {username}", value=f"{value} {stat.capitalize()}\n", inline=False)
+                formatted_value = "{:,.0f}".format(value)
+                embed.add_field(name=f"{i}. {username}", value=f"{formatted_value} {stat.capitalize()}\n", inline=False)
 
             await interaction.response.send_message(embed=embed)
             logging.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")

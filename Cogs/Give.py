@@ -36,6 +36,9 @@ class Give(commands.Cog):
             if amount > giving_user.currency:
                 await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} Credits to give. <:FeelsBigSad:1199734765230768139>")
 
+            elif interaction.user.id == target.id:
+                await interaction.response.send_message(f"{interaction.user.name}, you can't give yourself Credits. <:FeelsNaughty:1199732493792858214>")
+
             else:
                 giving_user.currency -= amount
                 target_user.currency += amount

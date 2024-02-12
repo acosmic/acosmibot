@@ -12,8 +12,9 @@ class CheckVault(commands.Cog):
     async def checkvault(self, interaction: discord.Interaction):
         dao = VaultDao()
         currency = dao.get_currency()
+        formatted_currency = "{:,.0f}".format(currency)
 
-        await interaction.response.send_message("There is currently " + str(currency) + " Credits in the vault! 🏦")
+        await interaction.response.send_message("There is currently " + str(formatted_currency) + " Credits in the vault! 🏦")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(CheckVault(bot))
