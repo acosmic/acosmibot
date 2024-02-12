@@ -67,14 +67,14 @@ class Bot(commands.Bot):
         synced = await self.tree.sync()
         logging.info(f"slash cmd's synced: {str(len(synced))}")
 
-    async def bg_task(self):
+    async def bg_task(self): # good morning gif
         await self.wait_until_ready()
-        channel = self.get_channel(1155577095787917384) # channel ID goes here
+        channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
         while not self.is_closed():
             logging.info('bg_task running')
-            if datetime.now().hour == 8 and datetime.now().minute == 0:
+            if datetime.now().hour == 7 and datetime.now().minute == 50:
                 pass
-                logging.info('bg_task running at 8:00am')
+                logging.info('bg_task running at 7:50am')
                 
                 
                 try:
@@ -87,8 +87,8 @@ class Bot(commands.Bot):
 
     async def bg_task_lottery(self):
         await self.wait_until_ready()
-        channel = self.get_channel(1155577095787917384) # general
-        # channel = self.get_channel(1186805143296020520) # bot-testing
+        channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
+        # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
         while not self.is_closed():
             logging.info('bg_task_lottery running')
             if datetime.now().weekday() == 0 and datetime.now().hour == 8:
