@@ -1,12 +1,8 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from Dao.UserDao import UserDao
-from Dao.CoinflipDao import CoinflipDao 
 import logging
-import typing
 import requests
-import json
 from dotenv import load_dotenv
 import os
 from datetime import datetime
