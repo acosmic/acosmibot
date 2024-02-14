@@ -37,6 +37,7 @@ class Bot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
+            "Cogs.Weather",
             "Cogs.Balance",
             "Cogs.Rank",
             "Cogs.Give",
@@ -100,9 +101,14 @@ class Bot(commands.Bot):
                     vault_credits = vdao.get_currency()
                     
                     await channel.send(f'React with 🎟️ to enter the lottery! There is currently {vault_credits} in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
-                    gif = self.giphy_search('join-us')
-                    logging.info(f'gif: {gif}')
-                    message = await channel.send(gif)
+
+                    ### GIF POST ###
+                    # gif = self.giphy_search('join-us')
+                    # logging.info(f'gif: {gif}')
+                    # message = await channel.send(gif)
+
+                    message = await channel.send("https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png?ex=65dea22f&is=65cc2d2f&hm=3a9e07cf1b55f87a1fcd664c766f11636bf55f305b715e0269851f18d154fd23&")
+                    
                     await message.add_reaction('🎟️')
                     end_time = datetime.now() + timedelta(hours=4)
                     new_le = LotteryEvent(0, message.id, datetime.now(), end_time, 0, 0)
@@ -116,7 +122,8 @@ class Bot(commands.Bot):
 
     async def bg_task_lottery_end(self):
         await self.wait_until_ready()
-        channel = self.get_channel(1186805143296020520)
+        channel = self.get_channel(1155577095787917384)
+        # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
         
         while not self.is_closed():
             logging.info('bg_task_lottery_end running')

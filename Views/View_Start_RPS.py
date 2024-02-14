@@ -37,11 +37,11 @@ class View_Start_RPS(discord.ui.View):
             
             gamesDao.set_game_inprogress(game_name="rps", inprogress=0)
             self.disable_all_buttons()
-
+        
             message = self.message
             self.reset_game()
-            timeout_message = "The Rock, Paper, Scissors match has timed out. - View_Start_RPS"
-            await message.edit(content=timeout_message, embed=None)
+            timeout_message = "The Rock, Paper, Scissors match has timed out because no one joined. <:FeelsBigSad:1199734765230768139>"
+            await message.edit(content=timeout_message, view=None, embed=None)
         
 
         
@@ -65,7 +65,7 @@ class View_Start_RPS(discord.ui.View):
     def create_embed(self):
         desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet} Credits!"
         embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
-        rps_image = "https://cdn.discordapp.com/attachments/144298205301964800/1203574032226848778/acosmic_rock-paper-scissors.png?ex=65d196aa&is=65bf21aa&hm=b383189cbea29a0ca0e4b041aa3be04bb6e54266076962835e345188a350a11f&"
+        rps_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1207160371798872165/acosmic_rock-paper-scissors.png?ex=65dea2b4&is=65cc2db4&hm=10f27e83933362fdd34dd986d958aa19dd27ac90d54be09e876a2b7e82afba25&"
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
         embed.add_field(inline=True, name="🔄 Joined - 0 Bet", value=self.convert_user_list_to_str(self.tentative_users))
         embed.add_field(inline=True, name="❌ Declined", value=self.convert_user_list_to_str(self.declined_users))
