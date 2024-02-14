@@ -37,6 +37,7 @@ class Bot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
+            "Cogs.Help",
             "Cogs.Nasa",
             "Cogs.Weather",
             "Cogs.Balance",
@@ -68,6 +69,7 @@ class Bot(commands.Bot):
         logging.info(f'Logged on as {bot.user}!')
         synced = await self.tree.sync()
         logging.info(f"slash cmd's synced: {str(len(synced))}")
+        await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
 
     async def bg_task(self): # good morning gif
         await self.wait_until_ready()
