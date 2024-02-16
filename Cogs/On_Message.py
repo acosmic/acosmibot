@@ -27,7 +27,7 @@ class On_Message(commands.Cog):
     async def on_message(self, message):
         
         if not message.author.bot:
-            logging.info(f'Message from {message.author}: {message.content}')
+            logging.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
             role1 = discord.utils.get(message.guild.roles, name=role_level_1)
             role2 = discord.utils.get(message.guild.roles, name=role_level_2)
             role3 = discord.utils.get(message.guild.roles, name=role_level_3)
@@ -88,14 +88,14 @@ class On_Message(commands.Cog):
 
                     current_user.currency += 100
                     current_user.daily = 1
-                    await message.reply(f'<:PepeCelebrate:1165105393362555021> {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+                    await message.reply(f'{message.author.mention} <:PepeCelebrate:1165105393362555021> You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>', ephemeral=True)
                 else:
                     logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
                 
                 # CHECK IF _ LEVELING UP
                 if current_user.level > current_level:
                     current_user.currency += 500
-                    await message.reply(f'<:FeelsGroovy:1199735360616407041> LEVEL UP! You have reached {str(role)}! You have been awarded 500 Credits!')
+                    await message.reply(f'LEVEL UP! You have reached {str(role)}! You have been awarded 500 Credits! <:FeelsGroovy:1199735360616407041>')
                     
                 try:
                     dao.update_user(current_user)

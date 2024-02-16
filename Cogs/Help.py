@@ -10,8 +10,6 @@ class Help(commands.Cog):
         self.bot = bot
 
         
-
-        
     @app_commands.command(name = "help", description = "Returns a list of commands.")
     async def help(self, interaction: discord.Interaction):
         commands = self.bot.tree.walk_commands()
