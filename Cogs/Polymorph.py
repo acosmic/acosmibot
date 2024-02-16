@@ -14,6 +14,7 @@ class Polymorph(commands.Cog):
 
     @app_commands.command(name = "polymorph", description = "Change your target's display name for 1000 Credits... please be nice") 
     async def polymorph_command(self, interaction: discord.Interaction, target: discord.Member, rename: str):
+        
         dao = UserDao()
         cost = 1000
         user = dao.get_user(interaction.user.id)

@@ -5,6 +5,7 @@ from urllib import parse, request
 import json
 import asyncio
 import discord
+from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import logging
@@ -16,6 +17,7 @@ from Dao.LotteryParticipantDao import LotteryParticipantDao
 from Dao.LotteryEventDao import LotteryEventDao
 from Dao.UserDao import UserDao
 from Dao.VaultDao import VaultDao
+
 
 load_dotenv()
 db_host = os.getenv('db_host')
@@ -50,11 +52,11 @@ class Bot(commands.Bot):
             "Cogs.Coinflip",
             "Cogs.Rock_Paper_Scissors",
             "Cogs.Leaderboard",
+            "Cogs.Reset_RPS",
+            "Cogs.Burn",
             "Cogs.On_Message",
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
-            "Cogs.Reset_RPS",
-            "Cogs.Burn",
         ]
         self.setup_hook()
         
@@ -65,6 +67,7 @@ class Bot(commands.Bot):
         self.bg_task_lottery_end = self.loop.create_task(self.bg_task_lottery_end())
         for ext in self.cogslist:
             await self.load_extension(ext)
+        
 
     async def on_ready(self):
         logging.info(f'Logged on as {bot.user}!')
@@ -168,6 +171,7 @@ class Bot(commands.Bot):
         with request.urlopen(api_url) as response:
             data = json.loads(response.read())
             return data['data'][random_number]['url']
+        
 
 bot = Bot()
 

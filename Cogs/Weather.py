@@ -39,6 +39,7 @@ class Weather(commands.Cog):
 
     @app_commands.command(name = "weather", description = "Returns the current weather in a city.")
     async def weather(self, interaction: discord.Interaction, cityname: str):
+        
         response = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={cityname}&appid={self.WEATHER_KEY}")
         data = response.json()
         if data["cod"] != "404":

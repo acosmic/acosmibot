@@ -18,6 +18,7 @@ class Give(commands.Cog):
 
     @app_commands.command(name = "give", description = "Give Credits to your target user.") 
     async def give(self, interaction: discord.Interaction, target: discord.Member, amount: int):
+        
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")
         dao = UserDao()
         if role in interaction.user.roles:

@@ -11,6 +11,7 @@ class Balance(commands.Cog):
 
     @app_commands.command(name="balance", description="Check your Credit balance.")
     async def balance(self, interaction: discord.Interaction):
+        
         dao = UserDao()
         user = dao.get_user(interaction.user.id)
         await interaction.response.send_message(f'Your balance: {user.currency} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}')

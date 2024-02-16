@@ -10,6 +10,7 @@ class CheckVault(commands.Cog):
 
     @app_commands.command(name = "checkvault", description = "Check the amount of Credits in the vault!") 
     async def checkvault(self, interaction: discord.Interaction):
+        
         dao = VaultDao()
         currency = dao.get_currency()
         formatted_currency = "{:,.0f}".format(currency)

@@ -14,6 +14,7 @@ class Rock_Paper_Scissors(commands.Cog):
 
     @app_commands.command(name="rockpaperscissors", description="Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!")
     async def rock_paper_scissors(self, interaction: discord.Interaction, bet: int):
+        
         gamesDao = GamesDao()
         if gamesDao.check_game_inprogress(game_name="rps"):
             await interaction.response.send_message(f"There is already a match in progress. Please allow it to finish before starting another match.", ephemeral=True)

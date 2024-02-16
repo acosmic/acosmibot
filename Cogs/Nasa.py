@@ -21,6 +21,7 @@ class Nasa(commands.Cog):
 
     @app_commands.command(name = "apod", description = "Returns the Astronomy Picture of the Day.")
     async def apod(self, interaction: discord.Interaction):
+        
         logging.info(f"{interaction.user.name} used /nasa - before try block.")
         try:
 

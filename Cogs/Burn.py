@@ -17,8 +17,9 @@ class Burn(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "burn", description = "set attribute to 0 for target") 
+    @app_commands.command(name = "admin-burn", description = "set attribute to 0 for target") 
     async def burn(self, interaction: discord.Interaction, target: discord.Member, column: typing.Literal['currency', 'exp', 'daily', 'streak', "level"]):
+        
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")
         dao = UserDao()
         if role in interaction.user.roles:

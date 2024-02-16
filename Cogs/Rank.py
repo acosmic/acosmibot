@@ -28,6 +28,7 @@ class Rank(commands.Cog):
 
     @app_commands.command(name = "rank", description = "Returns your rank based on current EXP and general stats.") 
     async def rank(self, interaction: discord.Interaction):
+        
         dao = UserDao()
         user_rank = dao.get_user_rank(interaction.user.id)
         

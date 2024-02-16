@@ -16,7 +16,7 @@ class Leaderboard(commands.Cog):
     
     @app_commands.command(name = "leaderboard", description = "Returns top 5 users by Credits based on Currency, EXP, etc.")
     async def leaderboard(self, interaction: discord.Interaction, stat: typing.Literal['Currency', 'Exp', 'Largest Single Win - CF', 'Largest Single Loss - CF']):
-
+        
         # if stat not in options_list:
         #     await interaction.response.send_message("Invalid choice. Please choose from the list.", ephemeral=True)
         #     return
