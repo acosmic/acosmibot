@@ -88,7 +88,7 @@ class On_Message(commands.Cog):
 
                     current_user.currency += 100
                     current_user.daily = 1
-                    await message.reply(f'{message.author.mention} <:PepeCelebrate:1165105393362555021> You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>', ephemeral=True)
+                    await message.reply(f'{message.author.mention} <:PepeCelebrate:1165105393362555021> You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
                 else:
                     logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
                 
