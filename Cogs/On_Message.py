@@ -25,6 +25,7 @@ class On_Message(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        level_up_channel = self.bot.get_channel(1209288743912218644)
         
         if not message.author.bot:
             logging.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
@@ -88,14 +89,14 @@ class On_Message(commands.Cog):
 
                     current_user.currency += 100
                     current_user.daily = 1
-                    await message.reply(f'{message.author.mention} <:PepeCelebrate:1165105393362555021> You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+                    await level_up_channel.send(f'{message.author.mention} <:PepeCelebrate:1165105393362555021> You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
                 else:
                     logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
                 
                 # CHECK IF _ LEVELING UP
                 if current_user.level > current_level:
                     current_user.currency += 500
-                    await message.reply(f'LEVEL UP! You have reached {str(role)}! You have been awarded 500 Credits! <:FeelsGroovy:1199735360616407041>')
+                    await level_up_channel.send(f'{message.author.mention} LEVEL UP! You have reached {str(role)} and awarded 500 Credits! <:FeelsGroovy:1199735360616407041>')
                     
                 try:
                     dao.update_user(current_user)
