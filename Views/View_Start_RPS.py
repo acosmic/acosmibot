@@ -1,4 +1,3 @@
-from tabnanny import check
 import discord
 from Dao.GamesDao import GamesDao
 from Views.View_Rock_Paper_Scissors import View_Rock_Paper_Scissors
@@ -57,10 +56,10 @@ class View_Start_RPS(discord.ui.View):
         self.bet = 0
         
 
-    def convert_user_list_to_str(self, user_list, defualt_str="No one"):
+    def convert_user_list_to_str(self, user_list, default_str="No one"):
         if len(user_list):
             return "\n".join(user_list)
-        return defualt_str
+        return default_str
 
     def create_embed(self):
         desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet} Credits!"

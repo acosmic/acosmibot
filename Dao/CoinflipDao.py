@@ -29,6 +29,61 @@ class CoinflipDao:
         self.db.mycursor.execute(sql, values)
         self.db.mydb.commit()
 
+    def get_flip_wins(self, discord_id):
+        sql = """
+            SELECT COUNT(*)
+            FROM Coinflip
+            WHERE discord_id = %s AND amount_won > 0
+        """
+        values = (discord_id,)
+        self.db.mycursor.execute(sql, values)
+        wins = self.db.mycursor.fetchone()
+        return wins[0]
+    
+    def get_flip_losses(self, discord_id):
+        sql = """
+            SELECT COUNT(*)
+            FROM Coinflip
+            WHERE discord_id = %s AND amount_lost > 0
+        """
+        values = (discord_id,)
+        self.db.mycursor.execute(sql, values)
+        losses = self.db.mycursor.fetchone()
+        return losses[0]
+    
+    def get_total_flips(self, discord_id):
+        sql = """
+            SELECT COUNT(*)
+            FROM Coinflip
+            WHERE discord_id = %s
+        """
+        values = (discord_id,)
+        self.db.mycursor.execute(sql, values)
+        total_flips = self.db.mycursor.fetchone()
+        return total_flips[0]
+    
+    def get_total_won(self, discord_id):
+        sql = """
+            SELECT SUM(amount_won)
+            FROM Coinflip
+            WHERE discord_id = %s
+        """
+        values = (discord_id,)
+        self.db.mycursor.execute(sql, values)
+        total_won = self.db.mycursor.fetchone()
+        return total_won[0]
+    
+    def get_total_lost(self, discord_id):
+        sql = """
+            SELECT SUM(amount_lost)
+            FROM Coinflip
+            WHERE discord_id = %s
+        """
+        values = (discord_id,)
+        self.db.mycursor.execute(sql, values)
+        total_lost = self.db.mycursor.fetchone()
+        return total_lost[0]
+
     def get_top_wins(self):
         
         # THIS DOES NOT RETURN UNIQUE USERS

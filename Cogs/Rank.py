@@ -2,7 +2,9 @@ from code import interact
 import discord
 from discord.ext import commands
 from discord import app_commands
+from numpy import flip
 from Dao.UserDao import UserDao
+from Dao.CoinflipDao import CoinflipDao
 from Entities.User import User
 import logging
 
@@ -30,9 +32,21 @@ class Rank(commands.Cog):
     async def rank(self, interaction: discord.Interaction):
         
         dao = UserDao()
+        cfdao = CoinflipDao()
         user_rank = dao.get_user_rank(interaction.user.id)
         
         current_user = dao.get_user(interaction.user.id)
+
+        flips = cfdao.get_total_flips(interaction.user.id)
+        flip_wins = cfdao.get_flip_wins(interaction.user.id)
+        flip_losses = cfdao.get_flip_losses(interaction.user.id)
+
+        flip_amount_won = cfdao.get_total_won(interaction.user.id)
+        flip_amount_lost = cfdao.get_total_lost(interaction.user.id)
+
+        flip_win_rate = flip_wins / flips * 100 if flips > 0 else 0
+        
+
 
         if user_rank is not None:
             embed = discord.Embed(
@@ -41,8 +55,14 @@ class Rank(commands.Cog):
             f"Ranked #{user_rank[-1]}\n"
             f"Current Level: {current_user.level}\n"
             f"Current EXP: {current_user.exp}\n"
-            f"Total Messages: {current_user.messages_sent}\n"
-            f"Total Reactions: {current_user.reactions_sent}\n"
+            f"Messages: {current_user.messages_sent}\n"
+            f"Reactions: {current_user.reactions_sent}\n"
+            f"Coinflips: {flips}\n"
+            f"Coinflip Wins: {flip_wins}\n"
+            f"Coinflip Losses: {flip_losses}\n"
+            f"Coinflip Credits Won: {flip_amount_won}\n"
+            f"Coinflip Credits Lost: {flip_amount_lost}\n"
+            f"Coinflip Win Rate: {flip_win_rate:.2f}%"
             ),
             color=interaction.user.color)
             embed.set_thumbnail(url=interaction.user.avatar)
