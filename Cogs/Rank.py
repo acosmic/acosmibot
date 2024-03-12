@@ -54,14 +54,14 @@ class Rank(commands.Cog):
             description=(
             f"Ranked #{user_rank[-1]}\n"
             f"Current Level: {current_user.level}\n"
-            f"Current EXP: {current_user.exp}\n"
-            f"Messages: {current_user.messages_sent}\n"
-            f"Reactions: {current_user.reactions_sent}\n"
+            f"Current EXP: {current_user.exp:,.0f}\n"
+            f"Messages: {current_user.messages_sent:,.0f}\n"
+            f"Reactions: {current_user.reactions_sent:,.0f}\n"
             f"Coinflips: {flips}\n"
             f"Coinflip Wins: {flip_wins}\n"
             f"Coinflip Losses: {flip_losses}\n"
-            f"Coinflip Credits Won: {flip_amount_won}\n"
-            f"Coinflip Credits Lost: {flip_amount_lost}\n"
+            f"Coinflip Credits Won: {flip_amount_won:,.0f}\n"
+            f"Coinflip Credits Lost: {flip_amount_lost:,.0f}\n"
             f"Coinflip Win Rate: {flip_win_rate:.2f}%"
             ),
             color=interaction.user.color)

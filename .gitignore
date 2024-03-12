@@ -1,4 +1,6 @@
 .env
 leveling.py
 logs.txt
+logs-*.txt
+logs*
 .gitignore
