@@ -45,14 +45,19 @@ class On_Reaction(commands.Cog):
                 logging.info(f'current_lottery: {current_lottery.message_id}')
                 logging.info(f'message.id: {message.id}')
                 if message.id == current_lottery.message_id:
-                    if str(emoji) == '🎟️':
-                        try:
-                            lpd = LotteryParticipantDao()
-                            lpd.add_new_participant(LotteryParticipant(current_lottery.message_id, user.id))
-                            logging.info(f'{user.name} has entered the lottery!')
-                            await channel.send(f'{user.display_name} has entered the lottery! Good Luck! <a:pepesith:1165101386921418792> Enter here -> {message.jump_url}')
-                        except Exception as e:
-                            logging.error(f'on_raw_reaction_add() - Error adding participant to the database: {e}')
+                    lpd = LotteryParticipantDao()
+                    participants = lpd.get_all_participants(current_lottery.message_id)
+                    if user.id not in participants:
+                        if str(emoji) == '🎟️':
+                            try:
+                                
+                                lpd.add_new_participant(LotteryParticipant(current_lottery.message_id, user.id))
+                                logging.info(f'{user.name} has entered the lottery!')
+                                await channel.send(f'{user.display_name} has entered the lottery! Good Luck! <a:pepesith:1165101386921418792> Enter here -> {message.jump_url}')
+                            except Exception as e:
+                                logging.error(f'on_raw_reaction_add() - Error adding participant to the database: {e}')
+                    else:
+                        logging.info(f'{user.name} has already entered the lottery!')
             else:
                 logging.info('There is no current lottery event')            
 

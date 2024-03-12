@@ -34,6 +34,8 @@ class Coinflip(commands.Cog):
 
         # Flip the coin
         result = random.choice(['Heads', 'Tails'])
+
+        embed = discord.Embed()
         
 
         if result == call:
@@ -41,6 +43,10 @@ class Coinflip(commands.Cog):
             amount_won = cost
             amount_lost = 0
             message = f"{interaction.user.name} called {call} and won {cost} credits! <:PepeDank:1200292095131406388>"
+
+            embed.title = f"🪙 {interaction.user.nick} called {call}! 🪙"
+            embed.description = f"# {result.upper()}! | {interaction.user.nick} won {cost} credits! <:PepeDank:1200292095131406388>"
+            embed.color = discord.Color.green()
         else:
             vdao = VaultDao()
             vcredits = vdao.get_currency()
@@ -49,14 +55,16 @@ class Coinflip(commands.Cog):
             user.currency -= cost
             amount_won = 0
             amount_lost = cost
-            message = f"{interaction.user.name} called {call} but lost {cost} credits. Better luck next time! <a:giggle:1165098258968879134>\n\n{cost} Credits have been added to the vault! 🏦"
-
+            message = f"{interaction.user.name} called {call} but lost {cost} credits. <a:giggle:1165098258968879134>\n\n{cost} Credits have been added to the vault! 🏦"
+            embed.title = f"🏦 {interaction.user.nick} called {call}! 🏦"
+            embed.description = f"# {result.upper()}! | {interaction.user.nick} lost {cost} credits. <a:giggle:1165098258968879134>\n\n{cost} Credits have been added to the vault! 🏦"
+            embed.color = discord.Color.red()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         new_event = CoinflipEvent(0, interaction.user.id, call, result, amount_won, amount_lost, timestamp)
 
         dao.update_user(user)
         cfdao.add_new_event(new_event)
-        await interaction.response.send_message(message)
+        await interaction.response.send_message(embed = embed)
         logging.info(f"{interaction.user.name} used /coinflip command")
 
 async def setup(bot: commands.Bot):

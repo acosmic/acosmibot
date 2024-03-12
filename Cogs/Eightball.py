@@ -15,26 +15,26 @@ class Eightball(commands.Cog):
         
         # List of 8-ball responses
         responses = [
-            "It is certain.",
-            "It is decidedly so.",
-            "Without a doubt.",
-            "Yes - definitely.",
-            "You may rely on it.",
-            "As I see it, yes.",
-            "Most likely.",
-            "Outlook good.",
-            "Yes.",
-            "Signs point to yes.",
-            "Reply hazy, try again.",
-            "Ask again later.",
-            "Better not tell you now.",
-            "Cannot predict now.",
-            "Concentrate and ask again.",
-            "Don't count on it.",
-            "My reply is no.",
-            "My sources say no.",
-            "Outlook not so good.",
-            "Very doubtful."
+            "It is certain,",
+            "It is decidedly so,",
+            "Without a doubt,",
+            "Yes - definitely,",
+            "You may rely on it,",
+            "As I see it, yes,",
+            "Most likely,",
+            "Outlook good,",
+            "Yes,",
+            "Signs point to yes,",
+            "Reply hazy, try again,",
+            "Ask again later,",
+            "Better not tell you now,",
+            "Cannot predict now,",
+            "Concentrate and ask again,",
+            "Don't count on it,",
+            "My reply is no,",
+            "My sources say no,",
+            "Outlook not so good,",
+            "Very doubtful,"
         ]
         dao = UserDao()
         cost = 10
@@ -43,9 +43,14 @@ class Eightball(commands.Cog):
         if user.currency >= cost:
             
             eightball = random.choice(responses) 
-            await interaction.response.send_message(f"{interaction.user.name} asks: {question}\n\n <:PepeWizard:1200288529138327662> {eightball} 🎱  \n\n*{cost} Credits have been withdrawn from your balance*")
+            embed = discord.Embed(title = f"{question}", description = f"# 🎱 | {eightball} {interaction.user.nick}", color = interaction.user.color)
+            embed.set_footer(text = f"-{cost} Credits")
+
+            # embed.add_field(name = "🎱", value = eightball, inline = False)
+            # await interaction.response.send_message(f"{interaction.user.name} asks: {question}\n\n 🎱 | {eightball}   \n\n*-{cost} Credits*")
             user.currency -= cost
             dao.update_user(user)
+            await interaction.response.send_message(embed = embed)
             logging.info(f"{interaction.user.name} used /8ball command")
         else:
             await interaction.response.send_message(f"You're too broke to use the magic 8ball. <:OhGodMan:1200262332392157184>")

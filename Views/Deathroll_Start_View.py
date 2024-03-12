@@ -69,7 +69,7 @@ class Deathroll_Start_View(discord.ui.View):
         target = self.target
         initiator_balance = user_dao.get_user(initiator.id).currency
         target_balance = user_dao.get_user(target.id).currency
-        embed = discord.Embed(title="Deathroll", description="Two players roll a dice and the first player to roll a 1 loses!", color=0x00ff00)
+        embed = discord.Embed(title="Deathroll - TESTING", description="Two players roll a dice and the first player to roll a 1 loses!", color=0x00ff00)
         embed.add_field
         embed.add_field(name="Initiator", value=f"{initiator.display_name} - {initiator_balance} Credits", inline=False)
         embed.add_field(name="Target", value=f"{target.display_name} - {target_balance} Credits", inline=False)
@@ -93,10 +93,10 @@ class Deathroll_Start_View(discord.ui.View):
     async def accept_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id == self.initiator.id:
             await interaction.response.send_message("You cannot join your own match!", ephemeral=True)
-            return
+            
         if interaction.user.id == self.target.id:
             await interaction.response.send_message(f"{self.target.display_name} has already joined the match!", ephemeral=True)
-            return
+            
        
         self.joined_users.append(interaction.user.display_name)
         embed = self.create_embed()
@@ -116,4 +116,5 @@ class Deathroll_Start_View(discord.ui.View):
             await self.message.edit(content=f"{self.target.display_name} has declined {self.initiator.display_name}'s match. <:FeelsBadMan:1199734765230768139>", view=None, embed=None)
             await self.message2.delete()
             self.reset_game()
+        
         
