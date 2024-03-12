@@ -14,7 +14,7 @@ class Balance(commands.Cog):
         
         dao = UserDao()
         user = dao.get_user(interaction.user.id)
-        await interaction.response.send_message(f'Your balance: {user.currency} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}')
+        await interaction.response.send_message(f"Your balance: {user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}")
         logging.info(f"{interaction.user.name} used /balance command")
 
 async def setup(bot: commands.Bot):
