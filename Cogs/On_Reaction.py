@@ -46,8 +46,10 @@ class On_Reaction(commands.Cog):
                 logging.info(f'message.id: {message.id}')
                 if message.id == current_lottery.message_id:
                     lpd = LotteryParticipantDao()
-                    participants = lpd.get_all_participants(current_lottery.message_id)
-                    if user.id not in participants:
+                    participants = lpd.get_participants(current_lottery.message_id)
+                    participant_ids = [participant.participant_id for participant in participants]
+                    logging.info(f'participants: {participants}')
+                    if user.id not in participant_ids:
                         if str(emoji) == '🎟️':
                             try:
                                 
