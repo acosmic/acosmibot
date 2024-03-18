@@ -50,9 +50,10 @@ class Rank(commands.Cog):
 
         if user_rank is not None:
             embed = discord.Embed(
-            title=f"{interaction.user.name}'s stats",
+            # title=f"### {interaction.user.name}",
             description=(
-            f"Ranked #{user_rank[-1]}\n"
+            f"# {interaction.user.name}\n\n"
+            f"### Ranked #{user_rank[-1]}\n"
             f"Current Level: {current_user.level}\n"
             f"Current EXP: {current_user.exp:,.0f}\n"
             f"Messages: {current_user.messages_sent:,.0f}\n"

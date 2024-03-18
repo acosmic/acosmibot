@@ -57,7 +57,7 @@ class Coinflip(commands.Cog):
             amount_lost = cost
             # message = f"{interaction.user.name} called {call} but lost {cost} credits. <a:giggle:1165098258968879134>\n\n{cost} Credits have been added to the vault! 🏦"
             embed.title = f"🏦 {interaction.user.name} called {call}! 🏦"
-            embed.description = f"# {result.upper()}! | {interaction.user.name} lost {cost:,.0f} credits. <a:giggle:1165098258968879134>\n\n{cost} Credits have been added to the vault! 🏦"
+            embed.description = f"# {result.upper()}! | {interaction.user.name} lost {cost:,.0f} credits. <a:giggle:1165098258968879134>\n\n{cost:,.0f} Credits have been added to the vault! 🏦"
             embed.color = discord.Color.red()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         new_event = CoinflipEvent(0, interaction.user.id, call, result, amount_won, amount_lost, timestamp)

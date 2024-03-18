@@ -26,7 +26,7 @@ class Give(commands.Cog):
             target_user.currency += amount
             try:
                 dao.update_user(target_user)
-                await interaction.response.send_message(f'{interaction.user.name} has given {target.mention} {amount} credits! <a:pepesith:1165101386921418792>')
+                await interaction.response.send_message(f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <a:pepesith:1165101386921418792>')
             except Exception as e:
                 logging.info(f'/give command - target = {target.name} - {e}.')
         else:
@@ -35,7 +35,7 @@ class Give(commands.Cog):
             target_user = dao.get_user(target.id)
 
             if amount > giving_user.currency:
-                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount} Credits to give. <:FeelsBigSad:1199734765230768139>")
+                await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount:,.0f} Credits to give. <:FeelsBigSad:1199734765230768139>")
 
             elif interaction.user.id == target.id:
                 await interaction.response.send_message(f"{interaction.user.name}, you can't give yourself Credits. <:FeelsNaughty:1199732493792858214>")
@@ -46,7 +46,7 @@ class Give(commands.Cog):
                 dao.update_user(giving_user)
                 dao2 = UserDao()
                 dao2.update_user(target_user)
-                await interaction.response.send_message(f'{interaction.user.name} has given {target.mention} {amount} credits! <:PepePimp:1200268145693302854>')
+                await interaction.response.send_message(f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>')
                 
 
 
