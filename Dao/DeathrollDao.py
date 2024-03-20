@@ -37,8 +37,21 @@ class DeathrollDao:
             """
             values = (message_id, )
             self.db.mycursor.execute(sql, values)
-            event = self.db.mycursor.fetchone()
+            event = self.db.mycursor.fetchall()
             return DeathrollEvent(*event)
+
+        def check_if_user_ingame(self, initiator_id, acceptor_id):
+            sql = """
+                SELECT * FROM Deathroll
+                WHERE (initiator = %s OR acceptor = %s)
+                AND is_finished = 0
+            """
+            values = (initiator_id, acceptor_id)
+            self.db.mycursor.execute(sql, values)
+            events = self.db.mycursor.fetchone()
+            return [DeathrollEvent(*event) for event in events]
+
+
     
         def update_event(self, deathroll_event):
             sql = """

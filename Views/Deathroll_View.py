@@ -2,14 +2,16 @@ from email import message
 import discord
 from Dao.UserDao import UserDao
 from Dao.GamesDao import GamesDao
-# from Views.Deathroll_Game_View import Deathroll_Game_View
+from Dao.DeathrollDao import DeathrollDao
+from Entities import DeathrollEvent
+
 
 
 # copiloted - need to clean this up 
-class Deathroll_Start_View(discord.ui.View):
+class Deathroll_View(discord.ui.View):
     joined_users = []
 
-    target: discord.User = None
+    initiator: discord.User = None
     target: discord.User = None
     
     players: int = 0
@@ -21,12 +23,17 @@ class Deathroll_Start_View(discord.ui.View):
         embed = self.create_embed()
         await interaction.response.send_message(view=self, embed=embed)
         self.message = await interaction.original_response()
+
+        new_event = DeathrollEvent(0, self.initiator.id, self.target.id, self.bet, message.id, self.bet, self.target, 0)
+        
+        
         channel = self.message.channel
         self.message2 = await channel.send(f"{self.target.mention}, {self.initiator.display_name} has challenged you to a game of Deathroll! Do you accept?")
 
     async def announce_game_start(self):
         self.match_started = True
         await self.message.channel.send(f"{self.target.mention} has accepted {self.initiator.mention}'s match. The match has started! <:Smirk:1200297264502034533>")
+
         # Start the Deathroll_Game_View here
         # deathroll_game_view = Deathroll_Game_View()
         # await deathroll_game_view.send(self.message.channel)
@@ -111,8 +118,7 @@ class Deathroll_Start_View(discord.ui.View):
             await interaction.response.send_message("You cannot decline your own match!", ephemeral=True)
             return
         if interaction.user.id == self.target.id:
-            gamesDao = GamesDao()
-            gamesDao.set_game_inprogress(game_name="deathroll", inprogress=0)
+            
             await self.message.edit(content=f"{self.target.display_name} has declined {self.initiator.display_name}'s match. <:FeelsBadMan:1199734765230768139>", view=None, embed=None)
             await self.message2.delete()
             self.reset_game()

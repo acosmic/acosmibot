@@ -16,7 +16,7 @@ class Giphy(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="giphy", description="Returns a random Gif from Giphyy based on the search term provided. Example: /giphy cat")
+    @app_commands.command(name="giphy", description="Returns a random Gif from Giphy based on the search term provided. Example: /giphy cat")
     async def giphy(self, interaction: discord.Interaction, search_term: str):
         logging.info(f"{interaction.user.name} used /gify command with search_term: {search_term}")
         formatted_search_term = search_term.replace(" ", "-")

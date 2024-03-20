@@ -3,10 +3,12 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.GamesDao import GamesDao
+from Dao.DeathrollDao import DeathrollDao
+from Entities import DeathrollEvent
 
 from datetime import datetime
 
-from Views.Deathroll_Start_View import Deathroll_Start_View
+from Views.Deathroll_View import Deathroll_View
 
 class Deathroll(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -15,12 +17,14 @@ class Deathroll(commands.Cog):
 
     @app_commands.command(name="deathroll", description="Start a game of Deathroll. First person to roll a 1 loses!")
     async def deathroll(self, interaction: discord.Interaction, target: discord.Member, bet: int):
-        gamesDao = GamesDao()
-        if gamesDao.check_game_inprogress(game_name="deathroll"):
-            await interaction.response.send_message(f"There is already a match in progress. Please allow it to finish before starting another match.", ephemeral=True)
+
+        drDao = DeathrollDao()
+        current_events = drDao.check_if_user_ingame(initiator_id=interaction.user.id, acceptor_id=target.id)
+        if current_events.count() > 0:
+            await interaction.response.send_message(f"Either you or your target is currently in a match. Please wait for that game to finish before starting another one.", ephemeral=True)
 
         else:
-            gamesDao.set_game_inprogress(game_name="deathroll", inprogress=1)
+
             dao = UserDao()
             current_user = dao.get_user(interaction.user.id)
             if bet > current_user.currency:
@@ -29,7 +33,7 @@ class Deathroll(commands.Cog):
             else:
                 # if role in interaction.user.roles:
                 players = 2
-                view = Deathroll_Start_View(timeout=120)
+                view = Deathroll_View(timeout=120)
                 view.initiator = interaction.user
                 view.target = target
                 view.players = players
