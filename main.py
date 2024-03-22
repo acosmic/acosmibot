@@ -110,7 +110,9 @@ class Bot(commands.Bot):
                     gif = self.giphy_search(search_term)
                     logging.info(f'search_term: {search_term} gif: {gif}')
                     await channel.send(gif)
-                    self.reset_daily()
+                    dao = UserDao()
+                    dao.reset_daily()
+                    logging.info("DAILY RESET FOR ALL USERS")
                 except Exception as e:
                     logging.error(f'gm_eu_task error: {e}')
             await asyncio.sleep(60)
@@ -192,10 +194,9 @@ class Bot(commands.Bot):
             random_number = random.randint(0, results_count - 1)  # Adjust random_number based on actual results count
             return data['data'][random_number]['url']
     
-    def reset_daily(self):
-        dao = UserDao
-        dao.reset_daily()
-        logging.info("Daily reward has been reset for all users!!")
+    
+        
+        
         
 
 bot = Bot()
