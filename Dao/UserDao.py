@@ -86,6 +86,15 @@ class UserDao:
         self.db.mydb.commit()
         self.db.close_connection()
 
+    def reset_daily(self):
+        sql = '''
+            UPDATE Users
+            SET daily = 0;
+        '''
+        self.db.mycursor.execute(sql)
+        self.db.mydb.commit()
+        
+
     def get_user(self, id):
         sql = '''
             SELECT *

@@ -1,8 +1,6 @@
-from code import interact
 import discord
 from discord.ext import commands
 from discord import app_commands
-from numpy import flip
 from Dao.UserDao import UserDao
 from Dao.CoinflipDao import CoinflipDao
 from Entities.User import User
@@ -20,7 +18,7 @@ role_level_8 = "Level Eight"
 role_level_9 = "Level Nine"
 role_level_10 = "Level Ten"
 
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class Rank(commands.Cog):

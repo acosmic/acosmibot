@@ -1,4 +1,3 @@
-from operator import le
 from discord.ext import commands
 from Dao.UserDao import UserDao
 from Dao.LotteryParticipantDao import LotteryParticipantDao
@@ -8,7 +7,7 @@ import logging
 from Entities.LotteryParticipant import LotteryParticipant
 
 
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class On_Reaction(commands.Cog):
     def __init__(self, bot: commands.Bot):

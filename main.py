@@ -1,4 +1,4 @@
-#! /usr/bin/python3.8
+#! /usr/bin/python3.10
 import random
 from urllib import parse, request
 import json
@@ -30,7 +30,7 @@ MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
 TOKEN = os.getenv('TOKEN')
 
 
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Bot(commands.Bot):
     def __init__(self) -> None:
@@ -110,6 +110,7 @@ class Bot(commands.Bot):
                     gif = self.giphy_search(search_term)
                     logging.info(f'search_term: {search_term} gif: {gif}')
                     await channel.send(gif)
+                    self.reset_daily()
                 except Exception as e:
                     logging.error(f'gm_eu_task error: {e}')
             await asyncio.sleep(60)
@@ -190,6 +191,11 @@ class Bot(commands.Bot):
                 return "No results found."
             random_number = random.randint(0, results_count - 1)  # Adjust random_number based on actual results count
             return data['data'][random_number]['url']
+    
+    def reset_daily(self):
+        dao = UserDao
+        dao.reset_daily()
+        logging.info("Daily reward has been reset for all users!!")
         
 
 bot = Bot()

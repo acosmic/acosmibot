@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class Burn(commands.Cog):

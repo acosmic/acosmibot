@@ -16,7 +16,7 @@ role_level_8 = "Level Eight"
 role_level_9 = "Level Nine"
 role_level_10 = "Level Ten"
 
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class On_Member_Join(commands.Cog):
     def __init__(self, bot: commands.Bot):

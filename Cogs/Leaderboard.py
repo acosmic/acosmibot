@@ -6,7 +6,7 @@ from Dao.CoinflipDao import CoinflipDao
 import logging
 import typing
 
-logging.basicConfig(filename='/root/dev/acosmicord-bot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Leaderboard(commands.Cog):
     def __init__(self, bot:commands.Bot):
