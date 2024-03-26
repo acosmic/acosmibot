@@ -19,8 +19,8 @@ class Deathroll(commands.Cog):
     async def deathroll(self, interaction: discord.Interaction, target: discord.Member, bet: int):
 
         drDao = DeathrollDao()
-        current_events = drDao.check_if_user_ingame(initiator_id=interaction.user.id, acceptor_id=target.id)
-        if current_events.count() > 0:
+        current_events = drDao.check_if_user_ingame(interaction.user.id, target.id)
+        if current_events:
             await interaction.response.send_message(f"Either you or your target is currently in a match. Please wait for that game to finish before starting another one.", ephemeral=True)
 
         else:
@@ -39,6 +39,7 @@ class Deathroll(commands.Cog):
                 view.players = players
                 view.bet = bet
                 await view.send(interaction)
+                
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Deathroll(bot))
