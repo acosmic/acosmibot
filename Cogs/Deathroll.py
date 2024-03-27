@@ -27,7 +27,6 @@ class Deathroll(commands.Cog):
             await interaction.response.send_message(f"Please enter a bet of at least 100.", ephemeral=True)
 
         else:
-
             dao = UserDao()
             current_user = dao.get_user(interaction.user.id)
             if bet > current_user.currency:

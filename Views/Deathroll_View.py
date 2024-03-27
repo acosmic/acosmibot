@@ -32,9 +32,9 @@ class Deathroll_View(discord.ui.View):
         await interaction.response.send_message(view=self, embed=embed)
         self.message = await interaction.original_response()
 
-        self.new_event = DeathrollEvent(0, self.initiator, self.target, self.bet, self.message.id, self.bet, self.target, 0)
+        self.new_event = DeathrollEvent(0, self.initiator, self.target, self.bet, self.message.id, self.bet, self.initiator, 0)
         drDao = DeathrollDao()
-        self.current_event = DeathrollEvent(0, self.initiator.id, self.target.id, self.bet, self.message.id, self.bet, self.target.id, 0)
+        self.current_event = DeathrollEvent(0, self.initiator.id, self.target.id, self.bet, self.message.id, self.bet, self.initiator.id, 0)
         drDao.add_new_event(self.current_event)
         
         logging.info(f"current_event: {self.current_event}")
@@ -56,9 +56,6 @@ class Deathroll_View(discord.ui.View):
             
             gamesDao.set_game_inprogress(game_name="deathroll", inprogress=0)
             self.disable_all_buttons()
-
-
-        
             message = self.message
             self.reset_game()
             drDao = DeathrollDao()
@@ -83,16 +80,18 @@ class Deathroll_View(discord.ui.View):
             return default_str
 
     def create_embed(self):
-        user_dao = UserDao()
-        initiator = self.initiator
-        target = self.target
-        initiator_balance = user_dao.get_user(initiator.id).currency
-        target_balance = user_dao.get_user(target.id).currency
+        # user_dao = UserDao()
+        # initiator = self.initiator
+        # target = self.target
+        # initiator_balance = user_dao.get_user(initiator.id).currency
+        # target_balance = user_dao.get_user(target.id).currency
         embed = discord.Embed(title="Deathroll - TESTING", description="Two players roll a dice and the first player to roll a 1 loses!", color=0x00ff00)
-        embed.add_field(name="Initiator", value=f"{initiator.display_name} - {initiator_balance} Credits", inline=False)
-        embed.add_field(name="Target", value=f"{target.display_name} - {target_balance} Credits", inline=False)
-        embed.add_field(name="Bet", value=f"{self.bet} Credits", inline=False)
-        embed.add_field(name="Joined Users", value=self.convert_user_list_to_str(self.joined_users), inline=False)
+        # embed.add_field(name="Initiator", value=f"{initiator.display_name} - {initiator_balance} Credits", inline=False)
+        # embed.add_field(name="Target", value=f"{target.display_name} - {target_balance} Credits", inline=False)
+        # embed.add_field(name="Bet", value=f"{self.bet} Credits", inline=False)
+        # embed.add_field(name="Joined Users", value=self.convert_user_list_to_str(self.joined_users), inline=False)
+        deathroll_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1211862442335010856/ac_deathroll.png?ex=6614a7d9&is=660232d9&hm=e9f7ca466de764b405456d0dbc6b7b41320f3d7bea819824ae5646692b41d136&"
+        embed.set_image(url=deathroll_image)
         return embed
     
     def game_embed(self):
@@ -100,26 +99,47 @@ class Deathroll_View(discord.ui.View):
             if isinstance(child, (AcceptButton, DeclineButton, GameButton)):
                 self.remove_item(child)
 
+        
+
+
         embed = discord.Embed(title=f"💀 Deathroll - {self.bet} Credits 💀\n{self.initiator.display_name} vs {self.target.display_name}", 
-                              description=f"# {self.current_event.current_player.name}'s Turn \n\n # Roll: {self.new_event.current_roll}")
+                              description=f"# {self.new_event.current_player.name}'s Turn \n\n # Roll: {self.new_event.current_roll}",
+                                color=self.new_event.current_player.color)
 
 
-        turn_roll = f"{self.new_event.current_player.name}: Roll 1 - {self.new_event.current_roll}!"
+        embed.color 
+        turn_roll = f"{self.new_event.current_player.name}: Roll!"
         game_button = GameButton(turn_roll)
         self.add_item(game_button)
         return embed
     
     def end_game_embed(self):
+        user_dao = UserDao()
+        initiator_obj = user_dao.get_user(self.initiator.id)
+        target_obj = user_dao.get_user(self.target.id)
         for child in self.children:
             if isinstance(child, (AcceptButton, DeclineButton, GameButton)):
                 self.remove_item(child)
 
-        embed = discord.Embed(title=f"💀 Deathroll - {self.bet} Credits 💀\n{self.initiator.display_name} vs {self.target.display_name}",
-                                description=f"# Game Over! {self.new_event.current_player.name} rolled a 1 and lost {self.bet} credits!")
+        embed = discord.Embed(title=f"💀 Deathroll - {self.bet:,.0f} Credits 💀\n{self.initiator.display_name} vs {self.target.display_name}",
+                                description=f"# Game Over! \n# {self.new_event.current_player.name} rolled a 1 and lost {self.bet:,.0f} credits!",
+                                color=self.new_event.current_player.color)
+        
         if self.new_event.current_player == self.initiator:
-            embed.add_field(name="Winner", value=f"{self.target.display_name}", inline=False)
+            
+            embed.add_field(name=f"{self.target.display_name}:", value="# 🏆 WINNER 🏆", inline=False)
+            embed.add_field(name=f"{self.initiator.display_name}:", value="# 💀 BROKIE 💀", inline=False)
+            initiator_obj.currency -= self.bet
+            target_obj.currency += self.bet
+        
         if self.new_event.current_player == self.target:
-            embed.add_field(name="Winner", value=f"{self.initiator.display_name}", inline=False)
+
+            embed.add_field(name=f"{self.initiator.display_name}", value="🏆 WINNER 🏆", inline=False)
+            embed.add_field(name=f"{self.target.display_name}", value="💀 BROKIE 💀", inline=False)
+            target_obj.currency -= self.bet
+            initiator_obj.currency += self.bet
+        user_dao.update_user(initiator_obj)
+        user_dao.update_user(target_obj)
         return embed
     
     
@@ -148,6 +168,8 @@ class Deathroll_View(discord.ui.View):
             await self.message_start.delete()
             drDao = DeathrollDao()
             drDao.update_event(self.current_event)
+            
+
         except Exception as e:
             logging.error(f"end_game: {e}")
             await self.message.channel.send(f"An error occurred. {e}")
@@ -178,7 +200,7 @@ class Deathroll_View(discord.ui.View):
 ### BUTTONS
 class GameButton(discord.ui.Button):
     def __init__(self, label: str):
-        super().__init__(label=label, style=discord.ButtonStyle.primary)
+        super().__init__(label=label, style=discord.ButtonStyle.danger)
         
     async def callback(self, interaction: discord.Interaction):
         logging.info("GameButton pressed")

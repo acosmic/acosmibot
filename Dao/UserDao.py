@@ -84,7 +84,7 @@ class UserDao:
         )
         self.db.mycursor.execute(sql, values)
         self.db.mydb.commit()
-        self.db.close_connection()
+        
 
     def reset_daily(self):
         sql = '''
