@@ -33,6 +33,10 @@ class Deathroll(commands.Cog):
             if bet > current_user.currency:
                 await interaction.response.send_message(f"You don't have enough to make this bet!", ephemeral=True)
 
+            target_user = dao.get_user(target.id)
+            if bet > target_user.currency:
+                await interaction.response.send_message(f"{target.display_name} doesn't have enough to accept this bet! They have {target_user.currency:,.0f} Credits", ephemeral=True)
+
             else:
                 # if role in interaction.user.roles:
                 players = 2
