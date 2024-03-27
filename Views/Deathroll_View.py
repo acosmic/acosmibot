@@ -37,7 +37,7 @@ class Deathroll_View(discord.ui.View):
         self.current_event = DeathrollEvent(0, self.initiator.id, self.target.id, self.bet, self.message.id, self.bet, self.target.id, 0)
         drDao.add_new_event(self.current_event)
         
-        logging.info(f"new_event: {self.new_event}")
+        logging.info(f"current_event: {self.current_event}")
         
         channel = self.message.channel
         self.message2 = await channel.send(f"{self.target.mention}, {self.initiator.display_name} has challenged you to a game of Deathroll! Do you accept?")
@@ -56,9 +56,13 @@ class Deathroll_View(discord.ui.View):
             
             gamesDao.set_game_inprogress(game_name="deathroll", inprogress=0)
             self.disable_all_buttons()
+
+
         
             message = self.message
             self.reset_game()
+            drDao = DeathrollDao()
+            drDao.delete_event(self.current_event.message_id)
             timeout_message = "The Deathroll match has timed out because no one joined. <:FeelsBigSad:1199734765230768139>"
             await message.edit(content=timeout_message, view=None, embed=None)
         
@@ -97,9 +101,8 @@ class Deathroll_View(discord.ui.View):
                 self.remove_item(child)
 
         embed = discord.Embed(title=f"💀 Deathroll - {self.bet} Credits 💀\n{self.initiator.display_name} vs {self.target.display_name}", 
-                              description=f"# {self.new_event.current_player.name}'s Turn \n\n # Roll: {self.new_event.current_roll}")
+                              description=f"# {self.current_event.current_player.name}'s Turn \n\n # Roll: {self.new_event.current_roll}")
 
-        
 
         turn_roll = f"{self.new_event.current_player.name}: Roll 1 - {self.new_event.current_roll}!"
         game_button = GameButton(turn_roll)

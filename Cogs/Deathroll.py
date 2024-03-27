@@ -23,6 +23,9 @@ class Deathroll(commands.Cog):
         if current_events:
             await interaction.response.send_message(f"Either you or your target is currently in a match. Please wait for that game to finish before starting another one.", ephemeral=True)
 
+        elif bet < 100:
+            await interaction.response.send_message(f"Please enter a bet of at least 100.", ephemeral=True)
+
         else:
 
             dao = UserDao()
