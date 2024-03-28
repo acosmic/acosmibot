@@ -64,9 +64,6 @@ class Deathroll_View(discord.ui.View):
             await message.edit(content=timeout_message, view=None, embed=None)
         
     def reset_game(self):
-        # self.joined_users.clear()
-        # self.declined_users.clear()
-        # self.tentative_users.clear()
         self.match_started = False
         self.initiator = None
         self.target = None
@@ -80,16 +77,8 @@ class Deathroll_View(discord.ui.View):
             return default_str
 
     def create_embed(self):
-        # user_dao = UserDao()
-        # initiator = self.initiator
-        # target = self.target
-        # initiator_balance = user_dao.get_user(initiator.id).currency
-        # target_balance = user_dao.get_user(target.id).currency
-        embed = discord.Embed(title="Deathroll - TESTING", description="Two players roll a dice and the first player to roll a 1 loses!", color=0x00ff00)
-        # embed.add_field(name="Initiator", value=f"{initiator.display_name} - {initiator_balance} Credits", inline=False)
-        # embed.add_field(name="Target", value=f"{target.display_name} - {target_balance} Credits", inline=False)
-        # embed.add_field(name="Bet", value=f"{self.bet} Credits", inline=False)
-        # embed.add_field(name="Joined Users", value=self.convert_user_list_to_str(self.joined_users), inline=False)
+        embed = discord.Embed(title=f"💀 Deathroll for {self.bet:,.0f} Credits!? 💀 \n {self.initiator.display_name} has challenged {self.target.display_name}", description="Two players roll a dice and the first player to roll a 1 loses!", color=discord.Color.dark_theme())
+
         deathroll_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1211862442335010856/ac_deathroll.png?ex=6614a7d9&is=660232d9&hm=e9f7ca466de764b405456d0dbc6b7b41320f3d7bea819824ae5646692b41d136&"
         embed.set_image(url=deathroll_image)
         return embed
@@ -127,15 +116,15 @@ class Deathroll_View(discord.ui.View):
         
         if self.new_event.current_player == self.initiator:
             
-            embed.add_field(name=f"{self.target.display_name}:", value="# 🏆 WINNER 🏆", inline=False)
-            embed.add_field(name=f"{self.initiator.display_name}:", value="# 💀 BROKIE 💀", inline=False)
+            embed.add_field(name=f"{self.target.display_name}:", value="🏆 WINNER 🏆", inline=True)
+            embed.add_field(name=f"{self.initiator.display_name}:", value="💀 BROKIE 💀", inline=True)
             initiator_obj.currency -= self.bet
             target_obj.currency += self.bet
         
         if self.new_event.current_player == self.target:
 
-            embed.add_field(name=f"{self.initiator.display_name}", value="🏆 WINNER 🏆", inline=False)
-            embed.add_field(name=f"{self.target.display_name}", value="💀 BROKIE 💀", inline=False)
+            embed.add_field(name=f"{self.initiator.display_name}", value="🏆 WINNER 🏆", inline=True)
+            embed.add_field(name=f"{self.target.display_name}", value="💀 BROKIE 💀", inline=True)
             target_obj.currency -= self.bet
             initiator_obj.currency += self.bet
         user_dao.update_user(initiator_obj)
@@ -204,6 +193,7 @@ class GameButton(discord.ui.Button):
         
     async def callback(self, interaction: discord.Interaction):
         logging.info("GameButton pressed")
+        await interaction.response.defer()
         if interaction.user.id == self.view.new_event.current_player.id:
             try:
                 view = self.view
@@ -211,9 +201,9 @@ class GameButton(discord.ui.Button):
 
             except Exception as e:
                 logging.error(f"GameButton: {e}")
-                await interaction.response.send_message(f"An error occurred. {e}", ephemeral=True) 
+                await interaction.followup.send(f"An error occurred. {e}", ephemeral=True)  # Use followup for sending after deferring.
         else:
-            await interaction.response.send_message("It's not your turn!", ephemeral=True)
+            await interaction.followup.send("It's not your turn!", ephemeral=True)  # Use followup here as well.
 
 class AcceptButton(discord.ui.Button):
     def __init__(self):
