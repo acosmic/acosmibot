@@ -46,3 +46,14 @@ _Returns your rank based on current EXP and general stats._
 _Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!_
 * **/weather** -
 _Returns the current weather in a city._
+
+![Coinflip](https://github.com/acosmic/acosmibot/assets/55600182/04d2fafd-2f59-4f9f-8752-ecd00591586b)
+
+![Deathroll-start](https://github.com/acosmic/acosmibot/assets/55600182/fa126bdb-5a41-45b4-9035-9cbbf3cec7bf)
+
+![Deathroll-inmatch](https://github.com/acosmic/acosmibot/assets/55600182/cac9cd0d-e38b-4c44-a601-a61595f01132)
+
+![Rock-paper-scissors](https://github.com/acosmic/acosmibot/assets/55600182/d871387b-6be9-4924-b7df-1e68a4f200ea)
+
+
+
