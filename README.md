@@ -49,11 +49,14 @@ _Returns the current weather in a city._
 
 ![Coinflip](https://github.com/acosmic/acosmibot/assets/55600182/04d2fafd-2f59-4f9f-8752-ecd00591586b)
 
-![Deathroll-start](https://github.com/acosmic/acosmibot/assets/55600182/fa126bdb-5a41-45b4-9035-9cbbf3cec7bf)
+![Deathroll](https://github.com/acosmic/acosmibot/assets/55600182/8ba4b60b-58a4-4457-a60d-e9d0e2b6d394)
 
-![Deathroll-inmatch](https://github.com/acosmic/acosmibot/assets/55600182/cac9cd0d-e38b-4c44-a601-a61595f01132)
+![Deathroll2](https://github.com/acosmic/acosmibot/assets/55600182/cac9cd0d-e38b-4c44-a601-a61595f01132)
 
-![Rock-paper-scissors](https://github.com/acosmic/acosmibot/assets/55600182/d871387b-6be9-4924-b7df-1e68a4f200ea)
+![RPS](https://github.com/acosmic/acosmibot/assets/55600182/fa126bdb-5a41-45b4-9035-9cbbf3cec7bf)
+
+
+![RPS2](https://github.com/acosmic/acosmibot/assets/55600182/d871387b-6be9-4924-b7df-1e68a4f200ea)
 
 
 
