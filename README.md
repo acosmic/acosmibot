@@ -55,7 +55,6 @@ _Returns the current weather in a city._
 
 ![RPS](https://github.com/acosmic/acosmibot/assets/55600182/fa126bdb-5a41-45b4-9035-9cbbf3cec7bf)
 
-
 ![RPS2](https://github.com/acosmic/acosmibot/assets/55600182/d871387b-6be9-4924-b7df-1e68a4f200ea)
 
 

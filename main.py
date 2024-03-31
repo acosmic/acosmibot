@@ -129,10 +129,11 @@ class Bot(commands.Bot):
                 try:
                 
                     le_dao = LotteryEventDao()
+                    # current_lottery = le_dao.get_current_event()
                     vdao = VaultDao()
                     vault_credits = vdao.get_currency()
                     
-                    await channel.send(f'React with 🎟️ to enter the lottery! There is currently {vault_credits} in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
+                    await channel.send(f'# React with 🎟️ to enter the lottery! There is currently {vault_credits:,.0f} in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
 
                     message = await channel.send("https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png?ex=65dea22f&is=65cc2d2f&hm=3a9e07cf1b55f87a1fcd664c766f11636bf55f305b715e0269851f18d154fd23&")
                     
@@ -145,6 +146,11 @@ class Bot(commands.Bot):
                     le_dao.add_new_event(new_le)
                 except Exception as e:
                     logging.error(f'bg_task_lottery error: {e}')
+                
+
+                current_time = datetime.now()
+                if current_time.hour == 11 and current_time.minute == 45:
+                    await channel.send(f"## The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
             await asyncio.sleep(60)
 
     async def bg_task_lottery_end(self):
@@ -167,8 +173,9 @@ class Bot(commands.Bot):
                     winner = random.choice(participants)
                     user = userDao.get_user(winner.participant_id)
                     discord_user = channel.guild.get_member(winner.participant_id)
+                    lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
                     logging.info(f'winner: {user.discord_username}')
-                    await channel.send(f'Congratulations to {discord_user.mention} for winning {lottery_credits} Credits in the lottery! <a:pepesith:1165101386921418792>')
+                    await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits} Credits in the lottery! <a:pepesith:1165101386921418792>')
                     current_lottery.winner_id = winner.participant_id
                     current_lottery.end_time = datetime.now()
                     current_lottery.credits = lottery_credits
@@ -179,6 +186,8 @@ class Bot(commands.Bot):
                     message = await channel.fetch_message(current_lottery.message_id)
                     await message.unpin()
                     await message.delete()
+                    for member in channel.guild.members:
+                        await member.remove_roles(lottery_role)
                     logging.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
                 except Exception as e:
                     logging.error(f'bg_task_lottery_end error: {e}')

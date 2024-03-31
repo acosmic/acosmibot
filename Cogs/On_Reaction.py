@@ -3,7 +3,9 @@ from Dao.UserDao import UserDao
 from Dao.LotteryParticipantDao import LotteryParticipantDao
 from Dao.LotteryEventDao import LotteryEventDao
 import logging
+import discord
 
+from Dao.VaultDao import VaultDao
 from Entities.LotteryParticipant import LotteryParticipant
 
 
@@ -18,11 +20,14 @@ class On_Reaction(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         if not payload.member.bot:
+            lottery_role = discord.utils.get(message.guild.roles, name="LotteryParticipant")
             channel = self.bot.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
             user = await self.bot.fetch_user(payload.user_id)
             emoji = payload.emoji
             dao = UserDao()
+            vdao = VaultDao()
+            vault_credits = vdao.get_currency()
 
             discord_username = user.name
             current_user=dao.get_user(user.id)
@@ -54,7 +59,8 @@ class On_Reaction(commands.Cog):
                                 
                                 lpd.add_new_participant(LotteryParticipant(current_lottery.message_id, user.id))
                                 logging.info(f'{user.name} has entered the lottery!')
-                                await channel.send(f'{user.display_name} has entered the lottery! Good Luck! <a:pepesith:1165101386921418792> Enter here -> {message.jump_url}')
+                                await payload.member.add_roles(lottery_role)
+                                await channel.send(f'## {user.display_name} has entered the lottery for a chance to win {vault_credits:,.0f} Credits! Good Luck! <a:pepesith:1165101386921418792> Enter here -> {message.jump_url}')
                             except Exception as e:
                                 logging.error(f'on_raw_reaction_add() - Error adding participant to the database: {e}')
                     else:
