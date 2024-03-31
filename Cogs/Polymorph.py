@@ -12,7 +12,7 @@ class Polymorph(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "polymorph", description = "Change your target's display name for 1000 Credits... please be nice") 
+    @app_commands.command(name = "polymorph", description = "Change your target's display name for 5,000 Credits... please be nice") 
     async def polymorph_command(self, interaction: discord.Interaction, target: discord.Member, rename: str):
         
         dao = UserDao()

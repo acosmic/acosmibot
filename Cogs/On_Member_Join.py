@@ -35,6 +35,7 @@ class On_Member_Join(commands.Cog):
         member_data = {
         'id': member.id,
         'discord_username': member.name,
+        'nickname': "",
         'level': 1,
         'streak': 0,
         'exp': 0,

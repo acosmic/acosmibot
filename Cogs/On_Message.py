@@ -106,34 +106,35 @@ class On_Message(commands.Cog):
                 await message.author.add_roles(role)
 
             else:
-                join_date = message.author.joined_at
+                return
+                # join_date = message.author.joined_at
 
-                # Convert join_date to a format suitable for database insertion (e.g., as a string)
-                formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
+                # # Convert join_date to a format suitable for database insertion (e.g., as a string)
+                # formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
 
-                new_user_data = {
-                'id': message.author.id,
-                'discord_username': str(message.author),
-                'level': 1,
-                'streak': 0,
-                'exp': 0,
-                'exp_gained': 0,
-                'exp_lost': 0,
-                'currency': 0,
-                'messages_sent': 1,
-                'reactions_sent': 0,
-                'created': formatted_join_date,
-                'last_active': formatted_join_date,
-                'daily': 0
+                # new_user_data = {
+                # 'id': message.author.id,
+                # 'discord_username': str(message.author),
+                # 'level': 1,
+                # 'streak': 0,
+                # 'exp': 0,
+                # 'exp_gained': 0,
+                # 'exp_lost': 0,
+                # 'currency': 0,
+                # 'messages_sent': 1,
+                # 'reactions_sent': 0,
+                # 'created': formatted_join_date,
+                # 'last_active': formatted_join_date,
+                # 'daily': 0
 
-                }
-                new_user = User(**new_user_data)
-                logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY nothing added to db')
-                # try:
-                #     # dao.add_user(new_user)
-                #     logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')
-                # except Exception as e:
-                #     logging.error(f'on_message() - Error adding user to the database: {e}')
+                # }
+                # new_user = User(**new_user_data)
+                # logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY nothing added to db')
+                # # try:
+                # #     # dao.add_user(new_user)
+                # #     logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')
+                # # except Exception as e:
+                # #     logging.error(f'on_message() - Error adding user to the database: {e}')
 
 
 async def setup(bot: commands.Bot):
