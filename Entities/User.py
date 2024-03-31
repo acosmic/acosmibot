@@ -1,7 +1,8 @@
 class User:
-    def __init__(self, id, discord_username, level, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active, daily) -> None:
+    def __init__(self, id, discord_username, nickname, level, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active, daily) -> None:
         self.id = id
         self.discord_username = discord_username
+        self.nickname = nickname
         self.level = level
         self.streak = streak
         self.exp = exp
@@ -29,6 +30,13 @@ class User:
     @discord_username.setter
     def discord_username(self, value):
         self._discord_username = value
+
+    @property
+    def nickname(self):
+        return self._nickname
+    @nickname.setter
+    def nickname(self, value):
+        self._nickname = value
 
     @property
     def level(self):

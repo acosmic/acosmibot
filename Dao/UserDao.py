@@ -18,6 +18,7 @@ class UserDao:
         INSERT INTO Users (
             id,
             discord_username,
+            nickname,
             level,
             streak,
             exp,
@@ -29,11 +30,12 @@ class UserDao:
             created,
             last_active,
             daily
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
             new_user.id,
             new_user.discord_username,
+            new_user.nickname,
             new_user.level,
             new_user.streak,
             new_user.exp,
@@ -56,6 +58,7 @@ class UserDao:
             UPDATE Users
             SET
                 discord_username = %s,
+                nickname = %s,
                 level = %s,
                 streak = %s,
                 exp = %s,
@@ -70,6 +73,7 @@ class UserDao:
         '''
         values = (
             updated_user.discord_username,
+            updated_user.nickname,
             updated_user.level,
             updated_user.streak,
             updated_user.exp,
@@ -108,17 +112,18 @@ class UserDao:
             user = User(
                 id=user_data[0],
                 discord_username=user_data[1],
-                level=user_data[2],
-                streak=user_data[3],
-                exp=user_data[4],
-                exp_gained=user_data[5],
-                exp_lost=user_data[6],
-                currency=user_data[7],
-                messages_sent=user_data[8],
-                reactions_sent=user_data[9],
-                created=user_data[10],
-                last_active=user_data[11],
-                daily=user_data[12]
+                nickname=user_data[2],
+                level=user_data[3],
+                streak=user_data[4],
+                exp=user_data[5],
+                exp_gained=user_data[6],
+                exp_lost=user_data[7],
+                currency=user_data[8],
+                messages_sent=user_data[9],
+                reactions_sent=user_data[10],
+                created=user_data[11],
+                last_active=user_data[12],
+                daily=user_data[13]
             )
             return user
         else:
@@ -129,6 +134,7 @@ class UserDao:
             SELECT
                 id,
                 discord_username,
+                nickname,
                 level,
                 streak,
                 exp,
@@ -167,15 +173,5 @@ class UserDao:
         self.db.close_connection()
         return top_users
     
-    # temporary - DO NOT KEEP
-    # def update_user_id(self, discord_username, discord_id):
-    #     sql = '''
-    #         UPDATE Users
-    #         SET id = %s
-    #         WHERE discord_username = %s
-    #     '''
-    #     values = (discord_id, discord_username)
-    #     self.db.mycursor.execute(sql, values)
-    #     self.db.mydb.commit()
         
         
