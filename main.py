@@ -148,9 +148,9 @@ class Bot(commands.Bot):
                     logging.error(f'bg_task_lottery error: {e}')
                 
 
-                current_time = datetime.now()
-                if current_time.hour == 11 and current_time.minute == 45:
-                    await channel.send(f"## The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
+            
+            if datetime.now().weekday() == 0 and datetime.now().hour == 11 and datetime.now().minute == 45:
+                await channel.send(f"## The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
             await asyncio.sleep(60)
 
     async def bg_task_lottery_end(self):
