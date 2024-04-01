@@ -149,8 +149,8 @@ class Bot(commands.Bot):
                 
 
             
-            if datetime.now().weekday() == 0 and datetime.now().hour == 11 and datetime.now().minute == 45:
-                await channel.send(f"## The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
+            elif datetime.now().weekday() == 0 and datetime.now().hour == 11 and datetime.now().minute == 45:
+                await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
             await asyncio.sleep(60)
 
     async def bg_task_lottery_end(self):
@@ -175,7 +175,7 @@ class Bot(commands.Bot):
                     discord_user = channel.guild.get_member(winner.participant_id)
                     lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
                     logging.info(f'winner: {user.discord_username}')
-                    await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits} Credits in the lottery! <a:pepesith:1165101386921418792>')
+                    await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
                     current_lottery.winner_id = winner.participant_id
                     current_lottery.end_time = datetime.now()
                     current_lottery.credits = lottery_credits
@@ -204,10 +204,6 @@ class Bot(commands.Bot):
             random_number = random.randint(0, results_count - 1)  # Adjust random_number based on actual results count
             return data['data'][random_number]['url']
     
-    
-        
-        
-        
 
 bot = Bot()
 
