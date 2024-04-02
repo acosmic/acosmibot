@@ -1,3 +1,4 @@
+from calendar import c
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -43,8 +44,9 @@ class Rank(commands.Cog):
         flip_amount_lost = cfdao.get_total_lost(interaction.user.id)
 
         flip_win_rate = flip_wins / flips * 100 if flips > 0 else 0
-        
 
+        streak = current_user.streak        
+        streak_emoji = "🔥" * streak if streak > 0 else "❄️"
 
         if user_rank is not None:
             embed = discord.Embed(
@@ -61,7 +63,8 @@ class Rank(commands.Cog):
             f"Coinflip Losses: {flip_losses}\n"
             f"Coinflip Credits Won: {flip_amount_won:,.0f}\n"
             f"Coinflip Credits Lost: {flip_amount_lost:,.0f}\n"
-            f"Coinflip Win Rate: {flip_win_rate:.2f}%"
+            f"Coinflip Win Rate: {flip_win_rate:.2f}%\n\n"
+            f"### Streak: {streak_emoji}\n"
             ),
             color=interaction.user.color)
             embed.set_thumbnail(url=interaction.user.avatar)
@@ -91,7 +94,8 @@ class Rank(commands.Cog):
             'reactions_sent': 0,
             'created': formatted_join_date,
             'last_active': formatted_join_date,
-            'daily': 0
+            'daily': 0,
+            'last_daily': None,
             }
 
             new_user = User(**user_data)

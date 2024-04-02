@@ -29,8 +29,9 @@ class UserDao:
             reactions_sent,
             created,
             last_active,
-            daily
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            daily,
+            last_daily
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
             new_user.id,
@@ -46,7 +47,8 @@ class UserDao:
             new_user.reactions_sent,
             new_user.created,
             new_user.last_active,
-            new_user.daily
+            new_user.daily,
+            new_user.last_daily
         )
 
         self.db.mycursor.execute(sql, values)
@@ -68,7 +70,8 @@ class UserDao:
                 messages_sent = %s,
                 reactions_sent = %s,
                 last_active = %s,
-                daily = %s
+                daily = %s,
+                last_daily = %s
             WHERE id = %s
         '''
         values = (
@@ -84,6 +87,7 @@ class UserDao:
             updated_user.reactions_sent,
             updated_user.last_active,
             updated_user.daily,
+            updated_user.last_daily,
             updated_user.id,
         )
         self.db.mycursor.execute(sql, values)
@@ -97,8 +101,18 @@ class UserDao:
         '''
         self.db.mycursor.execute(sql)
         self.db.mydb.commit()
-        
 
+    def reset_streak(self, id):
+        sql = '''
+            UPDATE Users
+            SET streak = 0
+            WHERE id = %s;
+        '''
+        values = (id,)
+        self.db.mycursor.execute(sql, values)
+        self.db.mydb.commit()
+        
+        
     def get_user(self, id):
         sql = '''
             SELECT *
@@ -123,7 +137,8 @@ class UserDao:
                 reactions_sent=user_data[10],
                 created=user_data[11],
                 last_active=user_data[12],
-                daily=user_data[13]
+                daily=user_data[13],
+                last_daily=user_data[14]
             )
             return user
         else:
@@ -146,6 +161,7 @@ class UserDao:
                 created,
                 last_active,
                 daily,
+                last_daily,
                 (SELECT COUNT(*) + 1 FROM Users u2 WHERE u2.exp > u1.exp) AS user_rank
             FROM Users u1
             WHERE id = %s;

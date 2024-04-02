@@ -113,6 +113,15 @@ class Bot(commands.Bot):
                     await channel.send(gif)
                     dao = UserDao()
                     dao.reset_daily()
+                                        
+                    today = datetime.now().date()
+                    for member in channel.guild.members:
+                        current_user = dao.get_user(member.id)
+                        last_daily_date = datetime.strptime(current_user.last_daily, "%Y-%m-%d %H:%M:%S").date()
+                        if last_daily_date < today - timedelta(days=1):
+                            if current_user.streak > 0:
+                                dao.reset_streak(current_user.id)
+                                logging.info(f'{current_user.discord_username} streak reset')
                     logging.info("DAILY RESET FOR ALL USERS")
                 except Exception as e:
                     logging.error(f'gm_eu_task error: {e}')

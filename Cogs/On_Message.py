@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from math import exp
 import discord
 from discord.ext import commands
 from Dao.UserDao import UserDao
 from Entities.User import User
 import logging
+from Leveling import Leveling
 
 role_level_1 = "Level One"
 role_level_2 = "Level Two"
@@ -26,6 +28,7 @@ class On_Message(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         level_up_channel = self.bot.get_channel(1209288743912218644)
+        daily_reward_channel = self.bot.get_channel(1224561092919951452)
         
         if not message.author.bot:
             logging.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
@@ -45,43 +48,45 @@ class On_Message(commands.Cog):
             current_user = dao.get_user(message.author.id)
             logging.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
             if current_user is not None:
-                current_user.exp += 2
-                current_user.exp_gained += 2
+
+                exp_gain = 2 + (current_user.streak * 0.1)
+                current_user.exp += exp_gain
+                current_user.exp_gained += exp_gain
                 current_user.messages_sent += 1
                 current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 logging.info(f'CURRENT TIME = {current_user.last_active}')
-                current_level = current_user.level
+                
 
-                if current_user.exp < 100:
-                    role = role1
-                    current_user.level = 1
-                elif current_user.exp >= 100 and current_user.exp < 200:
-                    role = role2
-                    current_user.level = 2
-                elif current_user.exp >= 200 and current_user.exp < 300:
-                    role = role3
-                    current_user.level = 3
-                elif current_user.exp >= 300 and current_user.exp < 400:
-                    role = role4
-                    current_user.level = 4
-                elif current_user.exp >= 400 and current_user.exp < 500:
-                    role = role5
-                    current_user.level = 5
-                elif current_user.exp >= 500 and current_user.exp < 600:
-                    role = role6
-                    current_user.level = 6
-                elif current_user.exp >= 600 and current_user.exp < 700:
-                    role = role7
-                    current_user.level = 7
-                elif current_user.exp >= 700 and current_user.exp < 800:
-                    role = role8
-                    current_user.level = 8
-                elif current_user.exp >= 800 and current_user.exp < 900:
-                    role = role9
-                    current_user.level = 9
-                elif current_user.exp >= 900:
-                    role = role10
-                    current_user.level = 10
+                # if current_user.exp < 100:
+                #     role = role1
+                #     current_user.level = 1
+                # elif current_user.exp >= 100 and current_user.exp < 200:
+                #     role = role2
+                #     current_user.level = 2
+                # elif current_user.exp >= 200 and current_user.exp < 300:
+                #     role = role3
+                #     current_user.level = 3
+                # elif current_user.exp >= 300 and current_user.exp < 400:
+                #     role = role4
+                #     current_user.level = 4
+                # elif current_user.exp >= 400 and current_user.exp < 500:
+                #     role = role5
+                #     current_user.level = 5
+                # elif current_user.exp >= 500 and current_user.exp < 600:
+                #     role = role6
+                #     current_user.level = 6
+                # elif current_user.exp >= 600 and current_user.exp < 700:
+                #     role = role7
+                #     current_user.level = 7
+                # elif current_user.exp >= 700 and current_user.exp < 800:
+                #     role = role8
+                #     current_user.level = 8
+                # elif current_user.exp >= 800 and current_user.exp < 900:
+                #     role = role9
+                #     current_user.level = 9
+                # elif current_user.exp >= 900:
+                #     role = role10
+                #     current_user.level = 10
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
@@ -89,21 +94,39 @@ class On_Message(commands.Cog):
 
                     current_user.currency += 100
                     current_user.daily = 1
-                    await level_up_channel.send(f'{message.author.mention} <:PepeCelebrate:1165105393362555021> You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+                    current_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+
+                    # Check if last_daily was yesterday
+                    last_daily_date = datetime.strptime(current_user.last_daily, "%Y-%m-%d %H:%M:%S").date()
+                    today = datetime.now().date()
+                    if last_daily_date == today - timedelta(days=1):
+                        # Increment streak
+                        current_user.streak += 1
+                        logging.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
+                    elif last_daily_date < today - timedelta(days=1):
+                        # Reset streak
+                        current_user.streak = 1
+                        logging.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
+                    await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
                 else:
                     logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
                 
-                # CHECK IF _ LEVELING UP
-                if current_user.level > current_level:
-                    current_user.currency += 500
-                    await level_up_channel.send(f'{message.author.mention} LEVEL UP! You have reached {str(role)} and awarded 500 Credits! <:FeelsGroovy:1199735360616407041>')
+                # CHECK IF - LEVELING UP
+                lvl = Leveling()
+                new_level = lvl.calc_level(current_user.exp)
+                if new_level > current_user.level:
                     
+                    current_user.currency += 500
+                    await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level} and awarded 500 Credits! <:FeelsGroovy:1199735360616407041>')
+                
+                current_user.level = new_level
+                
                 try:
                     dao.update_user(current_user)
                     logging.info(f'{str(message.author)} updated in database in on_message()')
                 except Exception as e: 
                     logging.error(f'Error updating {message.author} to the database: {e}')
-                await message.author.add_roles(role)
+                # await message.author.add_roles(role)
 
             else:
                 return

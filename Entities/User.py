@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, id, discord_username, nickname, level, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active, daily) -> None:
+    def __init__(self, id, discord_username, nickname, level, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active, daily, last_daily) -> None:
         self.id = id
         self.discord_username = discord_username
         self.nickname = nickname
@@ -14,6 +14,7 @@ class User:
         self.created = created
         self.last_active = last_active
         self.daily = daily
+        self.last_daily = last_daily
 
     
     @property
@@ -114,3 +115,10 @@ class User:
     @daily.setter
     def daily(self, value):
         self._daily = value
+
+    @property
+    def last_daily(self):
+        return self._last_daily
+    @last_daily.setter
+    def last_daily(self, value):
+        self._last_daily = value
