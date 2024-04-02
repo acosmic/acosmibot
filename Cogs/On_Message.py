@@ -92,7 +92,15 @@ class On_Message(commands.Cog):
                 if current_user.daily == 0:
                     logging.info(f"{current_user.discord_username} - COMPLETED DAILY REWARD")
 
-                    current_user.currency += 100
+                    # Calculate daily reward
+                    base_daily = 100
+                    streak = current_user.streak if current_user.streak < 10 else 10
+                    base_bonus_multiplier = 0.05
+                    streak_bonus = streak * base_bonus_multiplier
+                    calculated_daily_reward = base_daily + streak_bonus
+
+                    current_user.currency += calculated_daily_reward
+
                     current_user.daily = 1
                     current_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
 
@@ -107,7 +115,9 @@ class On_Message(commands.Cog):
                         # Reset streak
                         current_user.streak = 1
                         logging.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
+
                     await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+
                 else:
                     logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
                 
@@ -116,8 +126,17 @@ class On_Message(commands.Cog):
                 new_level = lvl.calc_level(current_user.exp)
                 if new_level > current_user.level:
                     
-                    current_user.currency += 500
-                    await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level} and awarded 500 Credits! <:FeelsGroovy:1199735360616407041>')
+                    # CALCULATE LEVEL UP REWARD
+                    base_level_up_reward = 1000
+                    streak = current_user.streak if current_user.streak < 10 else 10
+                    base_bonus_multiplier = 0.05
+                    streak_bonus = streak * base_bonus_multiplier
+                    calculated_level_reward = base_level_up_reward + streak_bonus
+
+                    if streak > 0:
+                        await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! 1,000 + {streak_bonus} from {streak}x Streak! <:FeelsGroovy:1199735360616407041>')
+                    else:
+                        await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! <:FeelsGroovy:1199735360616407041>')
                 
                 current_user.level = new_level
                 
