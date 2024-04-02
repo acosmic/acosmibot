@@ -46,7 +46,8 @@ class On_Member_Join(commands.Cog):
         'reactions_sent': 0,
         'created': formatted_join_date,
         'last_active': formatted_join_date,
-        'daily': 0
+        'daily': 0,
+        'last_daily': None,
         }
         new_user = User(**member_data)
         existing_user = dao.get_user(new_user.id)

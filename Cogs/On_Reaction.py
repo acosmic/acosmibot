@@ -36,6 +36,9 @@ class On_Reaction(commands.Cog):
             # Increment user total reactions 
             current_user.reactions_sent += 1
 
+            # # EXP gain for reacting to a message
+            # exp_gain = 1 + (current_user.streak * 0.1)
+
             try:
                 dao.update_user(current_user)
                 logging.info(f"{discord_username} added {emoji} to {message.author}'s message .")
