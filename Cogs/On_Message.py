@@ -49,7 +49,7 @@ class On_Message(commands.Cog):
             logging.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
             if current_user is not None:
 
-                exp_gain = 2 + (current_user.streak * 0.1)
+                exp_gain = 2 + (current_user.streak * 0.05)
                 current_user.exp += exp_gain
                 current_user.exp_gained += exp_gain
                 current_user.messages_sent += 1
