@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from math import exp
+import math
 import discord
 from discord.ext import commands
 from Dao.UserDao import UserDao
@@ -92,34 +93,48 @@ class On_Message(commands.Cog):
                 if current_user.daily == 0:
                     logging.info(f"{current_user.discord_username} - COMPLETED DAILY REWARD")
 
-                    # Calculate daily reward
+                    # Check if last_daily was yesterday
+                    
+                    today = datetime.now().date()
+                    if current_user.last_daily is None:
+                        current_user.streak = 0
+                    else:
+                        if current_user.last_daily.date() == today - timedelta(days=1):
+                            # Increment streak
+                            current_user.streak += 1
+                            logging.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
+                        elif current_user.last_daily.date() < today - timedelta(days=1):
+                            # Reset streak
+                            current_user.streak = 1
+                            logging.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
+
+
+                    # CALCULATE DAILY REWARD
                     base_daily = 100
                     streak = current_user.streak if current_user.streak < 10 else 10
                     base_bonus_multiplier = 0.05
-                    streak_bonus = streak * base_bonus_multiplier
+                    streak_bonus_percentage = streak * base_bonus_multiplier
+                    streak_bonus = math.ceil(base_daily * streak_bonus_percentage)
                     calculated_daily_reward = base_daily + streak_bonus
-
                     current_user.currency += calculated_daily_reward
 
+
+
+                    # Set daily and last_daily
                     current_user.daily = 1
                     current_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
 
-                    # Check if last_daily was yesterday
-                    last_daily_date = datetime.strptime(current_user.last_daily, "%Y-%m-%d %H:%M:%S").date()
-                    today = datetime.now().date()
-                    if last_daily_date == today - timedelta(days=1):
-                        # Increment streak
-                        current_user.streak += 1
-                        logging.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
-                    elif last_daily_date < today - timedelta(days=1):
-                        # Reset streak
-                        current_user.streak = 1
-                        logging.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
 
-                    await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+                    streak = current_user.streak if current_user.streak < 10 else 10
+                    if streak > 0:
+                        await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! <:PepeCelebrate:1165105393362555021>')
+                    else:
+                        await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
 
                 else:
                     logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
+
+
                 
                 # CHECK IF - LEVELING UP
                 lvl = Leveling()
@@ -130,7 +145,8 @@ class On_Message(commands.Cog):
                     base_level_up_reward = 1000
                     streak = current_user.streak if current_user.streak < 10 else 10
                     base_bonus_multiplier = 0.05
-                    streak_bonus = streak * base_bonus_multiplier
+                    streak_bonus_percentage = streak * base_bonus_multiplier
+                    streak_bonus = math.ceil(base_level_up_reward * streak_bonus_percentage)
                     calculated_level_reward = base_level_up_reward + streak_bonus
 
                     if streak > 0:

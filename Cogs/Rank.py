@@ -45,8 +45,8 @@ class Rank(commands.Cog):
 
         flip_win_rate = flip_wins / flips * 100 if flips > 0 else 0
 
-        streak = current_user.streak        
-        streak_emoji = "🔥" * streak if streak > 0 else "❄️"
+        streak = current_user.streak   
+        streak_emoji = f"🔥 x{streak}"  if streak > 0 else "make sure to chat again tomorrow to increase your streak! <:NicolasCagePOG:1203568248885346334>"
 
         if user_rank is not None:
             embed = discord.Embed(
