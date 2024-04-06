@@ -155,6 +155,8 @@ class On_Message(commands.Cog):
                         await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! <:FeelsGroovy:1199735360616407041>')
                 
                 current_user.level = new_level
+
+                
                 
                 try:
                     dao.update_user(current_user)

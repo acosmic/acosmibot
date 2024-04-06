@@ -36,12 +36,12 @@ class Rank(commands.Cog):
         
         current_user = dao.get_user(interaction.user.id)
 
-        flips = cfdao.get_total_flips(interaction.user.id)
-        flip_wins = cfdao.get_flip_wins(interaction.user.id)
-        flip_losses = cfdao.get_flip_losses(interaction.user.id)
+        flips = cfdao.get_total_flips(interaction.user.id) if cfdao.get_total_flips(interaction.user.id) is not None else 0
+        flip_wins = cfdao.get_flip_wins(interaction.user.id) if cfdao.get_flip_wins(interaction.user.id) is not None else 0
+        flip_losses = cfdao.get_flip_losses(interaction.user.id) if cfdao.get_flip_losses(interaction.user.id) is not None else 0
 
-        flip_amount_won = cfdao.get_total_won(interaction.user.id)
-        flip_amount_lost = cfdao.get_total_lost(interaction.user.id)
+        flip_amount_won = cfdao.get_total_won(interaction.user.id) if cfdao.get_total_won(interaction.user.id) is not None else 0
+        flip_amount_lost = cfdao.get_total_lost(interaction.user.id) if cfdao.get_total_lost(interaction.user.id) is not None else 0
 
         flip_win_rate = flip_wins / flips * 100 if flips > 0 else 0
 
@@ -49,10 +49,13 @@ class Rank(commands.Cog):
         streak_emoji = f"🔥 x{streak}"  if streak > 0 else "make sure to chat again tomorrow to increase your streak! <:NicolasCagePOG:1203568248885346334>"
 
         if user_rank is not None:
+            name_from_db = user_rank[1]
+            display_name = interaction.user.name if interaction.user.name is not None else name_from_db
             embed = discord.Embed(
             # title=f"### {interaction.user.name}",
+            
             description=(
-            f"# {interaction.user.name}\n\n"
+            f"# {display_name}\n\n"
             f"### Ranked #{user_rank[-1]}\n"
             f"Current Level: {current_user.level}\n"
             f"Current EXP: {current_user.exp:,.0f}\n"

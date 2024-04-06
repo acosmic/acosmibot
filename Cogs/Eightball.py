@@ -10,7 +10,7 @@ class Eightball(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "8ball", description = "Ask the magic 8ball your yes/no questions for 10 Credits") 
+    @app_commands.command(name = "8ball", description = "Ask the magic 8ball your yes/no questions for 50 Credits") 
     async def eightball(self, interaction: discord.Interaction, question: str):
         
         # List of 8-ball responses
@@ -37,7 +37,7 @@ class Eightball(commands.Cog):
             "Very doubtful,"
         ]
         dao = UserDao()
-        cost = 10
+        cost = 50
         user = dao.get_user(interaction.user.id)
 
         if user.currency >= cost:
