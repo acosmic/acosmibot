@@ -143,7 +143,7 @@ class Bot(commands.Bot):
                     vdao = VaultDao()
                     vault_credits = vdao.get_currency()
                     
-                    await channel.send(f'# React with 🎟️ to enter the lottery! There is currently {vault_credits:,.0f} in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
+                    await channel.send(f'# React with 🎟️ to enter the lottery! There is currently {vault_credits:,.0f} Credits in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
 
                     message = await channel.send("https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png?ex=65dea22f&is=65cc2d2f&hm=3a9e07cf1b55f87a1fcd664c766f11636bf55f305b715e0269851f18d154fd23&")
                     
