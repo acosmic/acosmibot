@@ -40,6 +40,7 @@ class Bot(commands.Bot):
             "Cogs.Color",
             "Cogs.Giphy",
             "Cogs.Deathroll",
+            "Cogs.Dictionary",
             "Cogs.Ping",
             "Cogs.Help",
             "Cogs.Nasa",
