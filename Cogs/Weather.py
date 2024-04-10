@@ -5,7 +5,7 @@ import logging
 import requests
 from dotenv import load_dotenv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 
@@ -55,12 +55,19 @@ class Weather(commands.Cog):
             weather_description = weather[0]["description"]
             weather_icon = weather[0]["main"]
             weather_emoji = self.EMOJI[weather_icon]
+            
+            # Time zone handling
+            timezone_offset = data["timezone"]  # Timezone offset in seconds
+            local_time = datetime.utcnow() + timedelta(seconds=timezone_offset)
+            formatted_time = local_time.strftime('%l:%M:%S %p')
+
             state = data["sys"]["country"]
             embed = discord.Embed(title=f"Weather in {cityname}", color=interaction.user.color)
             embed.add_field(name="Temperature", value=f"{temp_farhenheit}°F   |   {temperature}°C", inline=False)
             embed.add_field(name="Feels Like", value=f"{feels_like_farhenheit}°F   |   {feels_like}°C", inline=False)
             embed.add_field(name="Humidity", value=f"{humidity}%", inline=False)
             embed.add_field(name="Weather", value=f"{weather_emoji} {weather_description}", inline=False)
+            embed.add_field(name="Local Time", value=formatted_time, inline=False)
             embed.set_thumbnail(url=f"http://openweathermap.org/img/wn/{weather[0]['icon']}.png")
             await interaction.response.send_message(embed=embed)
             logging.info(f"{interaction.user.name} used /weather {cityname}")

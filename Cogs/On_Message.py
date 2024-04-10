@@ -8,10 +8,10 @@ from Entities.User import User
 import logging
 from Leveling import Leveling
 
-role_level_1 = "Level One"
-role_level_2 = "Level Two"
-role_level_3 = "Level Three"
-role_level_4 = "Level Four"
+role_level_1 = "Egg"
+role_level_2 = "Biddy"
+role_level_3 = "Chicken"
+role_level_4 = "Cock"
 role_level_5 = "Level Five"
 role_level_6 = "Level Six"
 role_level_7 = "Level Seven"
@@ -33,16 +33,16 @@ class On_Message(commands.Cog):
         
         if not message.author.bot:
             logging.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
-            role1 = discord.utils.get(message.guild.roles, name=role_level_1)
-            role2 = discord.utils.get(message.guild.roles, name=role_level_2)
-            role3 = discord.utils.get(message.guild.roles, name=role_level_3)
-            role4 = discord.utils.get(message.guild.roles, name=role_level_4)
-            role5 = discord.utils.get(message.guild.roles, name=role_level_5)
-            role6 = discord.utils.get(message.guild.roles, name=role_level_6)
-            role7 = discord.utils.get(message.guild.roles, name=role_level_7)
-            role8 = discord.utils.get(message.guild.roles, name=role_level_8)
-            role9 = discord.utils.get(message.guild.roles, name=role_level_9)
-            role10 = discord.utils.get(message.guild.roles, name=role_level_10)
+            # role1 = discord.utils.get(message.guild.roles, name=role_level_1)
+            # role2 = discord.utils.get(message.guild.roles, name=role_level_2)
+            # role3 = discord.utils.get(message.guild.roles, name=role_level_3)
+            # role4 = discord.utils.get(message.guild.roles, name=role_level_4)
+            # role5 = discord.utils.get(message.guild.roles, name=role_level_5)
+            # role6 = discord.utils.get(message.guild.roles, name=role_level_6)
+            # role7 = discord.utils.get(message.guild.roles, name=role_level_7)
+            # role8 = discord.utils.get(message.guild.roles, name=role_level_8)
+            # role9 = discord.utils.get(message.guild.roles, name=role_level_9)
+            # role10 = discord.utils.get(message.guild.roles, name=role_level_10)
 
             dao = UserDao()
 
@@ -88,6 +88,8 @@ class On_Message(commands.Cog):
                 # elif current_user.exp >= 900:
                 #     role = role10
                 #     current_user.level = 10
+
+
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
@@ -156,14 +158,36 @@ class On_Message(commands.Cog):
                 
                 current_user.level = new_level
 
-                
+                # DETECT ROLE CHANGE
+                user_roles = message.author.roles
+                roles = []
+                if current_user.level < 5:
+                    role = discord.utils.get(message.guild.roles, name=role_level_1) # 🥚 EGG 
+                    if role not in user_roles:
+                        roles.append(role)
+                if current_user.level >= 5:
+                    role = discord.utils.get(message.guild.roles, name=role_level_2) # 🐣 BIDDY
+                    if role not in user_roles:
+                        roles.append(role)
+                if current_user.level >= 10:
+                    role = discord.utils.get(message.guild.roles, name=role_level_3) # 🐔 CHICKEN
+                    if role not in user_roles:
+                        roles.append(role)
+                if current_user.level >= 20:
+                    role = discord.utils.get(message.guild.roles, name=role_level_4) # 🐓 COCK
+                    if role not in user_roles:
+                        roles.append(role)
                 
                 try:
                     dao.update_user(current_user)
                     logging.info(f'{str(message.author)} updated in database in on_message()')
                 except Exception as e: 
                     logging.error(f'Error updating {message.author} to the database: {e}')
-                # await message.author.add_roles(role)
+                try:
+                    await message.author.add_roles(*roles)
+                    logging.info(f'{str(message.author)} roles updated in on_message()')
+                except Exception as e:
+                    logging.error(f'Error updating {message.author} roles: {e}')
 
             else:
                 return
