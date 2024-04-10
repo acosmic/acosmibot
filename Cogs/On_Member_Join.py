@@ -5,10 +5,10 @@ from Dao.UserDao import UserDao
 from Entities.User import User
 import logging
 
-role_level_1 = "Level One"
-role_level_2 = "Level Two"
-role_level_3 = "Level Three"
-role_level_4 = "Level Four"
+role_level_1 = "Egg"
+role_level_2 = "Biddy"
+role_level_3 = "Chicken"
+role_level_4 = "Cock"
 role_level_5 = "Level Five"
 role_level_6 = "Level Six"
 role_level_7 = "Level Seven"
@@ -63,6 +63,18 @@ class On_Member_Join(commands.Cog):
             except Exception as e:
                 logging.error(f'on_member_join() - Error adding user to the database: {e}')
         else:
+            level = existing_user.level
+            if level < 5:
+                role = discord.utils.get(member.guild.roles, name=role_level_1)
+            elif level >= 5 and level < 10:
+                role = discord.utils.get(member.guild.roles, name=role_level_2)
+            elif level >= 10 and level < 20:
+                role = discord.utils.get(member.guild.roles, name=role_level_3)
+            elif level >= 20 and level < 30:
+                role = discord.utils.get(member.guild.roles, name=role_level_4)
+
+            await member.add_roles(role)
+
             logging.info(f'{new_user.discord_username} already exists, so was not added again.')
 
 async def setup(bot: commands.Bot):

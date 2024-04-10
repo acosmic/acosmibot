@@ -51,11 +51,18 @@ class Rank(commands.Cog):
         if user_rank is not None:
             name_from_db = user_rank[1]
             display_name = interaction.user.name if interaction.user.name is not None else name_from_db
+            level_emoji = "🥚"
+            if current_user.level >= 5:
+                level_emoji = "🐣"
+            if current_user.level >= 10:
+                level_emoji = "🐔"
+            if current_user.level >= 20:
+                level_emoji = "🐓"
+            
             embed = discord.Embed(
             # title=f"### {interaction.user.name}",
-            
             description=(
-            f"# {display_name}\n\n"
+            f"# {display_name} {level_emoji}\n\n"
             f"### Ranked #{user_rank[-1]}\n"
             f"Current Level: {current_user.level}\n"
             f"Current EXP: {current_user.exp:,.0f}\n"
