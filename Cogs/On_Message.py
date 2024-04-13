@@ -12,12 +12,7 @@ role_level_1 = "Egg"
 role_level_2 = "Biddy"
 role_level_3 = "Chicken"
 role_level_4 = "Cock"
-role_level_5 = "Level Five"
-role_level_6 = "Level Six"
-role_level_7 = "Level Seven"
-role_level_8 = "Level Eight"
-role_level_9 = "Level Nine"
-role_level_10 = "Level Ten"
+
 
 logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -33,17 +28,6 @@ class On_Message(commands.Cog):
         
         if not message.author.bot:
             logging.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
-            # role1 = discord.utils.get(message.guild.roles, name=role_level_1)
-            # role2 = discord.utils.get(message.guild.roles, name=role_level_2)
-            # role3 = discord.utils.get(message.guild.roles, name=role_level_3)
-            # role4 = discord.utils.get(message.guild.roles, name=role_level_4)
-            # role5 = discord.utils.get(message.guild.roles, name=role_level_5)
-            # role6 = discord.utils.get(message.guild.roles, name=role_level_6)
-            # role7 = discord.utils.get(message.guild.roles, name=role_level_7)
-            # role8 = discord.utils.get(message.guild.roles, name=role_level_8)
-            # role9 = discord.utils.get(message.guild.roles, name=role_level_9)
-            # role10 = discord.utils.get(message.guild.roles, name=role_level_10)
-
             dao = UserDao()
 
             current_user = dao.get_user(message.author.id)
@@ -56,40 +40,6 @@ class On_Message(commands.Cog):
                 current_user.messages_sent += 1
                 current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 logging.info(f'CURRENT TIME = {current_user.last_active}')
-                
-
-                # if current_user.exp < 100:
-                #     role = role1
-                #     current_user.level = 1
-                # elif current_user.exp >= 100 and current_user.exp < 200:
-                #     role = role2
-                #     current_user.level = 2
-                # elif current_user.exp >= 200 and current_user.exp < 300:
-                #     role = role3
-                #     current_user.level = 3
-                # elif current_user.exp >= 300 and current_user.exp < 400:
-                #     role = role4
-                #     current_user.level = 4
-                # elif current_user.exp >= 400 and current_user.exp < 500:
-                #     role = role5
-                #     current_user.level = 5
-                # elif current_user.exp >= 500 and current_user.exp < 600:
-                #     role = role6
-                #     current_user.level = 6
-                # elif current_user.exp >= 600 and current_user.exp < 700:
-                #     role = role7
-                #     current_user.level = 7
-                # elif current_user.exp >= 700 and current_user.exp < 800:
-                #     role = role8
-                #     current_user.level = 8
-                # elif current_user.exp >= 800 and current_user.exp < 900:
-                #     role = role9
-                #     current_user.level = 9
-                # elif current_user.exp >= 900:
-                #     role = role10
-                #     current_user.level = 10
-
-
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
@@ -113,10 +63,10 @@ class On_Message(commands.Cog):
 
                     # CALCULATE DAILY REWARD
                     base_daily = 100
-                    streak = current_user.streak if current_user.streak < 10 else 10
+                    streak = current_user.streak if current_user.streak < 20 else 20
                     base_bonus_multiplier = 0.05
                     streak_bonus_percentage = streak * base_bonus_multiplier
-                    streak_bonus = math.ceil(base_daily * streak_bonus_percentage)
+                    streak_bonus = math.floor(base_daily * streak_bonus_percentage)
                     calculated_daily_reward = base_daily + streak_bonus
                     current_user.currency += calculated_daily_reward
 
@@ -127,7 +77,7 @@ class On_Message(commands.Cog):
                     current_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
 
 
-                    streak = current_user.streak if current_user.streak < 10 else 10
+                    streak = current_user.streak if current_user.streak < 20 else 20
                     if streak > 0:
                         await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! <:PepeCelebrate:1165105393362555021>')
                     else:
@@ -145,10 +95,10 @@ class On_Message(commands.Cog):
                     
                     # CALCULATE LEVEL UP REWARD
                     base_level_up_reward = 1000
-                    streak = current_user.streak if current_user.streak < 10 else 10
+                    streak = current_user.streak if current_user.streak < 20 else 20
                     base_bonus_multiplier = 0.05
                     streak_bonus_percentage = streak * base_bonus_multiplier
-                    streak_bonus = math.ceil(base_level_up_reward * streak_bonus_percentage)
+                    streak_bonus = math.floor(base_level_up_reward * streak_bonus_percentage)
                     calculated_level_reward = base_level_up_reward + streak_bonus
 
                     if streak > 0:
