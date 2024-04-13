@@ -1,5 +1,6 @@
 #! /usr/bin/python3.10
 import random
+from re import T
 from urllib import parse, request
 import json
 import asyncio
@@ -9,6 +10,8 @@ from datetime import datetime, timedelta
 import logging
 from dotenv import load_dotenv
 import os
+
+import requests
 from Entities.LotteryEvent import LotteryEvent
 from Dao.LotteryParticipantDao import LotteryParticipantDao
 from Dao.LotteryEventDao import LotteryEventDao
@@ -28,6 +31,8 @@ client_secret =  os.getenv('client_secret')
 
 MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
 TOKEN = os.getenv('TOKEN')
+TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID')
+TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
 
 
 logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -68,6 +73,7 @@ class Bot(commands.Bot):
         self.gm_eu_task = self.loop.create_task(self.gm_eu_task())
         self.bg_task_lottery = self.loop.create_task(self.bg_task_lottery())
         self.bg_task_lottery_end = self.loop.create_task(self.bg_task_lottery_end())
+        self.check_if_live_task = self.loop.create_task(self.check_if_live_task())
         for ext in self.cogslist:
             await self.load_extension(ext)
         
@@ -203,6 +209,33 @@ class Bot(commands.Bot):
                 except Exception as e:
                     logging.error(f'bg_task_lottery_end error: {e}')
             await asyncio.sleep(60)
+
+    async def check_if_live_task(self):
+        posted = False
+
+        await self.wait_until_ready()
+        channel = self.get_channel(1224417564684456146) # TWITCH ANNOUCEMENTS CHANNEL
+
+        
+        while not self.is_closed():
+            logging.info('check_if_live_task running')
+            try:
+                if self.check_if_live('acosmic'):
+                    if not posted:
+                        await channel.send(f"@everyone Ashbo is carrying acosmic's stream! Go check it out! https://www.twitch.tv/acosmic")
+                        posted = True
+                else:
+                    posted = False
+            except Exception as e:
+                logging.error(f'check_if_live_task error: {e}')
+            await asyncio.sleep(60)
+
+    def check_if_live(self, channel_name):
+        contents = requests.get('https://www.twitch.tv/' +channel_name).content.decode('utf-8')
+        if 'isLiveBroadcast' in contents: 
+            return True
+        else:
+            return False
                 
 
     def giphy_search(self, search_term):
