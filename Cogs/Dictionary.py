@@ -25,7 +25,7 @@ class Dictionary(commands.Cog):
             data = json.loads(response.text)
             length = len(data[0]["meanings"])
             speech = data[0]["meanings"][0]["partOfSpeech"]
-            embed = Embed(title=f"{word} - {speech}", description="Definition:")
+            embed = Embed(title=f"{word} - {speech}", description="")
             if length > 1:
                 for i in range(length):
                     definition = data[0]["meanings"][i]["definitions"][0]["definition"]
