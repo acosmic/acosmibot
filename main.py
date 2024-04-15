@@ -66,6 +66,8 @@ class Bot(commands.Bot):
             "Cogs.On_Member_Join",
         ]
         self.setup_hook()
+
+        self.posted = False
         
     
     async def setup_hook(self):
@@ -211,21 +213,24 @@ class Bot(commands.Bot):
             await asyncio.sleep(60)
 
     async def check_if_live_task(self):
-        posted = False
-
         await self.wait_until_ready()
-        channel = self.get_channel(1224417564684456146) # TWITCH ANNOUCEMENTS CHANNEL
-
-        
+        # channel = self.get_channel(1224417564684456146) # TWITCH ANNOUCEMENTS CHANNEL
+        channel = self.get_channel(1186805143296020520) # Bot Testing Channel
         while not self.is_closed():
             logging.info('check_if_live_task running')
             try:
                 if self.check_if_live('acosmic'):
-                    if not posted:
-                        await channel.send(f"@everyone Ashbo is carrying acosmic's stream! Go check it out! https://www.twitch.tv/acosmic")
-                        posted = True
+                    if not self.posted:
+                        await channel.send(f"Ashbo is carrying acosmic's stream! Go check it out! https://www.twitch.tv/acosmic")
+                        self.posted = True
+                        logging.info(f"POSTED TWITCH ANNOUNCEMENT - posted bool: {self.posted}")
+                    else:
+                        logging.info(f"TWITCH ANNOUNCEMENT TASK - LIVE BUT ALREADY POSTED | THIS SHOULD BE TRUE - posted bool: {self.posted}")
+                        
                 else:
-                    posted = False
+                    logging.info(f"TWITCH ANNOUNCEMENT TASK | THIS SHOULD BE FALSE - posted bool: {self.posted}")
+                    self.posted = False
+                    
             except Exception as e:
                 logging.error(f'check_if_live_task error: {e}')
             await asyncio.sleep(60)
@@ -237,7 +242,6 @@ class Bot(commands.Bot):
         else:
             return False
                 
-
     def giphy_search(self, search_term):
         api_url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_KEY}&q={search_term}&limit=20&offset=0&rating=pg-13&lang=en"
         with request.urlopen(api_url) as response:
