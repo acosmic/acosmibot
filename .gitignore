@@ -3,4 +3,5 @@ logs.txt
 logs-*.txt
 logs*
 .gitignore
-trash.py
+trash*.py
+trash*

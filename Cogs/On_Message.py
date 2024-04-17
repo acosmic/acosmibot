@@ -33,13 +33,15 @@ class On_Message(commands.Cog):
             current_user = dao.get_user(message.author.id)
             logging.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
             if current_user is not None:
+                base_exp = 10
+                bonus_exp = current_user.streak * 0.05
 
-                exp_gain = 2 + (current_user.streak * 0.05)
+                exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
                 current_user.exp += exp_gain
                 current_user.exp_gained += exp_gain
                 current_user.messages_sent += 1
                 current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                logging.info(f'CURRENT TIME = {current_user.last_active}')
+                logging.info(f'CURRENT TIME = {current_user.last_active} - {current_user.discord_username} - EXP GAINED = {exp_gain}')
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
