@@ -1,4 +1,5 @@
 #! /usr/bin/python3.10
+import profile
 import random
 from re import T
 from urllib import parse, request
@@ -10,6 +11,9 @@ from datetime import datetime, timedelta
 import logging
 from dotenv import load_dotenv
 import os
+
+import pytz
+from Twitch import Twitch
 
 import requests
 from Entities.LotteryEvent import LotteryEvent
@@ -218,10 +222,47 @@ class Bot(commands.Bot):
         channel = self.get_channel(1186805143296020520) # Bot Testing Channel
         while not self.is_closed():
             logging.info('check_if_live_task running')
+            tw = Twitch()
             try:
-                if self.check_if_live('acosmic'):
+                user_name = 'acosmic'
+                if tw.check_if_live(user_name):
                     if not self.posted:
-                        await channel.send(f"Ashbo is carrying acosmic's stream! Go check it out! https://www.twitch.tv/acosmic")
+                        data = tw.get_stream_info(user_name)
+                        profile_picture = tw.get_profile_picture(user_name) # profile picture
+                        user_name = data['data'][0]['user_name'] # user name
+                        game_name = data['data'][0]['game_name'] # game name
+                        stream_title = data['data'][0]['title'] # stream title
+                        viewer_count = data['data'][0]['viewer_count'] # viewer count
+                        stream_start_time = data['data'][0]['started_at'] # stream start time
+                        thumbnail_url = data['data'][0]['thumbnail_url'].format(width=1920, height=1080) # stream thumbnail url
+                        
+                        stream_link = f"<https://www.twitch.tv/{user_name}>"
+                        markdown_link = f"[{stream_title}]({stream_link})"
+
+                        # TIMEZONE SHIT
+                        # Convert the string to a datetime object (assuming it's in UTC)
+                        dt = datetime.strptime(stream_start_time, "%Y-%m-%dT%H:%M:%SZ")
+                        # Convert the datetime object to UTC
+                        dt_utc = dt.replace(tzinfo=pytz.utc)
+                        # Define Central Daylight Time (CDT) timezone
+                        cdt_timezone = pytz.timezone('America/Chicago')
+                        # Convert the UTC datetime object to CDT
+                        dt_cdt = dt_utc.astimezone(cdt_timezone)
+                        # Convert the CDT datetime object to a Unix timestamp
+                        unix_timestamp = int(dt_cdt.timestamp())
+                        # Discord timestamp string (full date/time format)
+                        discord_timestamp = f"<t:{unix_timestamp}:F>"
+
+                        embed = discord.Embed(title=f"🔴 {user_name} is live on Twitch!", description=f"## {markdown_link}", color=0x6441A4)
+                        embed.set_image(url=thumbnail_url)
+                        embed.set_thumbnail(url=profile_picture)
+                        
+                        embed.add_field(name="Category", value=game_name, inline=False)
+                        embed.add_field(name="Viewers", value=viewer_count, inline=False)
+                        embed.add_field(name="Started", value=discord_timestamp, inline=False)
+                        # embed.set_footer(text=discord_timestamp)
+                        await channel.send(f"@test is live on Twitch! {stream_link}")
+                        await channel.send(embed=embed)
                         self.posted = True
                         logging.info(f"POSTED TWITCH ANNOUNCEMENT - posted bool: {self.posted}")
                     else:
@@ -235,12 +276,6 @@ class Bot(commands.Bot):
                 logging.error(f'check_if_live_task error: {e}')
             await asyncio.sleep(60)
 
-    def check_if_live(self, channel_name):
-        contents = requests.get('https://www.twitch.tv/' +channel_name).content.decode('utf-8')
-        if 'isLiveBroadcast' in contents: 
-            return True
-        else:
-            return False
                 
     def giphy_search(self, search_term):
         api_url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_KEY}&q={search_term}&limit=20&offset=0&rating=pg-13&lang=en"
