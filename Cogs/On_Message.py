@@ -33,7 +33,16 @@ class On_Message(commands.Cog):
             current_user = dao.get_user(message.author.id)
             logging.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
             if current_user is not None:
-                base_exp = 10
+                # SPAM PROTECTION
+                last_active = current_user.last_active
+                now = datetime.now()
+                if now - last_active > timedelta(seconds=2):
+                    base_exp = 10
+                else:
+                    base_exp = 0
+                    logging.info(f'{str(current_user.discord_username)} - MESSAGE SENT TOO SOON - NO EXP GAINED')
+
+                # CALCULATE EXP GAINED
                 bonus_exp = current_user.streak * 0.05
 
                 exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
