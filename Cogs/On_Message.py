@@ -50,7 +50,7 @@ class On_Message(commands.Cog):
                 current_user.exp_gained += exp_gain
                 current_user.messages_sent += 1
                 current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                logger.info(f'CURRENT TIME = {current_user.last_active} - {current_user.discord_username} - EXP GAINED = {exp_gain}')
+                logger.info(f'{current_user.discord_username} - EXP GAINED = {exp_gain}')
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
