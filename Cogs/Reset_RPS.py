@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.GamesDao import GamesDao
-import logging
+from logger import AppLogger
+
+logging = AppLogger(__name__).get_logger()
 
 class Reset_RPS(commands.Cog):
     def __init__(self, bot: commands.Bot):

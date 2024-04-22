@@ -2,13 +2,12 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao 
-import logging
 
 ## used this to update ids to discord ids rather than auto incremented integers upon joing the server
 ## REMOVED FROM COMMANDS LIST
 
 
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Update_ids(commands.Cog):
     def __init__(self, bot: commands.Bot):

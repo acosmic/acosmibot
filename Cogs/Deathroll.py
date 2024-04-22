@@ -5,10 +5,13 @@ from Dao.UserDao import UserDao
 from Dao.GamesDao import GamesDao
 from Dao.DeathrollDao import DeathrollDao
 from Entities import DeathrollEvent
+from logger import AppLogger
 
 from datetime import datetime
 
 from Views.Deathroll_View import Deathroll_View
+
+logger = AppLogger(__name__).get_logger()
 
 class Deathroll(commands.Cog):
     def __init__(self, bot: commands.Bot):

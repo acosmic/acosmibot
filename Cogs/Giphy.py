@@ -1,12 +1,14 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import logging
+from logger import AppLogger
 import json
 import random
 from dotenv import load_dotenv
 from urllib import parse, request
 import os
+
+logger = AppLogger(__name__).get_logger()
 
 load_dotenv()
 GIPHY_KEY = os.getenv('GIPHY_KEY')
@@ -18,7 +20,7 @@ class Giphy(commands.Cog):
 
     @app_commands.command(name="giphy", description="Returns a random Gif from Giphy based on the search term provided. Example: /giphy cat")
     async def giphy(self, interaction: discord.Interaction, search_term: str):
-        logging.info(f"{interaction.user.name} used /gify command with search_term: {search_term}")
+        logger.info(f"{interaction.user.name} used /gify command with search_term: {search_term}")
         formatted_search_term = search_term.replace(" ", "-")
         await interaction.response.send_message(giphy_search(formatted_search_term))
 

@@ -1,11 +1,10 @@
-from calendar import c
 import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.CoinflipDao import CoinflipDao
 from Entities.User import User
-import logging
+from logger import AppLogger
 
 
 role_level_1 = "Level One"
@@ -19,7 +18,7 @@ role_level_8 = "Level Eight"
 role_level_9 = "Level Nine"
 role_level_10 = "Level Ten"
 
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging = AppLogger(__name__).get_logger()
 
 
 class Rank(commands.Cog):

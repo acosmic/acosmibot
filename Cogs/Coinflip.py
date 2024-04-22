@@ -6,9 +6,11 @@ from Dao.CoinflipDao import CoinflipDao
 from Dao.VaultDao import VaultDao
 from Entities.CoinflipEvent import CoinflipEvent
 import random
-import logging
+from logger import AppLogger
 import typing
 from datetime import datetime
+
+logger = AppLogger(__name__).get_logger()
 
 class Coinflip(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -66,7 +68,7 @@ class Coinflip(commands.Cog):
         dao.update_user(user)
         cfdao.add_new_event(new_event)
         await interaction.response.send_message(embed = embed)
-        logging.info(f"{interaction.user.name} used /coinflip command")
+        logger.info(f"{interaction.user.name} used /coinflip command")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Coinflip(bot))

@@ -1,5 +1,4 @@
 import mysql.connector
-from Entities.User import User
 
 class Database:
     def __init__(self, db_host, db_user, db_password, db_name):

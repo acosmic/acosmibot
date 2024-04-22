@@ -2,14 +2,14 @@ from discord.ext import commands
 from Dao.UserDao import UserDao
 from Dao.LotteryParticipantDao import LotteryParticipantDao
 from Dao.LotteryEventDao import LotteryEventDao
-import logging
+from logger import AppLogger
 import discord
 
 from Dao.VaultDao import VaultDao
 from Entities.LotteryParticipant import LotteryParticipant
 
 
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging = AppLogger(__name__).get_logger()
 
 class On_Reaction(commands.Cog):
     def __init__(self, bot: commands.Bot):

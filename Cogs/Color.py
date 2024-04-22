@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
-import logging
+from logger import AppLogger
+
+logger = AppLogger(__name__).get_logger()
 
 class Color(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -31,6 +33,7 @@ class Color(commands.Cog):
                             await interaction.user.add_roles(role)
                             await interaction.response.send_message(f"## {interaction.user.mention} You have successfully changed your color to {role_name}. -{cost:,.0f} credits.")
                             user.currency -= cost
+                            logger.info(f"Color role existed already. {interaction.user.name} changed their color to {role_name}.")
 
                     elif "Ashbo" in [interaction.user.roles[i].name for i in range(len(interaction.user.roles))]:
                         role = discord.utils.get(roles, name="Ashbo")
@@ -45,14 +48,17 @@ class Color(commands.Cog):
                     else:
                         color = discord.Color.from_rgb(r, g, b)
                         new_role = await interaction.guild.create_role(name=role_name, color=color)
-                        await new_role.edit(position=len(roles) - 3)
+                        await new_role.edit(position=len(roles) - 4)
                         await interaction.user.add_roles(new_role)
                         await interaction.response.send_message(f"## {interaction.user.mention} You created a new role and successfully changed your color to {role_name}. -{cost:,.0f} credits")
                         user.currency -= cost
+                        logger.info(f"{interaction.user.name} created a new role and changed their color to {role_name}.")
                 else:
                     await interaction.response.send_message(f"## You do not have enough credits to change your color. You need {cost:,.0f} credits.", ephemeral=True)
+                    logger.info(f"{interaction.user.name} tried to change their color but did not have enough credits.")
             else:
                 await interaction.response.send_message(f"## The server has reached the maximum number of roles. Please contact a server administrator to remove some roles.", ephemeral=True)
+                logger.info(f"{interaction.user.name} tried to change their color but the server has reached the maximum number of roles.")
             dao.update_user(user)
 async def setup(bot: commands.Bot):
     await bot.add_cog(Color(bot))

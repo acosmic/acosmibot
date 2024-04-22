@@ -1,14 +1,14 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import logging
+from logger import AppLogger
 import requests
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timedelta
 
 
-
+logging = AppLogger(__name__).get_logger()
 
 
 class Weather(commands.Cog):

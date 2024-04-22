@@ -2,14 +2,14 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
-import logging
+from logger import AppLogger
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+logger  = AppLogger(__name__).get_logger()
 
 class Give(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -36,10 +36,11 @@ class Give(commands.Cog):
 
         if amount > giving_user.currency:
             await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount:,.0f} Credits to give. <:FeelsBigSad:1199734765230768139>")
+            logger.info(f"{interaction.user.name} tried to give {amount:,.0f} Credits to {target.name} but didn't have enough Credits.")
 
         elif interaction.user.id == target.id:
             await interaction.response.send_message(f"{interaction.user.name}, you can't give yourself Credits. <:FeelsNaughty:1199732493792858214>")
-
+            logger.info(f"{interaction.user.name} tried to give themselves Credits.")
         else:
             giving_user.currency -= amount
             target_user.currency += amount
@@ -47,7 +48,7 @@ class Give(commands.Cog):
             dao2 = UserDao()
             dao2.update_user(target_user)
             await interaction.response.send_message(f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>')
-                
+            logger.info(f"{interaction.user.name} gave {target.name} {amount:,.0f} Credits.")
 
 
 

@@ -3,12 +3,12 @@ from discord import Embed
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
-import logging
+from logger import AppLogger
 import requests
 import json
 
 
-
+logger = AppLogger(__name__).get_logger()
 class Dictionary(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__()
@@ -38,7 +38,7 @@ class Dictionary(commands.Cog):
             await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message(f"## Definition of {word}: Not found.")
-        logging.info(f"{interaction.user.name} used /define command")
+        logger.info(f"{interaction.user.name} used /define command")
 
 
 

@@ -3,10 +3,10 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.CoinflipDao import CoinflipDao 
-import logging
+from logger import AppLogger
 import typing
 
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = AppLogger(__name__).get_logger()
 
 class Leaderboard(commands.Cog):
     def __init__(self, bot:commands.Bot):
@@ -32,7 +32,7 @@ class Leaderboard(commands.Cog):
                 embed.add_field(name=f"{i}. {username}", value=f"{formatted_value} {stat.capitalize()}\n", inline=False)
 
             await interaction.response.send_message(embed=embed)
-            logging.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
+            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 
         if stat == 'Largest Single Win - CF':
             dao = UserDao()
@@ -47,7 +47,7 @@ class Leaderboard(commands.Cog):
                 embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST", value=f"{formatted_amount_won} Credits", inline=False)
 
             await interaction.response.send_message(embed=embed)
-            logging.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
+            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 
         if stat == 'Largest Single Loss - CF':
             dao = UserDao()
@@ -62,7 +62,7 @@ class Leaderboard(commands.Cog):
                 embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST", value=f"{formatted_amount_lost} Credits", inline=False)
 
             await interaction.response.send_message(embed=embed)
-            logging.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
+            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Leaderboard(bot))

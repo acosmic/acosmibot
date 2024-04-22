@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import logging
+from logger import AppLogger
+
+logger = AppLogger(__name__).get_logger()
 
 
 class Help(commands.Cog):
@@ -17,7 +19,7 @@ class Help(commands.Cog):
         sorted_commands = sorted(commands, key=lambda x: x.name)
         for command in sorted_commands:
             if not "admin" in command.name:
-                logging.info(f"Command: {command.name} - {command.description}")
+                # logger.info(f"Command: {command.name} - {command.description}")
                 embed.add_field(name=f"/{command.name}", value=command.description, inline=False)
                             
 
@@ -40,6 +42,7 @@ class Help(commands.Cog):
 
         # embed.set_footer(text="Developed by Acosmic")
         await interaction.response.send_message(embed=embed)
+        logger.info(f"{interaction.user.name} used /help command")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Help(bot))
