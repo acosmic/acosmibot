@@ -2,10 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
-import random
-import logging
+from logger import AppLogger
 
-
+logging = AppLogger(__name__).get_logger()
 
 class Polymorph(commands.Cog):
     def __init__(self, bot: commands.Bot):

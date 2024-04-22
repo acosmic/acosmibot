@@ -3,9 +3,10 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.GamesDao import GamesDao
-
-from datetime import datetime
 from Views.View_Start_RPS import View_Start_RPS
+from logger import AppLogger
+
+logger = AppLogger(__name__).get_logger()
 
 class Rock_Paper_Scissors(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -35,6 +36,7 @@ class Rock_Paper_Scissors(commands.Cog):
                 view.players = players
                 view.bet = bet
                 await view.send(interaction)
+                logger.info(f"{interaction.user.name} has started a game of Rock, Paper, Scissors.")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Rock_Paper_Scissors(bot))

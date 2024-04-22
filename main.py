@@ -8,7 +8,7 @@ import asyncio
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
-import logging
+from logger import AppLogger
 from dotenv import load_dotenv
 import os
 
@@ -38,8 +38,8 @@ TOKEN = os.getenv('TOKEN')
 TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID')
 TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
 
+logger = AppLogger(__name__).get_logger()
 
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Bot(commands.Bot):
     def __init__(self) -> None:
@@ -85,30 +85,30 @@ class Bot(commands.Bot):
         
 
     async def on_ready(self):
-        logging.info(f'Logged on as {bot.user}!')
+        logger.info(f'Logged on as {bot.user}!')
         synced = await self.tree.sync()
-        logging.info(f"slash cmd's synced: {str(len(synced))}")
+        logger.info(f"slash cmd's synced: {str(len(synced))}")
         await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
 
     async def gm_na_task(self): # good morning gif
         await self.wait_until_ready()
         channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
         search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()   
-        logging.info(f'goodmorning gif search_term: {search_term}')
+        logger.info(f'goodmorning gif search_term: {search_term}')
         while not self.is_closed():
             
-            logging.info('gm_na_task running')
+            logger.info('gm_na_task running')
             if datetime.now().hour == 7 and datetime.now().minute == 50:
                 search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-                logging.info('gm_na_task running at 7:50am')
+                logger.info('gm_na_task running at 7:50am')
                 
                 
                 try:
                     gif = self.giphy_search(search_term)
-                    logging.info(f'search_term:')
+                    logger.info(f'search_term:')
                     await channel.send(gif)
                 except Exception as e:
-                    logging.error(f'gm_na_task error: {e}')
+                    logger.error(f'gm_na_task error: {e}')
             await asyncio.sleep(60)
 
     async def gm_eu_task(self): # good morning gif
@@ -116,14 +116,14 @@ class Bot(commands.Bot):
         channel = self.get_channel(1155577095787917384)
         # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
         search_term = 'guten-morgen'
-        logging.info(f'goodmorning gif search_term: {search_term}')
+        logger.info(f'goodmorning gif search_term: {search_term}')
         while not self.is_closed():
-            logging.info('gm_eu_task running')
+            logger.info('gm_eu_task running')
             if datetime.now().hour == 2 and datetime.now().minute == 50:
-                logging.info('gm_eu_task running at 2:50am which is 7:50am in EU')
+                logger.info('gm_eu_task running at 2:50am which is 7:50am in EU')
                 try:
                     gif = self.giphy_search(search_term)
-                    logging.info(f'search_term: {search_term} gif: {gif}')
+                    logger.info(f'search_term: {search_term} gif: {gif}')
                     await channel.send(gif)
                     dao = UserDao()
                     dao.reset_daily()
@@ -135,10 +135,10 @@ class Bot(commands.Bot):
                         if last_daily_date < today - timedelta(days=1):
                             if current_user.streak > 0:
                                 dao.reset_streak(current_user.id)
-                                logging.info(f'{current_user.discord_username} streak reset')
-                    logging.info("DAILY RESET FOR ALL USERS")
+                                logger.info(f'{current_user.discord_username} streak reset')
+                    logger.info("DAILY RESET FOR ALL USERS")
                 except Exception as e:
-                    logging.error(f'gm_eu_task error: {e}')
+                    logger.error(f'gm_eu_task error: {e}')
             await asyncio.sleep(60)
 
     async def bg_task_lottery(self):
@@ -146,9 +146,9 @@ class Bot(commands.Bot):
         channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
         # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
         while not self.is_closed():
-            logging.info('bg_task_lottery running')
+            logger.info('bg_task_lottery running')
             if datetime.now().weekday() == 0 and datetime.now().hour == 8 and datetime.now().minute == 0:
-                logging.info('bg_task_lottery running at 8:00am on Monday')
+                logger.info('bg_task_lottery running at 8:00am on Monday')
                 try:
                 
                     le_dao = LotteryEventDao()
@@ -168,7 +168,7 @@ class Bot(commands.Bot):
                     
                     le_dao.add_new_event(new_le)
                 except Exception as e:
-                    logging.error(f'bg_task_lottery error: {e}')
+                    logger.error(f'bg_task_lottery error: {e}')
                 
 
             
@@ -182,9 +182,9 @@ class Bot(commands.Bot):
         # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
         
         while not self.is_closed():
-            logging.info('bg_task_lottery_end running')
+            logger.info('bg_task_lottery_end running')
             if datetime.now().weekday() == 0 and datetime.now().hour == 12 and datetime.now().minute == 0:
-                logging.info('bg_task_lottery_end running at 12:00pm on Monday')
+                logger.info('bg_task_lottery_end running at 12:00pm on Monday')
                 try:
                     vdao = VaultDao()
                     lottery_credits = vdao.get_currency()
@@ -197,7 +197,7 @@ class Bot(commands.Bot):
                     user = userDao.get_user(winner.participant_id)
                     discord_user = channel.guild.get_member(winner.participant_id)
                     lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
-                    logging.info(f'winner: {user.discord_username}')
+                    logger.info(f'winner: {user.discord_username}')
                     await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
                     current_lottery.winner_id = winner.participant_id
                     current_lottery.end_time = datetime.now()
@@ -211,9 +211,9 @@ class Bot(commands.Bot):
                     await message.delete()
                     for member in channel.guild.members:
                         await member.remove_roles(lottery_role)
-                    logging.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
+                    logger.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
                 except Exception as e:
-                    logging.error(f'bg_task_lottery_end error: {e}')
+                    logger.error(f'bg_task_lottery_end error: {e}')
             await asyncio.sleep(60)
 
     async def check_if_live_task(self):
@@ -221,7 +221,7 @@ class Bot(commands.Bot):
         # channel = self.get_channel(1224417564684456146) # TWITCH ANNOUCEMENTS CHANNEL
         channel = self.get_channel(1186805143296020520) # Bot Testing Channel
         while not self.is_closed():
-            logging.info('check_if_live_task running')
+            logger.info('check_if_live_task running')
             tw = Twitch()
             try:
                 user_name = 'acosmic'
@@ -264,16 +264,16 @@ class Bot(commands.Bot):
                         await channel.send(f"@test is live on Twitch! {stream_link}")
                         await channel.send(embed=embed)
                         self.posted = True
-                        logging.info(f"POSTED TWITCH ANNOUNCEMENT - posted bool: {self.posted}")
+                        logger.info(f"POSTED TWITCH ANNOUNCEMENT - posted bool: {self.posted}")
                     else:
-                        logging.info(f"TWITCH ANNOUNCEMENT TASK - LIVE BUT ALREADY POSTED | THIS SHOULD BE TRUE - posted bool: {self.posted}")
+                        logger.info(f"TWITCH ANNOUNCEMENT TASK - LIVE BUT ALREADY POSTED | THIS SHOULD BE TRUE - posted bool: {self.posted}")
                         
                 else:
-                    logging.info(f"TWITCH ANNOUNCEMENT TASK | THIS SHOULD BE FALSE - posted bool: {self.posted}")
+                    logger.info(f"TWITCH ANNOUNCEMENT TASK | THIS SHOULD BE FALSE - posted bool: {self.posted}")
                     self.posted = False
                     
             except Exception as e:
-                logging.error(f'check_if_live_task error: {e}')
+                logger.error(f'check_if_live_task error: {e}')
             await asyncio.sleep(60)
 
                 

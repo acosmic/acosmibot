@@ -3,15 +3,14 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
-import logging
+from logger import AppLogger
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
+logger = AppLogger(__name__).get_logger()
 class Burn(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
@@ -44,7 +43,7 @@ class Burn(commands.Cog):
                 dao.update_user(target_user)
                 await interaction.response.send_message(f"{interaction.user.name} has burned {target.mention}'s {column} to 0! <a:pepesith:1165101386921418792>")
             except Exception as e:
-                logging.info(f'/give command - target = {target.name} - {e}.')
+                logger.info(f'/give command - target = {target.name} - {e}.')
         else:
             await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>', ephemeral=True)
    

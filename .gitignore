@@ -2,6 +2,7 @@
 logs.txt
 logs-*.txt
 logs*
+logs.txt*
 .gitignore
 trash*.py
 trash*

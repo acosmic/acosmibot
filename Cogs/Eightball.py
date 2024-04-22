@@ -3,7 +3,9 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 import random
-import logging
+from logger import AppLogger
+
+logger = AppLogger(__name__).get_logger()
 
 class Eightball(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -51,7 +53,7 @@ class Eightball(commands.Cog):
             user.currency -= cost
             dao.update_user(user)
             await interaction.response.send_message(embed = embed)
-            logging.info(f"{interaction.user.name} used /8ball command")
+            logger.info(f"{interaction.user.name} used /8ball command")
         else:
             await interaction.response.send_message(f"You're too broke to use the magic 8ball. <:OhGodMan:1200262332392157184>")
 

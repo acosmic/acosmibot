@@ -1,20 +1,20 @@
 from datetime import datetime, timedelta
-from math import exp
+
 import math
 import discord
 from discord.ext import commands
 from Dao.UserDao import UserDao
 from Entities.User import User
-import logging
 from Leveling import Leveling
+from logger import AppLogger
 
 role_level_1 = "Egg"
 role_level_2 = "Biddy"
 role_level_3 = "Chicken"
 role_level_4 = "Cock"
 
+logger = AppLogger(__name__).get_logger()
 
-logging.basicConfig(filename='/home/acosmic/Dev/acosmibot/logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class On_Message(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -27,11 +27,11 @@ class On_Message(commands.Cog):
         daily_reward_channel = self.bot.get_channel(1224561092919951452)
         
         if not message.author.bot:
-            logging.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
+            logger.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
             dao = UserDao()
 
             current_user = dao.get_user(message.author.id)
-            logging.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
+            logger.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
             if current_user is not None:
                 # SPAM PROTECTION
                 last_active = current_user.last_active
@@ -40,7 +40,7 @@ class On_Message(commands.Cog):
                     base_exp = 10
                 else:
                     base_exp = 0
-                    logging.info(f'{str(current_user.discord_username)} - MESSAGE SENT TOO SOON - NO EXP GAINED')
+                    logger.info(f'{str(current_user.discord_username)} - MESSAGE SENT TOO SOON - NO EXP GAINED')
 
                 # CALCULATE EXP GAINED
                 bonus_exp = current_user.streak * 0.05
@@ -50,11 +50,11 @@ class On_Message(commands.Cog):
                 current_user.exp_gained += exp_gain
                 current_user.messages_sent += 1
                 current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                logging.info(f'CURRENT TIME = {current_user.last_active} - {current_user.discord_username} - EXP GAINED = {exp_gain}')
+                logger.info(f'CURRENT TIME = {current_user.last_active} - {current_user.discord_username} - EXP GAINED = {exp_gain}')
 
                 # CHECK IF - DAILY REWARD
                 if current_user.daily == 0:
-                    logging.info(f"{current_user.discord_username} - COMPLETED DAILY REWARD")
+                    logger.info(f"{current_user.discord_username} - COMPLETED DAILY REWARD")
 
                     # Check if last_daily was yesterday
                     
@@ -65,11 +65,11 @@ class On_Message(commands.Cog):
                         if current_user.last_daily.date() == today - timedelta(days=1):
                             # Increment streak
                             current_user.streak += 1
-                            logging.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
+                            logger.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
                         elif current_user.last_daily.date() < today - timedelta(days=1):
                             # Reset streak
                             current_user.streak = 1
-                            logging.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
+                            logger.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
 
 
                     # CALCULATE DAILY REWARD
@@ -95,7 +95,7 @@ class On_Message(commands.Cog):
                         await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
 
                 else:
-                    logging.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
+                    logger.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
 
 
                 
@@ -141,14 +141,14 @@ class On_Message(commands.Cog):
                 
                 try:
                     dao.update_user(current_user)
-                    logging.info(f'{str(message.author)} updated in database in on_message()')
+                    logger.info(f'{str(message.author)} updated in database in on_message()')
                 except Exception as e: 
-                    logging.error(f'Error updating {message.author} to the database: {e}')
+                    logger.error(f'Error updating {message.author} to the database: {e}')
                 try:
                     await message.author.add_roles(*roles)
-                    logging.info(f'{str(message.author)} roles updated in on_message()')
+                    logger.info(f'{str(message.author)} roles updated in on_message()')
                 except Exception as e:
-                    logging.error(f'Error updating {message.author} roles: {e}')
+                    logger.error(f'Error updating {message.author} roles: {e}')
 
             else:
                 return
