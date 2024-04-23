@@ -1,5 +1,4 @@
 #! /usr/bin/python3.10
-import profile
 import random
 from re import T
 from urllib import parse, request
