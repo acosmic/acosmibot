@@ -46,7 +46,7 @@ class On_Reaction(commands.Cog):
             except Exception as e:
                 logging.error(f'on_raw_reaction_add() - Error updating user to the database: {e}')
             
-
+            # LOTTTERY EVENT
             le_dao = LotteryEventDao()
             current_lottery = le_dao.get_current_event()
             if current_lottery is not None:
@@ -71,7 +71,43 @@ class On_Reaction(commands.Cog):
                     else:
                         logging.info(f'{user.name} has already entered the lottery!')
             else:
-                logging.info('There is no current lottery event')            
+                logging.info('There is no current lottery event')       
+
+            role_names = ["Egg", "Biddy", "Chicken", "Cock"]
+            inmate_role = discord.utils.get(message.guild.roles, name="Inmate")
+            roles = {name: discord.utils.get(message.guild.roles, name=name) for name in role_names}
+            if None in roles.values():
+                missing = [name for name, role in roles.items() if role is None]
+                logging.error(f"Missing roles: {', '.join(missing)}")
+                return
+
+            # # Check reactions for the 🚔 emoji
+            # for emoji in message.reactions:
+            #     if str(emoji) == '🚔':
+            #         police_car_count = emoji.count
+            #         logging.info(f'police_car_count: {police_car_count} - message_id: {message.id}')
+
+
+            #         if police_car_count == 1:
+            #             await channel.send(f"5 🚔's to send the user to Jail! 🚨 {message.jump_url}")
+
+            #         if police_car_count >= 5:
+            #             # Identify all removable roles that the user has
+            #             removable_roles = [role for role in message.author.roles if role in roles.values()]
+                        
+            #             # Remove all identified roles at once
+            #             if removable_roles:
+            #                 await message.author.remove_roles(*removable_roles)
+
+            #             # Add the 'Inmate' role
+            #             await message.author.add_roles(inmate_role)
+                        
+
+
+                    
+
+                        
+
 
 
 async def setup(bot: commands.Bot):
