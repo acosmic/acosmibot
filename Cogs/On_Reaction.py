@@ -83,28 +83,28 @@ class On_Reaction(commands.Cog):
                 return
 
             # JAIL FEATURE - Check reactions for the 🚔 emoji
-            for emoji in message.reactions:
-                if str(emoji) == '💩':
-                    police_car_count = emoji.count
-                    logging.info(f'police_car_count: {police_car_count} - message_id: {message.id}')
+            # for emoji in message.reactions:
+            #     if str(emoji) == '💩':
+            #         police_car_count = emoji.count
+            #         logging.info(f'police_car_count: {police_car_count} - message_id: {message.id}')
 
 
-                    # if police_car_count == 1:
-                    #     # await channel.send(f"5 🚔's to send the user to Jail! 🚨 {message.jump_url}")
+            #         # if police_car_count == 1:
+            #         #     # await channel.send(f"5 🚔's to send the user to Jail! 🚨 {message.jump_url}")
                         
 
-                    if police_car_count >= 1:
-                        # Identify all removable roles that the user has
-                        removable_roles = [role for role in message.author.roles if role in roles.values()]
+            #         if police_car_count >= 1:
+            #             # Identify all removable roles that the user has
+            #             removable_roles = [role for role in message.author.roles if role in roles.values()]
                         
-                        # Remove all identified roles at once
-                        if removable_roles:
-                            await message.author.remove_roles(*removable_roles)
+            #             # Remove all identified roles at once
+            #             if removable_roles:
+            #                 await message.author.remove_roles(*removable_roles)
 
-                        # Add the 'Inmate' role
-                        await message.author.add_roles(inmate_role)
-                        await channel.send(f"🚨 {message.author.name} has been sent to Jail! Bail set at 100,000 Credits! 🚨")
-                        logger.info(f"{message.author.name} has been sent to Jail!")
+            #             # Add the 'Inmate' role
+            #             await message.author.add_roles(inmate_role)
+            #             await channel.send(f"🚨 {message.author.name} has been sent to Jail! Bail set at 100,000 Credits! 🚨")
+            #             logger.info(f"{message.author.name} has been sent to Jail!")
                         
 
 
