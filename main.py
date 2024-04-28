@@ -1,17 +1,13 @@
 #! /usr/bin/python3.10
-from math import e
 import random
-from re import T
-from tabnanny import check
 from urllib import parse, request
 import json
 import asyncio
-from aiohttp import streamer
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
 
-from idna import check_bidi
+
 from logger import AppLogger
 from dotenv import load_dotenv
 import os
@@ -51,6 +47,7 @@ class Bot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
+            "Cogs.Bailout",
             "Cogs.Jail_Message",
             "Cogs.Admin_Give",
             "Cogs.Color",
