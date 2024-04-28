@@ -1,12 +1,17 @@
 #! /usr/bin/python3.10
+from math import e
 import random
 from re import T
+from tabnanny import check
 from urllib import parse, request
 import json
 import asyncio
+from aiohttp import streamer
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
+
+from idna import check_bidi
 from logger import AppLogger
 from dotenv import load_dotenv
 import os
@@ -40,10 +45,13 @@ TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
 logger = AppLogger(__name__).get_logger()
 
 
+
+
 class Bot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
+            "Cogs.Jail_Message",
             "Cogs.Admin_Give",
             "Cogs.Color",
             "Cogs.Giphy",
@@ -82,7 +90,6 @@ class Bot(commands.Bot):
         for ext in self.cogslist:
             await self.load_extension(ext)
         
-
     async def on_ready(self):
         logger.info(f'Logged on as {bot.user}!')
         synced = await self.tree.sync()
@@ -100,7 +107,6 @@ class Bot(commands.Bot):
             if datetime.now().hour == 7 and datetime.now().minute == 50:
                 search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
                 logger.info('gm_na_task running at 7:50am')
-                
                 
                 try:
                     gif = self.giphy_search(search_term)
@@ -168,8 +174,6 @@ class Bot(commands.Bot):
                     le_dao.add_new_event(new_le)
                 except Exception as e:
                     logger.error(f'bg_task_lottery error: {e}')
-                
-
             
             elif datetime.now().weekday() == 0 and datetime.now().hour == 11 and datetime.now().minute == 45:
                 await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
@@ -273,9 +277,53 @@ class Bot(commands.Bot):
                     
             except Exception as e:
                 logger.error(f'check_if_live_task error: {e}')
-            await asyncio.sleep(60)
+            
+            try:
+                await self.check_streaming_members() 
 
-                
+                # streamers = tw.streamerDict
+                # for discord_id in streamers:
+                #     twitch_username = streamers[discord_id]
+                #     if tw.check_if_live(twitch_username):
+
+                        # if not self.posted:
+                        #     data = tw.get_stream_info(streamer)
+                        #     profile_picture = tw.get_profile_picture(streamer) # profile picture
+                        #     user_name = data['data'][0]['user_name'] # user name
+                        #     game_name = data['data'][0]['game_name'] # game name
+                        #     stream_title = data['data'][0]['title'] # stream title
+                        #     viewer_count = data['data'][0]['viewer_count'] # viewer count
+                        #     stream_start_time = data['data'][0]['started_at'] # stream start time
+                        #     thumbnail_url = data['data'][0]['thumbnail_url'].format(width=1920, height=1080) # stream thumbnail url
+                            
+                        #     stream_link = f"<https://www.twitch.tv/{user_name}>"
+                        #     markdown_link = f"[{stream_title}]({stream_link})"
+        
+            except Exception as e:
+                logger.error(f'check_if_live_task error: {e}')
+            await asyncio.sleep(60)
+            
+    async def check_streaming_members(self):
+        live_now_role_name = "Live Now"
+        streamer_role_name = "Streamer"
+        live_now_role = discord.utils.get(bot.guilds[0].roles, name=live_now_role_name)
+        streamer_role = discord.utils.get(bot.guilds[0].roles, name=streamer_role_name)
+        for guild in bot.guilds:
+            for member in guild.members:
+                if streamer_role in member.roles:
+                    streaming_activities = [activity for activity in member.activities if isinstance(activity, discord.Streaming)]
+                    
+                    if streaming_activities:
+                        if live_now_role not in member.roles:
+                            logger.info(f'{member.display_name} is streaming')
+                            await member.add_roles(live_now_role)
+                        else:
+                            logger.info(f'{member.display_name} is streaming and already has the role')
+                    else:
+                        if live_now_role in member.roles:
+                            logger.info(f'{member.display_name} is not streaming')
+                            await member.remove_roles(live_now_role)
+
     def giphy_search(self, search_term):
         api_url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_KEY}&q={search_term}&limit=20&offset=0&rating=pg-13&lang=en"
         with request.urlopen(api_url) as response:

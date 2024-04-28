@@ -8,6 +8,11 @@ class Twitch:
     def __init__(self):
         self.TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
         self.TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
+        self.streamerDict = {
+            266745647447670786: 'Bingo1',
+            110637665128325120: 'Acosmic',
+            912980670979129346: 'Soft',
+        }
 
     def get_oauth_token(self):
         url = 'https://id.twitch.tv/oauth2/token'
