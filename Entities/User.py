@@ -1,9 +1,11 @@
 class User:
-    def __init__(self, id, discord_username, nickname, level, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active, daily, last_daily) -> None:
+    def __init__(self, id, discord_username, nickname, level, season_level, season_exp, streak, exp, exp_gained, exp_lost, currency, messages_sent, reactions_sent, created, last_active, daily, last_daily) -> None:
         self.id = id
         self.discord_username = discord_username
         self.nickname = nickname
         self.level = level
+        self.season_level = season_level
+        self.season_exp = season_exp
         self.streak = streak
         self.exp = exp
         self.exp_gained = exp_gained
@@ -24,7 +26,6 @@ class User:
     def id(self, value):
         self._id = value
     
-
     @property
     def discord_username(self):
         return self._discord_username
@@ -45,6 +46,20 @@ class User:
     @level.setter
     def level(self, value):
         self._level = value
+
+    @property
+    def season_level(self):
+        return self._season_level
+    @season_level.setter
+    def season_level(self, value):
+        self._season_level = value
+
+    @property
+    def season_exp(self):
+        return self._season_exp
+    @season_exp.setter
+    def season_exp(self, value):
+        self._season_exp = value
 
     @property
     def streak(self):

@@ -42,6 +42,7 @@ class Bailout(commands.Cog):
                     else:
                         await interaction.response.send_message("You are not in jail.", ephemeral=True)
                         return
+            
             else:
                 
                 if inmate_role in target.roles:
@@ -57,6 +58,7 @@ class Bailout(commands.Cog):
                 else:
                     await interaction.response.send_message(f"{target.name} is not in jail.", ephemeral=True)
                     return
+        dao.update_user(current_user)
                 
 
 async def setup(bot: commands.Bot):

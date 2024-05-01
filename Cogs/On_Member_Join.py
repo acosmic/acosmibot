@@ -5,10 +5,10 @@ from Dao.UserDao import UserDao
 from Entities.User import User
 from logger import AppLogger
 
-role_level_1 = "Egg"
-role_level_2 = "Biddy"
-role_level_3 = "Chicken"
-role_level_4 = "Cock"
+role_level_1 = "Soy Milk"
+role_level_2 = "Whole Milk"
+role_level_3 = "Choccy Milk"
+role_level_4 = "Poggies Milk"
 role_level_5 = "Level Five"
 role_level_6 = "Level Six"
 role_level_7 = "Level Seven"
@@ -36,7 +36,9 @@ class On_Member_Join(commands.Cog):
         'id': member.id,
         'discord_username': member.name,
         'nickname': "",
-        'level': 1,
+        'level': 0,
+        'season_level': 0,
+        'season_exp': 0,
         'streak': 0,
         'exp': 0,
         'exp_gained': 0,
@@ -70,7 +72,7 @@ class On_Member_Join(commands.Cog):
                 role = discord.utils.get(member.guild.roles, name=role_level_2)
             elif level >= 10 and level < 20:
                 role = discord.utils.get(member.guild.roles, name=role_level_3)
-            elif level >= 20 and level < 30:
+            elif level >= 20:
                 role = discord.utils.get(member.guild.roles, name=role_level_4)
 
             await member.add_roles(role)

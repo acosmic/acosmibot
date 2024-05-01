@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from hmac import new
 import math
 import discord
 from discord.ext import commands
@@ -8,10 +9,10 @@ from Entities.User import User
 from Leveling import Leveling
 from logger import AppLogger
 
-role_level_1 = "Egg"
-role_level_2 = "Biddy"
-role_level_3 = "Chicken"
-role_level_4 = "Cock"
+role_level_1 = "Soy Milk"
+role_level_2 = "Whole Milk"
+role_level_3 = "Choccy Milk"
+role_level_4 = "Poggies Milk"
 
 logger = AppLogger(__name__).get_logger()
 
@@ -41,7 +42,7 @@ class On_Message(commands.Cog):
                     # SPAM PROTECTION
                     last_active = current_user.last_active
                     now = datetime.now()
-                    if now - last_active > timedelta(seconds=2):
+                    if now - last_active > timedelta(seconds=4):
                         base_exp = 10
                     else:
                         base_exp = 0
@@ -53,6 +54,7 @@ class On_Message(commands.Cog):
                     exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
                     current_user.exp += exp_gain
                     current_user.exp_gained += exp_gain
+                    current_user.season_exp += exp_gain
                     current_user.messages_sent += 1
                     current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     logger.info(f'{current_user.discord_username} - EXP GAINED = {exp_gain}')
@@ -107,6 +109,8 @@ class On_Message(commands.Cog):
                     # CHECK IF - LEVELING UP
                     lvl = Leveling()
                     new_level = lvl.calc_level(current_user.exp)
+                    new_season_level = lvl.calc_level(current_user.season_exp)   
+
                     if new_level > current_user.level:
                         
                         # CALCULATE LEVEL UP REWARD
@@ -124,23 +128,45 @@ class On_Message(commands.Cog):
                     
                     current_user.level = new_level
 
+                    # SEASON LEVEL UP
+                    if new_season_level > current_user.season_level:
+
+                        # CALCULATE SEASON LEVEL UP REWARD
+                        base_season_level_up_reward = 5000
+                        streak = current_user.streak if current_user.streak < 20 else 20
+                        base_bonus_multiplier = 0.05
+                        streak_bonus_percentage = streak * base_bonus_multiplier
+                        streak_bonus = math.floor(base_season_level_up_reward * streak_bonus_percentage)
+                        calculated_season_level_reward = base_season_level_up_reward + streak_bonus
+
+                        if streak > 0:
+                            await level_up_channel.send(f'## 🥛 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <a:Poggies:1230210827844587692>')
+                        else:
+                            await level_up_channel.send(f'## 🥛 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <a:Poggies:1230210827844587692>')
+ 
+                    current_user.season_level = new_season_level
+                    
                     # DETECT ROLE CHANGE
                     user_roles = message.author.roles
                     roles = []
-                    if current_user.level < 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_1) # 🥚 EGG 
+                    # if current_user.level < 5:
+                    if current_user.season_level < 5:
+                        role = discord.utils.get(message.guild.roles, name=role_level_1) # 🍼 Soy Milk 
                         if role not in user_roles:
                             roles.append(role)
-                    if current_user.level >= 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_2) # 🐣 BIDDY
+                    # if current_user.level >= 5:
+                    if current_user.season_level >= 5:
+                        role = discord.utils.get(message.guild.roles, name=role_level_2) # 🥛 Whole Milk
                         if role not in user_roles:
                             roles.append(role)
-                    if current_user.level >= 10:
-                        role = discord.utils.get(message.guild.roles, name=role_level_3) # 🐔 CHICKEN
+                    # if current_user.level >= 10:
+                    if current_user.season_level >= 10:
+                        role = discord.utils.get(message.guild.roles, name=role_level_3) #  Choccy Milk
                         if role not in user_roles:
                             roles.append(role)
-                    if current_user.level >= 20:
-                        role = discord.utils.get(message.guild.roles, name=role_level_4) # 🐓 COCK
+                    # if current_user.level >= 20:
+                    if current_user.season_level >= 15:
+                        role = discord.utils.get(message.guild.roles, name=role_level_4) #  Poggies Milk
                         if role not in user_roles:
                             roles.append(role)
                     
