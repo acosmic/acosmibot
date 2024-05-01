@@ -20,6 +20,8 @@ class UserDao:
             discord_username,
             nickname,
             level,
+            season_level,
+            season_exp,
             streak,
             exp,
             exp_gained,
@@ -31,13 +33,15 @@ class UserDao:
             last_active,
             daily,
             last_daily
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
             new_user.id,
             new_user.discord_username,
             new_user.nickname,
             new_user.level,
+            new_user.season_level,
+            new_user.season_exp,
             new_user.streak,
             new_user.exp,
             new_user.exp_gained,
@@ -62,6 +66,8 @@ class UserDao:
                 discord_username = %s,
                 nickname = %s,
                 level = %s,
+                season_level = %s,
+                season_exp = %s,
                 streak = %s,
                 exp = %s,
                 exp_gained = %s,
@@ -78,6 +84,8 @@ class UserDao:
             updated_user.discord_username,
             updated_user.nickname,
             updated_user.level,
+            updated_user.season_level,
+            updated_user.season_exp,
             updated_user.streak,
             updated_user.exp,
             updated_user.exp_gained,
@@ -128,17 +136,19 @@ class UserDao:
                 discord_username=user_data[1],
                 nickname=user_data[2],
                 level=user_data[3],
-                streak=user_data[4],
-                exp=user_data[5],
-                exp_gained=user_data[6],
-                exp_lost=user_data[7],
-                currency=user_data[8],
-                messages_sent=user_data[9],
-                reactions_sent=user_data[10],
-                created=user_data[11],
-                last_active=user_data[12],
-                daily=user_data[13],
-                last_daily=user_data[14]
+                season_level=user_data[4],
+                season_exp=user_data[5],
+                streak=user_data[6],
+                exp=user_data[7],
+                exp_gained=user_data[8],
+                exp_lost=user_data[9],
+                currency=user_data[10],
+                messages_sent=user_data[11],
+                reactions_sent=user_data[12],
+                created=user_data[13],
+                last_active=user_data[14],
+                daily=user_data[15],
+                last_daily=user_data[16]
             )
             return user
         else:
@@ -151,6 +161,8 @@ class UserDao:
                 discord_username,
                 nickname,
                 level,
+                season_level,
+                season_exp,
                 streak,
                 exp,
                 exp_gained,
