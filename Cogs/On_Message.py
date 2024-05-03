@@ -120,6 +120,7 @@ class On_Message(commands.Cog):
                         streak_bonus_percentage = streak * base_bonus_multiplier
                         streak_bonus = math.floor(base_level_up_reward * streak_bonus_percentage)
                         calculated_level_reward = base_level_up_reward + streak_bonus
+                        current_user.currency += calculated_level_reward
 
                         if streak > 0:
                             await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! 1,000 + {streak_bonus} from {streak}x Streak! <:FeelsGroovy:1199735360616407041>')
@@ -127,6 +128,7 @@ class On_Message(commands.Cog):
                             await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! <:FeelsGroovy:1199735360616407041>')
                     
                     current_user.level = new_level
+                    
 
                     # SEASON LEVEL UP
                     if new_season_level > current_user.season_level:
@@ -138,6 +140,7 @@ class On_Message(commands.Cog):
                         streak_bonus_percentage = streak * base_bonus_multiplier
                         streak_bonus = math.floor(base_season_level_up_reward * streak_bonus_percentage)
                         calculated_season_level_reward = base_season_level_up_reward + streak_bonus
+                        current_user.currency += calculated_season_level_reward
 
                         if streak > 0:
                             await level_up_channel.send(f'## 🥛 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <a:Poggies:1230210827844587692>')
@@ -145,6 +148,7 @@ class On_Message(commands.Cog):
                             await level_up_channel.send(f'## 🥛 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <a:Poggies:1230210827844587692>')
  
                     current_user.season_level = new_season_level
+                    
                     
                     # DETECT ROLE CHANGE
                     user_roles = message.author.roles

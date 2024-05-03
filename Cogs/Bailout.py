@@ -1,4 +1,5 @@
 from email import message
+from lib2to3.fixes import fix_standarderror
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -14,7 +15,7 @@ class Bailout(commands.Cog):
     async def bail(self, interaction: discord.Interaction, target: discord.User = None):
         general_channel = self.bot.get_channel(1155577095787917384)
         jail_channel = self.bot.get_channel(1233867818055893062)
-        egg_role = discord.utils.get(interaction.guild.roles, name="Egg")
+        first_role = discord.utils.get(interaction.guild.roles, name="Soy Milk")
         inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")
         
         bail = 100000
@@ -33,7 +34,7 @@ class Bailout(commands.Cog):
                 for role in interaction.user.roles:
                     if role.name == "Inmate":
                         await interaction.user.remove_roles(role)
-                        await interaction.user.add_roles(egg_role)
+                        await interaction.user.add_roles(first_role)
                         current_user.currency -= bail
                         dao.update_user(current_user)
                         await interaction.response.send_message(f"{interaction.user.name} paid {bail:,.0f} credits to get out of jail.")
@@ -47,8 +48,8 @@ class Bailout(commands.Cog):
                 
                 if inmate_role in target.roles:
                     await target.remove_roles(inmate_role)
-                    if egg_role not in target.roles:
-                        await target.add_roles(egg_role)    
+                    if first_role not in target.roles:
+                        await target.add_roles(first_role)    
 
                     current_user.currency -= bail
                     dao.update_user(current_user)

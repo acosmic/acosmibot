@@ -118,7 +118,7 @@ class Bot(commands.Bot):
         await self.wait_until_ready()
         channel = self.get_channel(1155577095787917384)
         # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-        search_term = 'guten-morgen'
+        search_term = 'milk-morning'
         logger.info(f'goodmorning gif search_term: {search_term}')
         while not self.is_closed():
             logger.info('gm_eu_task running')
@@ -134,14 +134,16 @@ class Bot(commands.Bot):
                     today = datetime.now().date()
                     for member in channel.guild.members:
                         current_user = dao.get_user(member.id)
-                        last_daily_date = datetime.strptime(current_user.last_daily, "%Y-%m-%d %H:%M:%S").date()
-                        if last_daily_date < today - timedelta(days=1):
-                            if current_user.streak > 0:
-                                dao.reset_streak(current_user.id)
-                                logger.info(f'{current_user.discord_username} streak reset')
-                    logger.info("DAILY RESET FOR ALL USERS")
+                        if current_user.last_daily is not None:
+                            last_daily_date = datetime.strptime(str(current_user.last_daily), "%Y-%m-%d %H:%M:%S").date()
+                            if last_daily_date < today - timedelta(days=1):
+                                if current_user.streak > 0:
+                                    dao.reset_streak(current_user.id)
+                                    logger.info(f'{current_user.discord_username} streak reset')
+                    
                 except Exception as e:
                     logger.error(f'gm_eu_task error: {e}')
+                logger.info("DAILY RESET FOR ALL USERS")
             await asyncio.sleep(60)
 
     async def bg_task_lottery(self):

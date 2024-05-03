@@ -74,7 +74,7 @@ class On_Reaction(commands.Cog):
             else:
                 logging.info('There is no current lottery event')       
 
-            role_names = ["Egg", "Biddy", "Chicken", "Cock"]
+            role_names = ["Soy Milk", "Whole Milk", "Choccy Milk", "Poggies Milk"]
             inmate_role = discord.utils.get(message.guild.roles, name="Inmate")
             roles = {name: discord.utils.get(message.guild.roles, name=name) for name in role_names}
             if None in roles.values():
@@ -83,24 +83,31 @@ class On_Reaction(commands.Cog):
                 return
 
             # JAIL FEATURE - Check reactions for the 🚔 emoji
+            required_votes = 5
             for emoji in message.reactions:
                 if str(emoji) == '🚔':
                     if not payload.member.bot and not message.author.bot:
                         police_car_count = emoji.count
                         logging.info(f'police_car_count: {police_car_count} - message_id: {message.id}')
 
-
-                        if police_car_count == 1:
-                            await channel.send(f"5 🚔's to send the user to Jail! 🚨 {message.jump_url}")
+                    if str(payload.emoji) == '🚔':    
+                        if police_car_count >= 1 and police_car_count < required_votes:
                             
+                            vote_message = f"### <a:redALERT:1235639847029309450> {required_votes - police_car_count} more 🚔's to send {message.author.name} to Jail! <a:blueALERT:1235639375443001530> {message.jump_url}"
+                            await channel.send(vote_message)
+                                
 
-                        if police_car_count == 5:
+                        if police_car_count == required_votes:
                             # Identify all removable roles that the user has
                             removable_roles = [role for role in message.author.roles if role in roles.values()]
                             
                             # Remove all identified roles at once
                             if removable_roles:
                                 await message.author.remove_roles(*removable_roles)
+
+                            for reaction in message.reactions:
+                                if str(reaction) == '🚔':
+                                    await reaction.clear()
 
                             # Add the 'Inmate' role
                             await message.author.add_roles(inmate_role)
