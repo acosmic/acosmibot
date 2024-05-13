@@ -97,9 +97,9 @@ class On_Message(commands.Cog):
 
                         streak = current_user.streak if current_user.streak < 20 else 20
                         if streak > 0:
-                            await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! <:PepeCelebrate:1165105393362555021>')
+                            await daily_reward_channel.send(f'## {message.author}, You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! <:PepeCelebrate:1165105393362555021>')
                         else:
-                            await daily_reward_channel.send(f'## {message.author.mention} You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
+                            await daily_reward_channel.send(f'## {message.author}, You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
 
                     else:
                         logger.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
@@ -123,7 +123,7 @@ class On_Message(commands.Cog):
                         current_user.currency += calculated_level_reward
 
                         if streak > 0:
-                            await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! 1,000 + {streak_bonus} from {streak}x Streak! <:FeelsGroovy:1199735360616407041>')
+                            await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! 1,000 + {streak_bonus} from max of {streak}x Streak!  <:FeelsGroovy:1199735360616407041>')
                         else:
                             await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! <:FeelsGroovy:1199735360616407041>')
                     
