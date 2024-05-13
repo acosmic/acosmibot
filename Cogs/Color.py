@@ -51,7 +51,7 @@ class Color(commands.Cog):
                 else:
                     color = discord.Color.from_rgb(r, g, b)
                     new_role = await interaction.guild.create_role(name=role_name, color=color)
-                    await new_role.edit(position=len(roles) - 4)
+                    await new_role.edit(position=len(roles) - 5)
                     await interaction.user.add_roles(new_role)
                     await interaction.followup.send(f"## {interaction.user.mention} You created a new role and successfully changed your color to {role_name}. -{cost:,.0f} credits")
                     user.currency -= cost
