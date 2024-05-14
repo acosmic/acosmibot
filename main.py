@@ -1,21 +1,16 @@
 #! /usr/bin/python3.10
 import random
-from urllib import parse, request
 import json
 import asyncio
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
-
-
 from logger import AppLogger
 from dotenv import load_dotenv
 import os
-
 import pytz
-from Twitch import Twitch
 
-import requests
+from Twitch import Twitch
 from Entities.LotteryEvent import LotteryEvent
 from Dao.LotteryParticipantDao import LotteryParticipantDao
 from Dao.LotteryEventDao import LotteryEventDao

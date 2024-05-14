@@ -1,0 +1,6 @@
+beautifulsoup4==4.12.3
+discord==2.3.2
+mysql-connector-python==8.2.0
+pytz==2022.1
+requests==2.25.1
+urllib3==1.26.5

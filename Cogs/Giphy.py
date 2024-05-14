@@ -5,7 +5,7 @@ from logger import AppLogger
 import json
 import random
 from dotenv import load_dotenv
-from urllib import parse, request
+from urllib import request
 import os
 
 logger = AppLogger(__name__).get_logger()
