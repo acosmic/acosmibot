@@ -23,6 +23,7 @@ class UserDao:
             season_level,
             season_exp,
             streak,
+            highest_streak,
             exp,
             exp_gained,
             exp_lost,
@@ -33,7 +34,7 @@ class UserDao:
             last_active,
             daily,
             last_daily
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
         values = (
             new_user.id,
@@ -43,6 +44,7 @@ class UserDao:
             new_user.season_level,
             new_user.season_exp,
             new_user.streak,
+            new_user.highest_streak,
             new_user.exp,
             new_user.exp_gained,
             new_user.exp_lost,
@@ -69,6 +71,7 @@ class UserDao:
                 season_level = %s,
                 season_exp = %s,
                 streak = %s,
+                highest_streak = %s,
                 exp = %s,
                 exp_gained = %s,
                 exp_lost = %s,
@@ -87,6 +90,7 @@ class UserDao:
             updated_user.season_level,
             updated_user.season_exp,
             updated_user.streak,
+            updated_user.highest_streak,
             updated_user.exp,
             updated_user.exp_gained,
             updated_user.exp_lost,
@@ -139,16 +143,17 @@ class UserDao:
                 season_level=user_data[4],
                 season_exp=user_data[5],
                 streak=user_data[6],
-                exp=user_data[7],
-                exp_gained=user_data[8],
-                exp_lost=user_data[9],
-                currency=user_data[10],
-                messages_sent=user_data[11],
-                reactions_sent=user_data[12],
-                created=user_data[13],
-                last_active=user_data[14],
-                daily=user_data[15],
-                last_daily=user_data[16]
+                highest_streak=user_data[7],
+                exp=user_data[8],
+                exp_gained=user_data[9],
+                exp_lost=user_data[10],
+                currency=user_data[11],
+                messages_sent=user_data[12],
+                reactions_sent=user_data[13],
+                created=user_data[14],
+                last_active=user_data[15],
+                daily=user_data[16],
+                last_daily=user_data[17]
             )
             return user
         else:
@@ -164,6 +169,7 @@ class UserDao:
                 season_level,
                 season_exp,
                 streak,
+                highest_streak,
                 exp,
                 exp_gained,
                 exp_lost,

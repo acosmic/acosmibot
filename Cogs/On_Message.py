@@ -72,6 +72,9 @@ class On_Message(commands.Cog):
                             if current_user.last_daily.date() == today - timedelta(days=1):
                                 # Increment streak
                                 current_user.streak += 1
+                                if current_user.streak > current_user.highest_streak:
+                                    current_user.highest_streak = current_user.streak
+                                    logger.info(f"{current_user.discord_username} - HIGHEST STREAK INCREMENTED TO {current_user.highest_streak}")
                                 logger.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
                             elif current_user.last_daily.date() < today - timedelta(days=1):
                                 # Reset streak
