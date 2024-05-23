@@ -52,7 +52,7 @@ class Rank(commands.Cog):
         flip_win_rate = flip_wins / flips * 100 if flips > 0 else 0
 
         streak = current_user.streak   
-        streak_emoji = f"🔥 x{streak}"  if streak > 0 else "make sure to chat again tomorrow to increase your streak! <:NicolasCagePOG:1203568248885346334>"
+        streak_emoji = f"🔥 x{streak}"  if streak > 0 else "Chat again tomorrow to increase your streak! <:NicolasCagePOG:1203568248885346334>"
 
         if user_rank is not None:
             name_from_db = user_rank[1]
@@ -83,6 +83,7 @@ class Rank(commands.Cog):
             f"Coinflip Credits Lost: {flip_amount_lost:,.0f}\n"
             f"Coinflip Win Rate: {flip_win_rate:.2f}%\n\n"
             f"### Streak: {streak_emoji}\n"
+            f"Highest: {current_user.highest_streak}\n"
             ),
             color=discord_user.color)
             embed.set_thumbnail(url=discord_user.avatar)

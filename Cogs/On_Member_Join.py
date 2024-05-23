@@ -9,12 +9,13 @@ role_level_1 = "Soy Milk"
 role_level_2 = "Whole Milk"
 role_level_3 = "Choccy Milk"
 role_level_4 = "Poggies Milk"
-role_level_5 = "Level Five"
-role_level_6 = "Level Six"
-role_level_7 = "Level Seven"
-role_level_8 = "Level Eight"
-role_level_9 = "Level Nine"
-role_level_10 = "Level Ten"
+
+# role_level_5 = "Level Five"
+# role_level_6 = "Level Six"
+# role_level_7 = "Level Seven"
+# role_level_8 = "Level Eight"
+# role_level_9 = "Level Nine"
+# role_level_10 = "Level Ten"
 
 logging = AppLogger(__name__).get_logger()
 
@@ -40,6 +41,7 @@ class On_Member_Join(commands.Cog):
         'season_level': 0,
         'season_exp': 0,
         'streak': 0,
+        'highest_streak': 0,
         'exp': 0,
         'exp_gained': 0,
         'exp_lost': 0,

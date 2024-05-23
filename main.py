@@ -2,6 +2,7 @@
 import random
 import json
 import asyncio
+from urllib import request
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
