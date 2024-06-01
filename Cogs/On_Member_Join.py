@@ -8,10 +8,11 @@ from Entities.User import User
 from Entities.Invite import Invite
 from logger import AppLogger
 
-role_level_1 = "Soy Milk"
-role_level_2 = "Whole Milk"
-role_level_3 = "Choccy Milk"
-role_level_4 = "Poggies Milk"
+role_level_1 = "Microbe" # 🦠
+role_level_2 = "Fish" # 🐟
+role_level_3 = "Monkey" # 🐒
+role_level_4 = "Human" # 🧍‍♂️
+role_level_5 = "Unicorn" # 🦄
 
 # role_level_5 = "Level Five"
 # role_level_6 = "Level Six"
@@ -118,8 +119,10 @@ class On_Member_Join(commands.Cog):
                 role = discord.utils.get(member.guild.roles, name=role_level_2)
             elif level >= 10 and level < 20:
                 role = discord.utils.get(member.guild.roles, name=role_level_3)
-            elif level >= 20:
+            elif level >= 15:
                 role = discord.utils.get(member.guild.roles, name=role_level_4)
+            elif level >= 20:
+                role = discord.utils.get(member.guild.roles, name=role_level_5)
 
             await member.add_roles(role)
 

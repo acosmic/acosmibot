@@ -57,13 +57,15 @@ class Rank(commands.Cog):
         if user_rank is not None:
             name_from_db = user_rank[1]
             display_name = discord_user.name if discord_user.name is not None else name_from_db
-            level_emoji = "🍼"
+            level_emoji = "🦠"
             if current_user.season_level >= 5:
-                level_emoji = "🥛"
+                level_emoji = "🐟"
             if current_user.season_level >= 10:
-                level_emoji = "<:choccymilk:1224801164483236003>"
+                level_emoji = "🐵"
             if current_user.season_level >= 15:
-                level_emoji = "<a:Poggies:1230210827844587692>"
+                level_emoji = "<:LULE:1218395540119748649>"
+            if current_user.season_level >= 20:
+                level_emoji = "🦄" 
             
             embed = discord.Embed(
             # title=f"### {discord_user.name}",

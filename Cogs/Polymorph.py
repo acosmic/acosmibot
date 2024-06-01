@@ -23,7 +23,7 @@ class Polymorph(commands.Cog):
         if user.currency >= cost:
             try:
                 await target.edit(nick=rename)
-                await interaction.response.send_message(f"# 🥛 {interaction.user.name} polymorphed {targetUser} into {target.mention} for {cost:,.0f} Credits. 🥛")
+                await interaction.response.send_message(f"# 🦠 {interaction.user.name} polymorphed {targetUser} into {target.mention} for {cost:,.0f} Credits. 🦠")
                 user.currency -= cost
                 dao.update_user(user)
                 logging.info(f'{user.discord_username} used /polymorph on {target.name}')
