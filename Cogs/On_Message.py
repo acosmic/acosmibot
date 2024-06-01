@@ -9,10 +9,11 @@ from Entities.User import User
 from Leveling import Leveling
 from logger import AppLogger
 
-role_level_1 = "Soy Milk"
-role_level_2 = "Whole Milk"
-role_level_3 = "Choccy Milk"
-role_level_4 = "Poggies Milk"
+role_level_1 = "Microbe" # 🦠
+role_level_2 = "Fish" # 🐟
+role_level_3 = "Monkey" # 🐒
+role_level_4 = "Human" # 🧍‍♂️
+role_level_5 = "Unicorn" # 🦄
 
 logger = AppLogger(__name__).get_logger()
 
@@ -158,22 +159,27 @@ class On_Message(commands.Cog):
                     roles = []
                     # if current_user.level < 5:
                     if current_user.season_level < 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_1) # 🍼 Soy Milk 
+                        role = discord.utils.get(message.guild.roles, name=role_level_1) # Microbe 🦠
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 5:
                     if current_user.season_level >= 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_2) # 🥛 Whole Milk
+                        role = discord.utils.get(message.guild.roles, name=role_level_2) # Fish 🐟
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 10:
                     if current_user.season_level >= 10:
-                        role = discord.utils.get(message.guild.roles, name=role_level_3) #  Choccy Milk
+                        role = discord.utils.get(message.guild.roles, name=role_level_3) #  Monkey 🐒
+                        if role not in user_roles:
+                            roles.append(role)
+                    # if current_user.level >= 15:
+                    if current_user.season_level >= 15:
+                        role = discord.utils.get(message.guild.roles, name=role_level_4) #  Human 🧍‍♂️
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 20:
-                    if current_user.season_level >= 15:
-                        role = discord.utils.get(message.guild.roles, name=role_level_4) #  Poggies Milk
+                    if current_user.season_level >= 20:
+                        role = discord.utils.get(message.guild.roles, name=role_level_5) #  Unicorn 🦄
                         if role not in user_roles:
                             roles.append(role)
                     
