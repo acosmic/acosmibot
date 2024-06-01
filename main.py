@@ -100,7 +100,7 @@ class Bot(commands.Bot):
     async def gm_na_task(self): # good morning gif
         await self.wait_until_ready()
         channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
-        search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()   
+        search_term = 'rhino'  
         logger.info(f'goodmorning gif search_term: {search_term}')
         while not self.is_closed():
             
@@ -121,7 +121,7 @@ class Bot(commands.Bot):
         await self.wait_until_ready()
         channel = self.get_channel(1155577095787917384)
         # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-        search_term = 'milk-morning'
+        search_term = 'monkey'
         logger.info(f'goodmorning gif search_term: {search_term}')
         while not self.is_closed():
             logger.info('gm_eu_task running')
