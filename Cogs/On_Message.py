@@ -147,9 +147,9 @@ class On_Message(commands.Cog):
                         current_user.currency += calculated_season_level_reward
 
                         if streak > 0:
-                            await level_up_channel.send(f'## 🥛 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <a:Poggies:1230210827844587692>')
+                            await level_up_channel.send(f'## 🦏 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! 🦉')
                         else:
-                            await level_up_channel.send(f'## 🥛 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <a:Poggies:1230210827844587692>')
+                            await level_up_channel.send(f'## 🦏 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 🦉')
  
                     current_user.season_level = new_season_level
                     
