@@ -17,6 +17,7 @@ from Dao.LotteryParticipantDao import LotteryParticipantDao
 from Dao.LotteryEventDao import LotteryEventDao
 from Dao.UserDao import UserDao
 from Dao.VaultDao import VaultDao
+from Dao.InviteDao import InviteDao
 
 
 load_dotenv()
@@ -89,6 +90,10 @@ class Bot(commands.Bot):
         logger.info(f'Logged on as {bot.user}!')
         synced = await self.tree.sync()
         logger.info(f"slash cmd's synced: {str(len(synced))}")
+        # Create Tables - Need to add all tables here to create on bot start
+        invDao = InviteDao()
+        invDao.create_table()
+
         await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
 
     async def gm_na_task(self): # good morning gif
@@ -261,7 +266,7 @@ class Bot(commands.Bot):
                         embed.add_field(name="Viewers", value=viewer_count, inline=False)
                         embed.add_field(name="Started", value=discord_timestamp, inline=False)
                         # embed.set_footer(text=discord_timestamp)
-                        await channel.send(f"@test is live on Twitch! {stream_link}")
+                        await channel.send(f"@test {user_name} is live on Twitch! {stream_link}")
                         await channel.send(embed=embed)
                         self.posted = True
                         logger.info(f"POSTED TWITCH ANNOUNCEMENT - posted bool: {self.posted}")
