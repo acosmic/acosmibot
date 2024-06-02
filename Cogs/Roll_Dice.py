@@ -40,7 +40,7 @@ class Roll_Dice(commands.Cog):
             embed.color = discord.Color.green()
             # need to remove inmate role and add egg role
             inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")
-            first_role = discord.utils.get(interaction.guild.roles, name="Soy Milk")
+            first_role = discord.utils.get(interaction.guild.roles, name="Microbe")
             await interaction.user.remove_roles(inmate_role)
             await interaction.user.add_roles(first_role)
             await general_channel.send(embed=embed)

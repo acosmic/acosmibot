@@ -15,7 +15,7 @@ class Bailout(commands.Cog):
     async def bail(self, interaction: discord.Interaction, target: discord.User = None):
         general_channel = self.bot.get_channel(1155577095787917384)
         jail_channel = self.bot.get_channel(1233867818055893062)
-        first_role = discord.utils.get(interaction.guild.roles, name="Soy Milk")
+        first_role = discord.utils.get(interaction.guild.roles, name="Microbe")
         inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")
         
         bail = 100000

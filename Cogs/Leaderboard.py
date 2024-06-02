@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
+from Dao.SlotsDao import SlotsDao
 from Dao.CoinflipDao import CoinflipDao 
 from logger import AppLogger
 import typing
@@ -14,8 +15,8 @@ class Leaderboard(commands.Cog):
         self.bot = bot
 
     
-    @app_commands.command(name = "leaderboard", description = "Returns top 5 users by Credits based on Currency, EXP, etc.")
-    async def leaderboard(self, interaction: discord.Interaction, stat: typing.Literal['Currency', 'Exp', 'Largest Single Win - CF', 'Largest Single Loss - CF']):
+    @app_commands.command(name = "leaderboard", description = "Returns top 5 users based on Currency, EXP, etc.")
+    async def leaderboard(self, interaction: discord.Interaction, stat: typing.Literal['Currency', 'Exp', 'Coinflip Wins', 'Coinflip Losses', 'Slots Wins',]):
         
         # if stat not in options_list:
         #     await interaction.response.send_message("Invalid choice. Please choose from the list.", ephemeral=True)
@@ -34,7 +35,7 @@ class Leaderboard(commands.Cog):
             await interaction.response.send_message(embed=embed)
             logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 
-        if stat == 'Largest Single Win - CF':
+        if stat == 'Coinflip Wins':
             dao = UserDao()
             cfdao = CoinflipDao()
             leaders = cfdao.get_top_wins()
@@ -49,7 +50,7 @@ class Leaderboard(commands.Cog):
             await interaction.response.send_message(embed=embed)
             logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 
-        if stat == 'Largest Single Loss - CF':
+        if stat == 'Coinflip Losses':
             dao = UserDao()
             cfdao = CoinflipDao()
             leaders = cfdao.get_top_losses()
@@ -60,6 +61,20 @@ class Leaderboard(commands.Cog):
                 formatted_amount_lost = "{:,.0f}".format(amount_lost)
                 formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
                 embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST", value=f"{formatted_amount_lost} Credits", inline=False)
+
+            await interaction.response.send_message(embed=embed)
+            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
+        if stat == 'Slots Wins':
+            dao = UserDao()
+            slotsDao = SlotsDao()
+            leaders = slotsDao.get_top_wins()
+
+            embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
+
+            for i, (discord_username, amount_won, timestamp) in enumerate(leaders, start=1):
+                formatted_amount_won = "{:,.0f}".format(amount_won)
+                formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
+                embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST", value=f"{formatted_amount_won} Credits", inline=False)
 
             await interaction.response.send_message(embed=embed)
             logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")

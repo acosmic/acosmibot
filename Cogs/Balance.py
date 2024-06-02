@@ -15,17 +15,20 @@ class Balance(commands.Cog):
     @app_commands.command(name="balance", description="Check your Credit balance.")
     async def balance(self, interaction: discord.Interaction, user: discord.User = None):
         dao = UserDao()
-
-        if user is None:
-            bot_user = dao.get_user(interaction.user.id)
-            message_text = f"## Your balance: {bot_user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}" 
-        else:
-            bot_user = dao.get_user(user.id)
-            message_text = f"## {user.name}'s balance: {bot_user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}" 
-        
-            
-        await interaction.response.send_message(message_text)
-        logger.info(f"{interaction.user.name} used /balance command")
+        try:
+            if user is None or user.bot == False:
+                if user is None:
+                    bot_user = dao.get_user(interaction.user.id)
+                    message_text = f"## Your balance: {bot_user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}" 
+                else:
+                    bot_user = dao.get_user(user.id)
+                    message_text = f"## {user.name}'s balance: {bot_user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}" 
+            else:
+                message_text = "## Bots don't have balances. 🤖"
+            await interaction.response.send_message(message_text)
+            logger.info(f"{interaction.user.name} used /balance command")
+        except Exception as e:
+            logger.error(f"Error in /balance command: {e}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Balance(bot))
