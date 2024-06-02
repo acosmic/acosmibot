@@ -12,6 +12,12 @@ from Entities.LotteryParticipant import LotteryParticipant
 
 logging = AppLogger(__name__).get_logger()
 
+role_level_1 = "Microbe" # 🦠
+role_level_2 = "Fish" # 🐟
+role_level_3 = "Monkey" # 🐒
+role_level_4 = "Human" # 🧍‍♂️
+role_level_5 = "Unicorn" # 🦄
+
 class On_Reaction(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
@@ -74,7 +80,7 @@ class On_Reaction(commands.Cog):
             else:
                 logging.info('There is no current lottery event')       
 
-            role_names = ["Soy Milk", "Whole Milk", "Choccy Milk", "Poggies Milk"]
+            role_names = [role_level_1, role_level_2, role_level_3, role_level_4, role_level_5]
             inmate_role = discord.utils.get(message.guild.roles, name="Inmate")
             roles = {name: discord.utils.get(message.guild.roles, name=name) for name in role_names}
             if None in roles.values():
