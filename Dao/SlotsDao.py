@@ -126,3 +126,12 @@ class SlotsDao:
         self.db.mycursor.execute(sql)
         top_losses = self.db.mycursor.fetchall()
         return top_losses
+
+    def get_total_spins(self):
+        sql = """
+            SELECT COUNT(*)
+            FROM Slots
+        """
+        self.db.mycursor.execute(sql)
+        total_spins = self.db.mycursor.fetchone()
+        return total_spins[0]

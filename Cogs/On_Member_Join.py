@@ -59,21 +59,36 @@ class On_Member_Join(commands.Cog):
                 if dbinvite.inviter_id == inviterid and dbinvite.invitee_id == inviteeid:
                     logging.info(f'Inviter has already invited this user before.')
                     break
+                else:
+                    try:
+                        newinvite = Invite(0, guildid, inviterid, inviteeid, code, datetime.now())
+                        invDao.add_new_invite(newinvite)
+                        inviterUser = dao.get_user(inviterid)
+                        inviterUser.currency += 50000
+                        inviterUser.exp += 500
+                        inviterUser.exp_gained += 500
+                        inviterUser.season_exp += 500
+                        dao.update_user(inviterUser)
+                        inviterDiscord = self.bot.get_user(inviterid)
+                        logging.info(f'{inviterDiscord.name} has been rewarded 50,000 Credits for inviting {member.name} to the server.')
+                        await channel.send(f'# {inviterDiscord.mention} has been rewarded 50,000 Credits and 500 EXP for inviting {member.name} to the server.')
+                    except Exception as e:
+                        logging.error(f'DBinvites exists, but Error adding invite to the database: {e}') 
         else:
             try: 
                 newinvite = Invite(0, guildid, inviterid, inviteeid, code, datetime.now())
                 invDao.add_new_invite(newinvite)
                 inviterUser = dao.get_user(inviterid)
-                inviterUser.currency += 10000
+                inviterUser.currency += 50000
                 inviterUser.exp += 500
                 inviterUser.exp_gained += 500
                 inviterUser.season_exp += 500
                 dao.update_user(inviterUser)
                 inviterDiscord = self.bot.get_user(inviterid)
-                logging.info(f'{inviterDiscord.name} has been rewarded 10,000 Credits for inviting {member.name} to the server.')
-                await channel.send(f'# {inviterDiscord.mention} has been rewarded 10,000 Credits and 500 EXP for inviting {member.name} to the server.')
+                logging.info(f'{inviterDiscord.name} has been rewarded 50,000 Credits for inviting {member.name} to the server.')
+                await channel.send(f'# {inviterDiscord.mention} has been rewarded 50,000 Credits and 500 EXP for inviting {member.name} to the server.')
             except Exception as e:
-                logging.error(f'Error adding invite to the database: {e}') 
+                logging.error(f'No DBinvites, Error adding invite to the database: {e}') 
 
         # Convert join_date to a format suitable for database insertion (e.g., as a string)
         formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
