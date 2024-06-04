@@ -74,19 +74,18 @@ class Bot(commands.Bot):
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
         ]
-        self.setup_hook()
-
         self.posted = False
         
     
     async def setup_hook(self):
-        self.gm_na_task = self.loop.create_task(self.gm_na_task())
-        self.gm_eu_task = self.loop.create_task(self.gm_eu_task())
-        self.bg_task_lottery = self.loop.create_task(self.bg_task_lottery())
-        self.bg_task_lottery_end = self.loop.create_task(self.bg_task_lottery_end())
-        self.check_if_live_task = self.loop.create_task(self.check_if_live_task())
+        self.gm_na_task_obj = self.loop.create_task(self.gm_na_task())
+        self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
+        self.bg_task_lottery_obj = self.loop.create_task(self.bg_task_lottery())
+        self.bg_task_lottery_end_obj = self.loop.create_task(self.bg_task_lottery_end())
+        self.check_if_live_task_obj = self.loop.create_task(self.check_if_live_task())
         for ext in self.cogslist:
-            await self.load_extension(ext)
+            if ext not in self.extensions:
+                await self.load_extension(ext)
         
     async def on_ready(self):
         logger.info(f'Logged on as {bot.user}!')
@@ -96,6 +95,7 @@ class Bot(commands.Bot):
         invDao = InviteDao()
         invDao.create_table()
 
+        await self.setup_hook()
         await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
 
     async def gm_na_task(self): # good morning gif

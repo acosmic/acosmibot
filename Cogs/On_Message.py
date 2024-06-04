@@ -34,7 +34,7 @@ class On_Message(commands.Cog):
         
         if not message.author.bot:
             if inmate_role not in message.author.roles:
-                logger.info(f'Message from {message.author}: {message.channel.name} - {message.content}')
+                logger.info(f'Message from {message.author} - {message.channel.name} - {message.id}; {message.content}')
                 dao = UserDao()
 
                 current_user = dao.get_user(message.author.id)
