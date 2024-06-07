@@ -78,14 +78,22 @@ class Bot(commands.Bot):
         
     
     async def setup_hook(self):
-        self.gm_na_task_obj = self.loop.create_task(self.gm_na_task())
-        self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
-        self.bg_task_lottery_obj = self.loop.create_task(self.bg_task_lottery())
-        self.bg_task_lottery_end_obj = self.loop.create_task(self.bg_task_lottery_end())
-        self.check_if_live_task_obj = self.loop.create_task(self.check_if_live_task())
+        if not hasattr(self, 'gm_na_task_obj') or self.gm_na_task_obj.done():
+            self.gm_na_task_obj = self.loop.create_task(self.gm_na_task())
+        if not hasattr(self, 'gm_eu_task_obj') or self.gm_eu_task_obj.done():
+            self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
+        if not hasattr(self, 'bg_task_lottery_obj') or self.bg_task_lottery_obj.done():
+            self.bg_task_lottery_obj = self.loop.create_task(self.bg_task_lottery())
+        if not hasattr(self, 'bg_task_lottery_end_obj') or self.bg_task_lottery_end_obj.done():
+            self.bg_task_lottery_end_obj = self.loop.create_task(self.bg_task_lottery_end())
+        if not hasattr(self, 'check_if_live_task_obj') or self.check_if_live_task_obj.done():
+            self.check_if_live_task_obj = self.loop.create_task(self.check_if_live_task())
+
         for ext in self.cogslist:
             if ext not in self.extensions:
                 await self.load_extension(ext)
+                logger.info(f'{ext} loaded')
+
         
     async def on_ready(self):
         logger.info(f'Logged on as {bot.user}!')
