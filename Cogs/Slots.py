@@ -75,7 +75,7 @@ class Slots(commands.Cog):
         elif slot1 == slot2 == slot3:
             # Jackpot
             exp_gained = math.ceil(cost * .025) # 2.5% of the bet 
-            amount_won = cost * 15
+            amount_won = cost * 25
             #EMBED
             embed.description = f"# <a:OOOOM:1236019284904509621> {interaction.user.name} <a:OOOOM:1236019284904509621>\n\n\n # {result}\nJackpot! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.gold()
@@ -88,7 +88,7 @@ class Slots(commands.Cog):
         elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
             # Small win
             exp_gained = math.ceil(cost * .005) # 0.5% of the bet
-            amount_won = cost * 3
+            amount_won = cost * 5 
             embed.description = f"# <a:peepoGamba:1247551104414257262> {interaction.user.name} <a:peepoGamba:1247551104414257262>\n\n\n # {result}\nYou matched two! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.green()
         else:
