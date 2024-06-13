@@ -16,7 +16,6 @@ jobs:
   test:
     docker:
       - image: circleci/python:3.8
-      - image: circleci/mysql:8.0.36
         environment:
           MYSQL_HOST: $MYSQL_HOST
           MYSQL_USER: $MYSQL_USER
