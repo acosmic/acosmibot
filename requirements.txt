@@ -4,3 +4,4 @@ mysql-connector-python==8.2.0
 pytz==2022.1
 requests==2.25.1
 urllib3==1.26.5
+pytest==8.2.2
