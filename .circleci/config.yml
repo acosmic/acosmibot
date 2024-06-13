@@ -1,34 +1,66 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:python:.
 version: 2.1
-orbs:
-  python: circleci/python@2
+
 jobs:
-  test-python:
-    # Install dependencies and run tests
+  setup:
     docker:
-      - image: cimg/python:3.8-node
+      - image: circleci/python:3.8
     steps:
       - checkout
-      - python/install-packages
+      - run:
+          name: Install dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+
+  test:
+    docker:
+      - image: circleci/python:3.8
+      - image: circleci/mysql:8.0.36
+        environment:
+          MYSQL_HOST: $MYSQL_HOST
+          MYSQL_USER: $MYSQL_USER
+          MYSQL_PASSWORD: $MYSQL_PASSWORD
+          MYSQL_DATABASE: $MYSQL_DATABASE
+    steps:
+      - checkout
+      - run:
+          name: Install MySQL client
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y mysql-client
+      - run:
+          name: Wait for MySQL to be ready
+          command: |
+            for i in `seq 1 30`; do
+              mysqladmin ping -h "$MYSQL_HOST" -u "$MYSQL_USER" --password="$MYSQL_PASSWORD" && break
+              echo "Waiting for MySQL..."
+              sleep 1
+            done
+      - run:
+          name: Install dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
       - run:
           name: Run tests
-          command: pytest --junitxml=junit.xml || ((($? == 5)) && echo 'Did not find any tests to run.')
+          command: |
+            . venv/bin/activate
+            pytest --junitxml=test-results/junit.xml
       - store_test_results:
-          path: junit.xml
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
-    docker:
-      - image: cimg/base:stable
-    steps:
-      # Replace this with steps to deploy to users
-      - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
+          path: test-results
+      - store_artifacts:
+          path: test-results
+
 workflows:
-  build-and-test:
+  version: 2
+  test:
     jobs:
-      - test-python
-    # - deploy:
-    #     requires:
-    #       - test-python
+      - setup
+      - test:
+          requires:
+            - setup
+
+
+
