@@ -38,12 +38,11 @@ TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
 logger = AppLogger(__name__).get_logger()
 
 
-
-
 class Bot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
+            "Cogs.Admin_Stats",
             "Cogs.Slots",
             "Cogs.Reset_Season",
             "Cogs.Reset_Daily",

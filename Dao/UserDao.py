@@ -204,8 +204,74 @@ class UserDao:
         '''
         self.db.mycursor.execute(sql)
         top_users = self.db.mycursor.fetchall()
-        self.db.close_connection()
+        # self.db.close_connection()
         return top_users
     
+    def get_total_messages(self):
+        sql = '''
+        SELECT SUM(messages_sent)
+        FROM Users
+        '''
+        self.db.mycursor.execute(sql)
+        total_messages = self.db.mycursor.fetchone()
+        # self.db.close_connection()
+        return total_messages[0]
+    
+    def get_total_reactions(self):
+        sql = '''
+        SELECT SUM(reactions_sent)
+        FROM Users
+        '''
+        self.db.mycursor.execute(sql)
+        total_reactions = self.db.mycursor.fetchone()
+        # self.db.close_connection()
+        return total_reactions[0]
+    
+    def get_total_currency(self):
+        sql = '''
+        SELECT SUM(currency)
+        FROM Users
+        '''
+        self.db.mycursor.execute(sql)
+        total_currency = self.db.mycursor.fetchone()
+        # self.db.close_connection()
+        return total_currency[0]
+    
+    def get_total_users(self):
+        sql = '''
+        SELECT COUNT(*)
+        FROM Users
+        '''
+        self.db.mycursor.execute(sql)
+        total_users = self.db.mycursor.fetchone()
+        # self.db.close_connection()
+        return total_users[0]
+    
+    def get_total_active_users(self):
+        sql = '''
+        SELECT COUNT(*)
+        FROM Users
+        WHERE last_active > DATE_SUB(NOW(), INTERVAL 1 DAY)
+        '''
+        self.db.mycursor.execute(sql)
+        total_active_users = self.db.mycursor.fetchone()
+        # self.db.close_connection()
+        return total_active_users[0]
+    
+    def get_total_exp(self):
+        sql = '''
+        SELECT SUM(exp)
+        FROM Users
+        '''
+        self.db.mycursor.execute(sql)
+        total_exp = self.db.mycursor.fetchone()
+        # self.db.close_connection()
+        return total_exp[0]
+    
+    def close(self):
+        self.db.close_connection()
+    
+
+  
         
         
