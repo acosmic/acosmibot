@@ -1,10 +1,11 @@
 class SlotEvent:
-    def __init__(self, id, discord_id, slot1, slot2, slot3, amount_won, amount_lost, timestamp) -> None:
+    def __init__(self, id, discord_id, slot1, slot2, slot3, bet_amount, amount_won, amount_lost, timestamp) -> None:
         self.id = id
         self.discord_id = discord_id
         self.slot1 = slot1
         self.slot2 = slot2
         self.slot3 = slot3
+        self.bet_amount = bet_amount
         self.amount_won = amount_won
         self.amount_lost = amount_lost
         self.timestamp = timestamp
@@ -48,6 +49,14 @@ class SlotEvent:
     @slot3.setter
     def slot3(self, value):
         self._slot3 = value
+
+    @property
+    def bet_amount(self):
+        return self._bet_amount
+    
+    @bet_amount.setter
+    def bet_amount(self, value):
+        self._bet_amount = value
 
     @property
     def amount_won(self):

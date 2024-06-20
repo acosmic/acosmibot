@@ -16,16 +16,3 @@ class Database:
             self.mycursor.close()
             self.mydb.close()
             print("Database connection closed.")
-
-
-
-
-    
-
-
-
-
-
-
-
-  
