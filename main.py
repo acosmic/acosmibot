@@ -60,6 +60,7 @@ class Bot(commands.Bot):
             "Cogs.Weather",
             "Cogs.Balance",
             "Cogs.Rank",
+            "Cogs.Stats",
             "Cogs.Give",
             "Cogs.Check_Vault",
             "Cogs.Eightball",
@@ -87,6 +88,8 @@ class Bot(commands.Bot):
             self.bg_task_lottery_end_obj = self.loop.create_task(self.bg_task_lottery_end())
         if not hasattr(self, 'check_if_live_task_obj') or self.check_if_live_task_obj.done():
             self.check_if_live_task_obj = self.loop.create_task(self.check_if_live_task())
+        # if not hasattr(self, 'poll_task_obj') or self.poll_task_obj.done(): 
+        #     self.poll_task_obj = self.loop.create_task(self.poll_task())
 
         for ext in self.cogslist:
             if ext not in self.extensions:
@@ -104,6 +107,21 @@ class Bot(commands.Bot):
 
         await self.setup_hook()
         await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
+
+    # async def poll_task(self):
+    #     await self.wait_until_ready()
+    #     channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
+    #     while not self.is_closed():
+    #         message_link = "https://discord.com/channels/1155577094940655696/1155577095787917384/1256328502022770862" # Change to new poll link when needed
+    #         logger.info('poll_task running')
+    #         if datetime.now().minute == 0:
+    #             logger.info('poll_task running at the top of the hour')
+    #             try:
+    #                 await channel.send(f"# <a:pepesith:1165101386921418792> Season 3 is ending! Please vote for next season's Theme -> {message_link}")
+    #             except Exception as e:
+    #                 logger.error(f'poll_task error: {e}')
+    #         await asyncio.sleep(60)
+            
 
     async def gm_na_task(self): # good morning gif
         await self.wait_until_ready()

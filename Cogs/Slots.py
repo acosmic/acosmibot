@@ -18,7 +18,7 @@ class Slots(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        self.slots = ["🐶", "🐱", "🦠", "🐟", "🦏", "🦉", "🦄", "🦈", "🦐", "🦧", "🐐", "🐸","🦒","🐦‍🔥","🦅", "<:acosmicD:1171219346299814009>"]
+        self.slots = ["🐶", "🐱", "🦠", "🐟", "🦏", "🦉", "🦄", "🦈", "🦐", "🦧", "🐐", "🐸","🐦‍🔥","🦅", "<:acosmicD:1171219346299814009>"]
 
     @app_commands.command(name="slots", description="Play a game of slots")
     async def slots(self, interaction: discord.Interaction, bet: typing.Literal[100, 1000, 5000, 10000, 25000] = 100):
