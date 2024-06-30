@@ -1,6 +1,6 @@
-# Acosmibot [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/9DNxHekn5QTS3HbsddJyPc/FYkBYsR7VBRrd9oLzsq4AK/tree/circleci-project-setup.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/9DNxHekn5QTS3HbsddJyPc/FYkBYsR7VBRrd9oLzsq4AK/tree/circleci-project-setup)
+# Acosmibot [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/9DNxHekn5QTS3HbsddJyPc/FYkBYsR7VBRrd9oLzsq4AK/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/9DNxHekn5QTS3HbsddJyPc/FYkBYsR7VBRrd9oLzsq4AK/tree/master)
 ## A discord bot created to promote community engagement 
-Built with Python | Discord.py | MySql Database
+Built with Python | Discord.py | MySql | CircleCI
 
 # Features
 * Slash commands
