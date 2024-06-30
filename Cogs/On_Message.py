@@ -1,6 +1,4 @@
 from datetime import datetime, timedelta
-
-from hmac import new
 import math
 import discord
 from discord.ext import commands
@@ -8,6 +6,8 @@ from Dao.UserDao import UserDao
 from Entities.User import User
 from Leveling import Leveling
 from logger import AppLogger
+from AI.OpenAIClient import OpenAIClient
+
 
 role_level_1 = "Microbe" # 🦠
 role_level_2 = "Fish" # 🐟
@@ -22,6 +22,7 @@ class On_Message(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
+        self.chatgpt = OpenAIClient()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -188,11 +189,35 @@ class On_Message(commands.Cog):
                         logger.info(f'{str(message.author)} updated in database in on_message()')
                     except Exception as e: 
                         logger.error(f'Error updating {message.author} to the database: {e}')
+                    
+                    # UPDATE ROLES
                     try:
                         await message.author.add_roles(*roles)
                         logger.info(f'{str(message.author)} roles updated in on_message()')
                     except Exception as e:
                         logger.error(f'Error updating {message.author} roles: {e}')
+
+                    # --------------------------- OPENAI CHATGPT ---------------------------    
+                    try:    
+                        if self.bot.user in message.mentions:
+                            # if message.author.id == 110637665128325120:
+                                # Remove the mention and strip the message
+                                prompt = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
+                                
+                                await message.channel.typing()
+                                # Get the response from OpenAI
+                                response = await self.chatgpt.get_chatgpt_response(prompt)
+
+                                # Send the response back to the channel
+                                
+                                await message.channel.send(response)
+                            # else:
+                                # await message.channel.send(f'Hello {message.author.mention}! I am a bot created by <@110637665128325120>. The AI feature is currently in development. Please be patient!')
+                    except Exception as e:
+                        logger.error(f'OpenAI Error: {e}')
+
+                    # Process other commands
+                    
 
                 else:
                     return

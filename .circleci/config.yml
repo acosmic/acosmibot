@@ -1,0 +1,57 @@
+version: 2.1
+
+jobs:
+  setup:
+    docker:
+      - image: circleci/python:3.8
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+
+  test:
+    docker:
+      - image: circleci/python:3.8
+        environment:
+          MYSQL_HOST: $test_db_host
+          MYSQL_USER: $test_db_user
+          MYSQL_PASSWORD: $test_db_password
+          MYSQL_DATABASE: $test_db_database
+    steps:
+      - checkout
+      - run:
+          name: Wait for MySQL to be ready
+          command: |
+            for i in `seq 1 30`; do
+              mysqladmin ping -h "$MYSQL_HOST" -u "$MYSQL_USER" --password="$MYSQL_PASSWORD" && break
+              echo "Waiting for MySQL..."
+              sleep 1
+            done
+      - run:
+          name: Install dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+      - run:
+          name: Run tests
+          command: |
+            . venv/bin/activate
+            pytest tests --junitxml=test-results/junit.xml
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - setup
+      - test:
+          requires:
+            - setup

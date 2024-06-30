@@ -15,14 +15,15 @@ class SlotsDao:
 
     def add_new_event(self, slot_event):
         sql = """
-            INSERT INTO Slots (discord_id, slot1, slot2, slot3, amount_won, amount_lost, timestamp) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO Slots (discord_id, slot1, slot2, slot3, bet_amount, amount_won, amount_lost, timestamp) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
             slot_event.discord_id,
             slot_event.slot1,
             slot_event.slot2,
             slot_event.slot3,
+            slot_event.bet_amount,
             slot_event.amount_won,
             slot_event.amount_lost,
             slot_event.timestamp

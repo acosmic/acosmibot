@@ -6,3 +6,4 @@ logs.txt*
 .gitignore
 trash*.py
 trash*
+RankCards/*
