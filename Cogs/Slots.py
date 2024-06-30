@@ -18,7 +18,7 @@ class Slots(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        self.slots = ["🐶", "🐱", "🦠", "🐟", "🦏", "🦉", "🦄", "🦈", "🦐", "🦧", "🐐", "🐸", "<:acosmicD:1171219346299814009>"]
+        self.slots = ["🐶", "🐱", "🦠", "🐟", "🦏", "🦉", "🦄", "🦈", "🦐", "🦧", "🐐", "🐸","🐦‍🔥","🦅", "<:acosmicD:1171219346299814009>"]
 
     @app_commands.command(name="slots", description="Play a game of slots")
     async def slots(self, interaction: discord.Interaction, bet: typing.Literal[100, 1000, 5000, 10000, 25000] = 100):
@@ -26,6 +26,7 @@ class Slots(commands.Cog):
         slotDao = SlotsDao()
         user = dao.get_user(interaction.user.id)
         cost = abs(bet)  # Ensure the bet is positive
+        bet_amount = cost
         exp_gained = 0
         amount_won = 0
         amount_lost = 0
@@ -50,45 +51,45 @@ class Slots(commands.Cog):
         result = f"| {slot1} | {slot2} | {slot3} |\n"
         embed = discord.Embed()
         if slot1 == slot2 == slot3 == "<:acosmicD:1171219346299814009>":
-            # Super Jackpot
+            # Cosmic Jackpot
             exp_gained = math.ceil(cost * .1) # 10% of the bet  
-            amount_won = cost * 100
-            embed.description = f"# <a:OOOOM:1236019284904509621> SUPER JACKPOT <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the SUPER Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
+            amount_won = cost * 100 # Cosmic Jackpot
+            embed.description = f"# <a:OOOOM:1236019284904509621> COSMIC JACKPOT <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the COSMIC Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.gold()
             general_embed = discord.Embed()
-            general_embed.description = f"# <a:OOOOM:1236019284904509621> SUPER JACKPOT <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the SUPER Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
+            general_embed.description = f"# <a:OOOOM:1236019284904509621> COSMIC JACKPOT <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the COSMIC Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
             general_embed.color = discord.Color.gold()
             general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
             await general_channel.send(embed=general_embed)
-        elif slot1 == slot2 == slot3 == "🦄":
+        elif (slot1 == slot2 == slot3 == "🦄") or (slot1 == slot2 == slot3 == "🐦‍🔥"):
             # Mega Jackpot
             exp_gained = math.ceil(cost * .05) # 5% of the bet
-            amount_won = cost * 50
+            amount_won = cost * 50 # Mega Jackpot
             # EMBED
-            embed.description = f"# <a:OOOOM:1236019284904509621> {interaction.user.name} <a:OOOOM:1236019284904509621>\n\n\n # {result}\nMEGA JACKPOT! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
+            embed.description = f"# <a:OOOOM:1236019284904509621> MEGA Jackpot <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the MEGA Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
             embed.color = discord.Color.gold()
             general_embed = discord.Embed()
-            general_embed.description = f"# <a:OOOOM:1236019284904509621> {interaction.user.name} <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the MEGA Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
+            general_embed.description = f"# <a:OOOOM:1236019284904509621> MEGA Jackpot <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the MEGA Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
             general_embed.color = discord.Color.gold()
             general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
             await general_channel.send(embed=general_embed)
         elif slot1 == slot2 == slot3:
             # Jackpot
             exp_gained = math.ceil(cost * .025) # 2.5% of the bet 
-            amount_won = cost * 25
+            amount_won = cost * 25 # Jackpot
             #EMBED
-            embed.description = f"# <a:OOOOM:1236019284904509621> {interaction.user.name} <a:OOOOM:1236019284904509621>\n\n\n # {result}\nJackpot! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
+            embed.description = f"# <a:OOOOM:1236019284904509621> Jackpot <a:OOOOM:1236019284904509621>\n\n\n # {result}\n{interaction.user.mention} hit the Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.gold()
             general_embed = discord.Embed()
             # general_embed.title = f"🎰 {interaction.user.name} hit the Jackpot! 🎰"
-            general_embed.description = f"# <a:peepoGamba:1247551104414257262> {interaction.user.name} <a:peepoGamba:1247551104414257262>\n\n\n # {result}\n{interaction.user.mention} hit the Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
+            general_embed.description = f"# <a:peepoGamba:1247551104414257262> Jackpot <a:peepoGamba:1247551104414257262>\n\n\n # {result}\n{interaction.user.mention} hit the Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             general_embed.color = discord.Color.gold()
             general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
             await general_channel.send(embed=general_embed)
         elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
             # Small win
             exp_gained = math.ceil(cost * .005) # 0.5% of the bet
-            amount_won = cost * 5 
+            amount_won = cost * 5 # Small win
             embed.description = f"# <a:peepoGamba:1247551104414257262> {interaction.user.name} <a:peepoGamba:1247551104414257262>\n\n\n # {result}\nYou matched two! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.green()
         else:
@@ -103,7 +104,7 @@ class Slots(commands.Cog):
             embed.color = discord.Color.red()
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_event = SlotEvent(0, interaction.user.id, slot1, slot2, slot3, amount_won, amount_lost, timestamp)
+        new_event = SlotEvent(0, interaction.user.id, slot1, slot2, slot3, bet_amount,  amount_won, amount_lost, timestamp)
 
         user.currency += amount_won
         user.currency -= amount_lost
