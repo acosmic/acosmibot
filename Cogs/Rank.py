@@ -61,35 +61,36 @@ class Rank(commands.Cog):
         # Create a drawing context
         d = ImageDraw.Draw(img)
 
-        # Fetch and create the profile picture
-        avatar_url = str(user.avatar.url)
-        response = requests.get(avatar_url)
-        avatar = Image.open(BytesIO(response.content)).convert("RGBA")
-        avatar = avatar.resize((140, 140), Image.LANCZOS)
+        # Fetch and create the profile picture if available
+        if user.avatar:
+            avatar_url = str(user.avatar.url)
+            response = requests.get(avatar_url)
+            avatar = Image.open(BytesIO(response.content)).convert("RGBA")
+            avatar = avatar.resize((140, 140), Image.LANCZOS)
 
-        # Create a circular mask for the avatar
-        mask = Image.new("L", (140, 140), 0)
-        draw = ImageDraw.Draw(mask) 
-        draw.ellipse((0, 0, 140, 140), fill=255)
+            # Create a circular mask for the avatar
+            mask = Image.new("L", (140, 140), 0)
+            draw = ImageDraw.Draw(mask) 
+            draw.ellipse((0, 0, 140, 140), fill=255)
 
-        # Create the black circular outline
-        outline = Image.new("RGBA", (150, 150), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(outline)
-        draw.ellipse((2, 2, 148, 148), outline="black", width=2)
+            # Create the black circular outline
+            outline = Image.new("RGBA", (150, 150), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(outline)
+            draw.ellipse((2, 2, 148, 148), outline="black", width=2)
 
-        # Apply the mask to the avatar
-        avatar.putalpha(mask)
+            # Apply the mask to the avatar
+            avatar.putalpha(mask)
 
-        # Combine the avatar with the outline
-        combined_avatar = Image.new("RGBA", (150, 150), (0, 0, 0, 0))
-        combined_avatar.paste(avatar, (5, 5), avatar)
-        combined_avatar.paste(outline, (0, 0), outline)
+            # Combine the avatar with the outline
+            combined_avatar = Image.new("RGBA", (150, 150), (0, 0, 0, 0))
+            combined_avatar.paste(avatar, (5, 5), avatar)
+            combined_avatar.paste(outline, (0, 0), outline)
 
-        # Calculate the vertical position to center the avatar
-        avatar_y_position = (img_height - 150) // 2
+            # Calculate the vertical position to center the avatar
+            avatar_y_position = (img_height - 150) // 2
 
-        # Paste the combined avatar on the rank card
-        img.paste(combined_avatar, (20, avatar_y_position), combined_avatar)
+            # Paste the combined avatar on the rank card
+            img.paste(combined_avatar, (20, avatar_y_position), combined_avatar)
 
         # User name
         username_text = f"{user.name}"
@@ -144,7 +145,6 @@ class Rank(commands.Cog):
 
         return img_path
         
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Rank(bot))
