@@ -35,14 +35,17 @@ class OpenAIClient:
                 ]
             )
             # Check if any inappropriate words are in the message content
+            user_prompt = response.choices[0].message.content  # Get the original user prompt
             for choice in response.choices:
                 content = choice.message.content.lower()  # Convert to lowercase for case-insensitive check
                 for word in self.inappropriate_words:
                     if word.lower() in content:
-                        content = content.replace(word.lower(), '_' * len(word))
-                choice.message.content = content
+                        # Replace only in the original user prompt to preserve case
+                        user_prompt = user_prompt.replace(word, '_' * len(word), -1)
+                choice.message.content = user_prompt
 
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f'OpenAI Error: {e}')
             return "I'm sorry, I couldn't process your request."
+
