@@ -9,42 +9,53 @@ Built with Python | Discord.py | MySQL | CircleCI
 - [Features](#features)
 - [Slash Commands](#slash-commands)
 - [Setup](#setup)
-- [Contributing](#contributing)
 - [License](#license)
 - [Screenshots](#screenshots)
 
 ---
 
 ## Features
-- Slash commands
-- Leveling and XP gain through participation
-- Economy system with currency - Credits
-- Weekly lottery ticket for a chance to win all the lost Credits from gambling
-- Leaderboards
-- Solo gambling
-- PVP games with betting
-- Astronomy Picture of the Day
-- OpenWeather API integration
-- Giphy API integration
-- Member stats tracking
+
+### Slash Commands and Participation-Based Leveling
+- **Slash Commands**: Execute commands using the slash (`/`) command syntax.
+- **Leveling and XP Points**: Gain XP points through chatting and using commands to level up.
+- **Auto-Applied Discord Roles**: Automatically apply roles upon leveling up.
+- **Leaderboards**: Display leaderboards for various achievements.
+
+### Economy and Gambling System
+- **Economy System**: A fake currency system using "Credits".
+- **Solo Gambling**: Gamble with fake currency.
+- **Weekly Lottery**: Participate in a weekly lottery for a chance to recover lost "Credits".
+- **Player vs Player Games**: Engage in betting games with other players using dynamic buttons.
+
+### API Integrations and Notifications
+- **Twitch API**: Receive go-live notifications for Twitch streams.
+- **NASA Astronomy Picture of the Day**: Get daily images from NASA's Astronomy Picture of the Day.
+- **OpenWeather API**: Fetch current weather data.
+- **Giphy API**: Integrate GIFs into your Discord server.
+- **OpenAI Chat API**: Chat with an AI powered by OpenAI's language model.
+
+### Member Stats and Tracking
+- **Member Stats**: Track member stats such as active days, messages sent, reactions, and game stats (wins, losses, etc.).
+
 
 ## Slash Commands
-- **/8ball [question]** - _Ask the magic 8ball your yes/no questions for 10 Credits._
+- **/8ball `[question]`** - _Ask the magic 8ball your yes/no questions for 10 Credits._
 - **/apod** - _Returns the Astronomy Picture of the Day._
-- **/balance [user -optional]** - _Check your Credit balance or mention another user to see their balance._
+- **/balance `[user (optional)]`** - _Check your Credit balance or mention another user to see their balance._
 - **/checkvault** - _Check the amount of Credits in the vault!_
-- **/coinflip [call] [bet]** - _Flip a coin for a chance to win credits._
-- **/deathroll [target] [bet]** - _Start a game of Deathroll. First person to roll a 1 loses!_
-- **/giphy [search_term]** - _Returns a random Gif from Giphy based on the search term provided. Example: /giphy cat._
-- **/give [target] [amount]** - _Give Credits to your target user._
+- **/coinflip `[call]` `[bet]`** - _Flip a coin for a chance to win credits._
+- **/deathroll `[target]` `[bet]`** - _Start a game of Deathroll. First person to roll a 1 loses!_
+- **/giphy `[search_term]`** - _Returns a random Gif from Giphy based on the search term provided. Example: /giphy cat._
+- **/give `[target]` `[amount]`** - _Give Credits to your target user._
 - **/help** - _Returns a list of commands._
-- **/leaderboard [stat]** - _Returns top 5 users by Credits based on Currency, EXP, etc._
+- **/leaderboard `[stat]`** - _Returns top 5 users by Credits based on Currency, EXP, etc._
 - **/ping** - _Returns the bot's latency._
-- **/polymorph [target] [rename]** - _Change your target's display name for 1000 Credits... please be nice._
-- **/rank [user -optional]** - _Returns your rank based on current EXP or mention another user to see their rank._
-- **/rockpaperscissors [target] [bet]** - _Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!_
-- **/stats [user -optional]** - _Leave blank to see your own stats, or mention another user to see their stats._
-- **/weather [cityname]** - _Returns the current weather in a city._
+- **/polymorph `[target]` `[rename]`** - _Change your target's display name for 1000 Credits... please be nice._
+- **/rank `[user (optional)]`** - _Returns your rank based on current EXP or mention another user to see their rank._
+- **/rockpaperscissors `[target]` `[bet]`** - _Challenge another member to a game of Rock, Paper, Scissors. Win 3 rounds!_
+- **/stats `[user (optional)]`** - _Leave blank to see your own stats, or mention another user to see their stats._
+- **/weather `[cityname]`** - _Returns the current weather in a city._
 
 ## Setup
 1. **Clone the repository**:
@@ -78,9 +89,6 @@ Built with Python | Discord.py | MySQL | CircleCI
 4. **Run the bot**:
    ```sh
    python3 bot.py
-
-## Contributing
-Contributions welcome!
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.

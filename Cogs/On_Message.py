@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta
+import os
+import json
 import math
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
 from Dao.UserDao import UserDao
 from Entities.User import User
 from Leveling import Leveling
@@ -23,6 +26,12 @@ class On_Message(commands.Cog):
         super().__init__()
         self.bot = bot
         self.chatgpt = OpenAIClient()
+        load_dotenv()  # Load environment variables from .env file
+        inappropriate_words_str = os.getenv('INAPPROPRIATE_WORDS')
+        if inappropriate_words_str:
+            self.inappropriate_words = json.loads(inappropriate_words_str)
+        else:
+            self.inappropriate_words = []
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -37,7 +46,6 @@ class On_Message(commands.Cog):
             if inmate_role not in message.author.roles:
                 logger.info(f'Message from {message.author} - {message.channel.name} - {message.id}; {message.content}')
                 dao = UserDao()
-
                 current_user = dao.get_user(message.author.id)
                 logger.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
                 if current_user is not None:
@@ -49,6 +57,14 @@ class On_Message(commands.Cog):
                     else:
                         base_exp = 0
                         logger.info(f'{str(current_user.discord_username)} - MESSAGE SENT TOO SOON - NO EXP GAINED')
+
+                    # CHECK FOR INAPPROPRIATE WORDS
+                    message_content_lower = message.content.lower()
+                    for word in self.inappropriate_words:
+                        if word.lower() in message_content_lower:
+                            logger.info(f'{str(current_user.discord_username)} - INAPPROPRIATE WORD DETECTED: {message.content}')
+                            await message.delete()
+                            return
 
                     # CALCULATE EXP GAINED
                     bonus_exp = current_user.streak * 0.05
