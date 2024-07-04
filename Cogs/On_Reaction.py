@@ -12,11 +12,13 @@ from Entities.LotteryParticipant import LotteryParticipant
 
 logging = AppLogger(__name__).get_logger()
 
-role_level_1 = "Microbe" # 🦠
-role_level_2 = "Fish" # 🐟
-role_level_3 = "Monkey" # 🐒
-role_level_4 = "Human" # 🧍‍♂️
-role_level_5 = "Unicorn" # 🦄
+role_level_1 = "Globehead"  
+role_level_2 = "Antivaxxer"  
+role_level_3 = "Moon Landing Hoax"  
+role_level_4 = "Abducted and Probed"  
+role_level_5 = "Flat Gang Baby!"
+role_level_6 = "Shungite Chewer"  
+role_level_7 = "Illuminaughty"
 
 class On_Reaction(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -80,13 +82,13 @@ class On_Reaction(commands.Cog):
             else:
                 logging.info('There is no current lottery event')       
 
-            role_names = [role_level_1, role_level_2, role_level_3, role_level_4, role_level_5]
+            # role_names = [role_level_1, role_level_2, role_level_3, role_level_4, role_level_5]
             inmate_role = discord.utils.get(message.guild.roles, name="Inmate")
-            roles = {name: discord.utils.get(message.guild.roles, name=name) for name in role_names}
-            if None in roles.values():
-                missing = [name for name, role in roles.items() if role is None]
-                logging.error(f"Missing roles: {', '.join(missing)}")
-                return
+            # roles = {name: discord.utils.get(message.guild.roles, name=name) for name in role_names}
+            # if None in roles.values():
+            #     missing = [name for name, role in roles.items() if role is None]
+            #     logging.error(f"Missing roles: {', '.join(missing)}")
+            #     return
 
             # JAIL FEATURE - Check reactions for the 🚔 emoji
             required_votes = 5
@@ -105,11 +107,12 @@ class On_Reaction(commands.Cog):
 
                         if police_car_count == required_votes:
                             # Identify all removable roles that the user has
-                            removable_roles = [role for role in message.author.roles if role in roles.values()]
+                            # removable_roles = [role for role in message.author.roles if role in roles.values()]
                             
-                            # Remove all identified roles at once
-                            if removable_roles:
-                                await message.author.remove_roles(*removable_roles)
+                            # Check if inmate role is already assigned
+                            if inmate_role in message.author.roles:
+                                logging.info(f"{message.author.name} is already in Jail!")
+                                return
 
                             for reaction in message.reactions:
                                 if str(reaction) == '🚔':
