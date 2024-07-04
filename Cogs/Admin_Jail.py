@@ -24,18 +24,21 @@ class Admin_Jail(commands.Cog):
     # @app_commands.checks.has_any_role('Admin', 'Moderator')  # Update with actual role names
     async def jail(self, interaction: discord.Interaction, member: discord.Member):
         # Identify all removable roles that the user has
-        removable_roles = [role for role in member.roles if role.name in level_roles]  # Update with actual role names
+        # removable_roles = [role for role in member.roles if role.name in level_roles]  # Update with actual role names
 
-        # Remove all identified roles at once
-        if removable_roles:
-            await member.remove_roles(*removable_roles)
+        # # Remove all identified roles at once
+        # if removable_roles:
+        #     await member.remove_roles(*removable_roles)
 
-        else:
-            await interaction.response.send_message(f"{member.name} is already in Jail!", ephemeral=True)
-            return
+        # else:
+        #     await interaction.response.send_message(f"{member.name} is already in Jail!", ephemeral=True)
+        #     return
 
         # Add the 'Inmate' role
         inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")  # Update with actual inmate role name
+        if inmate_role in member.roles:
+            await interaction.response.send_message(f"{member.name} is already in Jail!", ephemeral=True)
+            return
         await member.add_roles(inmate_role)
         await interaction.response.send_message(f"🚨 {member.name} has been sent to Jail! Bail set at 100,000 Credits! 🚨", ephemeral=False)
         logger.info(f"{member.name} has been sent to Jail by {interaction.user.name}!")

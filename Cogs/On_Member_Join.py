@@ -8,11 +8,13 @@ from logger import AppLogger
 from discord.ext import commands
 import asyncio
 
-role_level_1 = "Microbe"  # Replace with your actual role name
-role_level_2 = "Fish"  # Replace with your actual role name
-role_level_3 = "Monkey"  # Replace with your actual role name
-role_level_4 = "Human"  # Replace with your actual role name
-role_level_5 = "Unicorn"  # Replace with your actual role name
+role_level_1 = "Globehead"  
+role_level_2 = "Antivaxxer"  
+role_level_3 = "Moon Landing Hoax"  
+role_level_4 = "Abducted and Probed"  
+role_level_5 = "Flat Gang Baby!"
+role_level_6 = "Shungite Chewer"  
+role_level_7 = "Illuminaughty"
 
 logging = AppLogger(__name__).get_logger()
 
@@ -77,6 +79,10 @@ class On_Member_Join(commands.Cog):
                 role = discord.utils.get(member.guild.roles, name=role_level_4)
             elif level >= 20:
                 role = discord.utils.get(member.guild.roles, name=role_level_5)
+            elif level >= 25:
+                role = discord.utils.get(member.guild.roles, name=role_level_6)
+            elif level >= 30:
+                role = discord.utils.get(member.guild.roles, name=role_level_7)
 
             await member.add_roles(role)
 

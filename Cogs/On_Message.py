@@ -12,11 +12,13 @@ from logger import AppLogger
 from AI.OpenAIClient import OpenAIClient
 
 
-role_level_1 = "Microbe" # 🦠
-role_level_2 = "Fish" # 🐟
-role_level_3 = "Monkey" # 🐒
-role_level_4 = "Human" # 🧍‍♂️
-role_level_5 = "Unicorn" # 🦄
+role_level_1 = "Globehead"  
+role_level_2 = "Antivaxxer"  
+role_level_3 = "Moon Landing Hoax"  
+role_level_4 = "Abducted and Probed"  
+role_level_5 = "Flat Gang Baby!"
+role_level_6 = "Shungite Chewer"  
+role_level_7 = "Illuminaughty"
 
 logger = AppLogger(__name__).get_logger()
 
@@ -164,9 +166,9 @@ class On_Message(commands.Cog):
                         current_user.currency += calculated_season_level_reward
 
                         if streak > 0:
-                            await level_up_channel.send(f'## 🦏 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! 🦉')
+                            await level_up_channel.send(f'## <a:shungite:1258061858586365963> {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <:CONSPIRACY:1258071611047678073>')
                         else:
-                            await level_up_channel.send(f'## 🦏 {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 🦉')
+                            await level_up_channel.send(f'## <a:shungite:1258061858586365963> {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <:CONSPIRACY:1258071611047678073>')
  
                     current_user.season_level = new_season_level
                     
@@ -176,27 +178,39 @@ class On_Message(commands.Cog):
                     roles = []
                     # if current_user.level < 5:
                     if current_user.season_level < 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_1) # Microbe 🦠
+                        role = discord.utils.get(message.guild.roles, name=role_level_1) # Globe 
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 5:
                     if current_user.season_level >= 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_2) # Fish 🐟
+                        role = discord.utils.get(message.guild.roles, name=role_level_2) # Vax 
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 10:
                     if current_user.season_level >= 10:
-                        role = discord.utils.get(message.guild.roles, name=role_level_3) #  Monkey 🐒
+                        role = discord.utils.get(message.guild.roles, name=role_level_3) # Moon
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 15:
                     if current_user.season_level >= 15:
-                        role = discord.utils.get(message.guild.roles, name=role_level_4) #  Human 🧍‍♂️
+                        role = discord.utils.get(message.guild.roles, name=role_level_4) # Abducted
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 20:
                     if current_user.season_level >= 20:
-                        role = discord.utils.get(message.guild.roles, name=role_level_5) #  Unicorn 🦄
+                        role = discord.utils.get(message.guild.roles, name=role_level_5) # Flat
+                        if role not in user_roles:
+                            roles.append(role)
+
+                    # if current_user.level >= 25:
+                    if current_user.season_level >= 25:
+                        role = discord.utils.get(message.guild.roles, name=role_level_6) # Shungite
+                        if role not in user_roles:
+                            roles.append(role)
+
+                    # if current_user.level >= 30:
+                    if current_user.season_level >= 30:
+                        role = discord.utils.get(message.guild.roles, name=role_level_7) # Illuminaughty
                         if role not in user_roles:
                             roles.append(role)
                     

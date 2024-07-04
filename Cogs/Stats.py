@@ -57,15 +57,19 @@ class Stats(commands.Cog):
         if user_rank is not None:
             name_from_db = user_rank[1]
             display_name = discord_user.name if discord_user.name is not None else name_from_db
-            level_emoji = "🦠"
+            level_emoji = "🌎"
             if current_user.season_level >= 5:
-                level_emoji = "🐟"
+                level_emoji = "<:antivax:1258070199945531402>"
             if current_user.season_level >= 10:
-                level_emoji = "🐵"
+                level_emoji = "<:moonlandinghoax:1258075177934131200>"
             if current_user.season_level >= 15:
-                level_emoji = "<:LULE:1218395540119748649>"
+                level_emoji = "<:aliens:1258067124623114351>"
             if current_user.season_level >= 20:
-                level_emoji = "🦄" 
+                level_emoji = "<:flatearth:1258058656465817691>"
+            if current_user.season_level >= 25:
+                level_emoji = "<a:shungite:1258061858586365963>"
+            if current_user.season_level >= 30:
+                level_emoji = "<:illuminati:1258059529510195200>" 
             
             embed = discord.Embed(
             # title=f"### {discord_user.name}",
