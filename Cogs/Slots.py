@@ -24,14 +24,14 @@ class Slots(commands.Cog):
                       "<:CONSPIRACY:1258071611047678073>", 
                       "<:aliens:1258067124623114351>", 
                       "<:antivax:1258070199945531402>", 
-                      "<:illuminati:1258059529510195200>", 
+                      "<a:illuminati:1258129182190469140>", 
                       "<:alienunpleased:1258059075531571270>", 
                       "<:moonlandinghoax:1258075177934131200>", 
                       "<:foilge:1258071175951552643>", 
                       "<:kkona5G:1258070861257244693>", 
                       "<:uriahBlinker:1219818964314755142>",
                       "✈️",
-                      "👁️‍🗨️", 
+                      "🏬", 
                       "<:acosmicD:1171219346299814009>"]
 
     @app_commands.command(name="slots", description="Play a game of slots")
@@ -66,7 +66,7 @@ class Slots(commands.Cog):
         embed = discord.Embed()
         if slot1 == slot2 == slot3 == "<:uriahBlinker:1219818964314755142>":
             # Top Right Jackpot
-            exp_gained = math.ceil(cost * .1) # 10% of the bet
+            exp_gained = math.ceil(cost * .05) # 5% of the bet
             amount_won = cost * 125 # Top Right Jackpot
             embed.description = f"# 🎰 TOP RIGHT JACKPOT 🎰\n\n\n # {result}\n{interaction.user.mention} hit the TOP RIGHT JACKPOT and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.gold()
@@ -78,7 +78,7 @@ class Slots(commands.Cog):
 
         elif slot1 == slot2 == slot3 == "<:acosmicD:1171219346299814009>":
             # Cosmic Jackpot
-            exp_gained = math.ceil(cost * .1) # 10% of the bet  
+            exp_gained = math.ceil(cost * .05) # 5% of the bet
             amount_won = cost * 100 # Cosmic Jackpot
             embed.description = f"# 🌌 COSMIC JACKPOT 🌌\n\n\n # {result}\n{interaction.user.mention} hit the COSMIC Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.gold()
@@ -87,9 +87,9 @@ class Slots(commands.Cog):
             general_embed.color = discord.Color.gold()
             general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
             await general_channel.send(embed=general_embed)
-        elif (slot1 == slot2 == slot3 == "<a:shungite:1258061858586365963>") or (slot1 == slot2 == slot3 == "<:illuminati:1258059529510195200>"):
+        elif (slot1 == slot2 == slot3 == "<a:shungite:1258061858586365963>") or (slot1 == slot2 == slot3 == "<a:illuminati:1258129182190469140>"):
             # Mega Jackpot
-            exp_gained = math.ceil(cost * .05) # 5% of the bet
+            exp_gained = math.ceil(cost * .025) # 2.5% of the bet
             amount_won = cost * 50 # Mega Jackpot
             # EMBED
             embed.description = f"# <a:peepoGamba:1247551104414257262> MEGA Jackpot <a:peepoGamba:1247551104414257262>\n\n\n # {result}\n{interaction.user.mention} hit the MEGA Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
@@ -101,7 +101,7 @@ class Slots(commands.Cog):
             await general_channel.send(embed=general_embed)
         elif slot1 == slot2 == slot3:
             # Jackpot
-            exp_gained = math.ceil(cost * .025) # 2.5% of the bet 
+            exp_gained = math.ceil(cost * .0125) # 1.25% of the bet 
             amount_won = cost * 25 # Jackpot
             #EMBED
             embed.description = f"# <a:peepoGamba:1247551104414257262> Jackpot <a:peepoGamba:1247551104414257262>\n\n\n # {result}\n{interaction.user.mention} hit the Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
@@ -112,12 +112,28 @@ class Slots(commands.Cog):
             general_embed.color = discord.Color.gold()
             general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
             await general_channel.send(embed=general_embed)
+        elif (slot1 == "🏬" and slot2 == "✈️" and slot3 == "✈️") or \
+                (slot1 == "✈️" and slot2 == "🏬" and slot3 == "✈️") or \
+                (slot1 == "✈️" and slot2 == "✈️" and slot3 == "🏬"):
+            # Inside Job Jackpot
+            exp_gained = math.ceil(cost * .05) # 5% of the bet
+            amount_won = cost * 50
+            embed.description = f"# Inside Job Jackpot \n\n\n # {result}\n{interaction.user.mention} hit the Inside Job Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
+            embed.color = discord.Color.gold()
+            general_embed = discord.Embed()
+            general_embed.description = f"# Inside Job Jackpot \n\n\n # {result}\n{interaction.user.mention} hit the Inside Job Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
+            general_embed.color = discord.Color.gold()
+            general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
+            await general_channel.send(embed=general_embed)
+
         elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
             # Small win
             exp_gained = math.ceil(cost * .005) # 0.5% of the bet
             amount_won = cost * 5 # Small win
             embed.description = f"# <a:peepoGamba:1247551104414257262> {interaction.user.name} <a:peepoGamba:1247551104414257262>\n\n\n # {result}\nYou matched two! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.green()
+        
+
         else:
             vdao = VaultDao()
             vcredits = vdao.get_currency()
