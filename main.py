@@ -2,6 +2,7 @@
 import random
 import json
 import asyncio
+import sys
 from urllib import request
 import discord
 from discord.ext import commands
@@ -102,6 +103,8 @@ class Bot(commands.Bot):
         logger.info(f'Logged on as {bot.user}!')
         synced = await self.tree.sync()
         logger.info(f"slash cmd's synced: {str(len(synced))}")
+        logger.info(f"discord.py version: {discord.__version__}")
+        logger.info(f"python version: {str(sys.version)}")
         # Create Tables - Need to add all tables here to create on bot start
         invDao = InviteDao()
         invDao.create_table()

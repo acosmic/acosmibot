@@ -68,23 +68,23 @@ class On_Member_Join(commands.Cog):
             except Exception as e:
                 logging.error(f'on_member_join() - Error adding user to the database: {e}')
         else:
-            level = existing_user.level
-            if level < 5:
-                role = discord.utils.get(member.guild.roles, name=role_level_1)
-            elif level >= 5 and level < 10:
-                role = discord.utils.get(member.guild.roles, name=role_level_2)
-            elif level >= 10 and level < 20:
-                role = discord.utils.get(member.guild.roles, name=role_level_3)
-            elif level >= 15:
-                role = discord.utils.get(member.guild.roles, name=role_level_4)
-            elif level >= 20:
-                role = discord.utils.get(member.guild.roles, name=role_level_5)
-            elif level >= 25:
-                role = discord.utils.get(member.guild.roles, name=role_level_6)
-            elif level >= 30:
-                role = discord.utils.get(member.guild.roles, name=role_level_7)
+            # level = existing_user.level
+            # if level < 5:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_1)
+            # elif level >= 5 and level < 10:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_2)
+            # elif level >= 10 and level < 20:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_3)
+            # elif level >= 15:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_4)
+            # elif level >= 20:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_5)
+            # elif level >= 25:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_6)
+            # elif level >= 30:
+            #     role = discord.utils.get(member.guild.roles, name=role_level_7)
 
-            await member.add_roles(role)
+            # await member.add_roles(role)
 
             logging.info(f'{new_user.discord_username} already exists, so was not added again.')
 
