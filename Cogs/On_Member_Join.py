@@ -88,73 +88,73 @@ class On_Member_Join(commands.Cog):
 
             logging.info(f'{new_user.discord_username} already exists, so was not added again.')
 
-        invDao = InviteDao()
-        inviter = None
-        invites = await member.guild.invites()
-        # Process invites
-        for invite in invites:
-            if invite.uses > 0:
-                inviter = invite.inviter
-                guildid = invite.guild.id
-                inviterid = inviter.id
-                inviteeid = member.id
-                code = invite.code
-                uses = invite.uses
-                break
+        # invDao = InviteDao()
+        # inviter = None
+        # invites = await member.guild.invites()
+        # # Process invites
+        # for invite in invites:
+        #     if invite.uses > 0:
+        #         inviter = invite.inviter
+        #         guildid = invite.guild.id
+        #         inviterid = inviter.id
+        #         inviteeid = member.id
+        #         code = invite.code
+        #         uses = invite.uses
+        #         break
 
-        # Check if invite has already been processed
-        if (guildid, inviterid, inviteeid) in self.processed_invites:
-            logging.info(f'Invite from {inviter} to {member} has already been processed.')
-            return
+        # # Check if invite has already been processed
+        # if (guildid, inviterid, inviteeid) in self.processed_invites:
+        #     logging.info(f'Invite from {inviter} to {member} has already been processed.')
+        #     return
 
-        # Mark invite as processed
-        self.processed_invites.add((guildid, inviterid, inviteeid))
+        # # Mark invite as processed
+        # self.processed_invites.add((guildid, inviterid, inviteeid))
 
-        logging.info(f'TESTING - Inviter: {inviter}\n'
-                    f'Guild ID: {guildid}\n'
-                    f'Inviter ID: {inviterid}\n'
-                    f'Invitee ID: {inviteeid}\n'
-                    f'Code: {code}\n'
-                    f'Uses: {uses}\n')
+        # logging.info(f'TESTING - Inviter: {inviter}\n'
+        #             f'Guild ID: {guildid}\n'
+        #             f'Inviter ID: {inviterid}\n'
+        #             f'Invitee ID: {inviteeid}\n'
+        #             f'Code: {code}\n'
+        #             f'Uses: {uses}\n')
 
-        dbinvites = invDao.get_invites(guildid)
-        if dbinvites:
-            for dbinvite in dbinvites:
-                if dbinvite.inviter_id == inviterid and dbinvite.invitee_id == inviteeid:
-                    logging.info(f'Inviter has already invited this user before.')
-                    break
-            else:
-                try:
-                    newinvite = Invite(0, guildid, inviterid, inviteeid, code, datetime.now())
-                    invDao.add_new_invite(newinvite)
-                    inviterUser = dao.get_user(inviterid)
-                    inviterUser.currency += 50000
-                    inviterUser.exp += 500
-                    inviterUser.exp_gained += 500
-                    inviterUser.season_exp += 500
-                    dao.update_user(inviterUser)
-                    inviterDiscord = self.bot.get_user(inviterid)
-                    logging.info(f'{inviterDiscord.name} has been rewarded 50,000 Credits for inviting {member.name} to the server.')
-                    await channel.send(f'# {inviterDiscord.mention} has been rewarded 50,000 Credits and 500 EXP for inviting {member.name} to the server.')
-                    logging.info(f'Rewards have been given to the inviter: 50,000 Credits and 500 EXP to {inviterDiscord.name}')
+        # dbinvites = invDao.get_invites(guildid)
+        # if dbinvites:
+        #     for dbinvite in dbinvites:
+        #         if dbinvite.inviter_id == inviterid and dbinvite.invitee_id == inviteeid:
+        #             logging.info(f'Inviter has already invited this user before.')
+        #             break
+        #     else:
+        #         try:
+        #             newinvite = Invite(0, guildid, inviterid, inviteeid, code, datetime.now())
+        #             invDao.add_new_invite(newinvite)
+        #             inviterUser = dao.get_user(inviterid)
+        #             inviterUser.currency += 50000
+        #             inviterUser.exp += 500
+        #             inviterUser.exp_gained += 500
+        #             inviterUser.season_exp += 500
+        #             dao.update_user(inviterUser)
+        #             inviterDiscord = self.bot.get_user(inviterid)
+        #             logging.info(f'{inviterDiscord.name} has been rewarded 50,000 Credits for inviting {member.name} to the server.')
+        #             await channel.send(f'# {inviterDiscord.mention} has been rewarded 50,000 Credits and 500 EXP for inviting {member.name} to the server.')
+        #             logging.info(f'Rewards have been given to the inviter: 50,000 Credits and 500 EXP to {inviterDiscord.name}')
 
-                except Exception as e:
-                    logging.error(f'DBinvites exists, but Error adding invite to the database: {e}')
-        else:
-            try:
-                newinvite = Invite(0, guildid, inviterid, inviteeid, code, datetime.now())
-                invDao.add_new_invite(newinvite)
-                inviterUser = dao.get_user(inviterid)
-                inviterUser.currency += 50000
-                inviterUser.exp += 500
-                inviterUser.exp_gained += 500
-                inviterUser.season_exp += 500
-                dao.update_user(inviterUser)
-                inviterDiscord = self.bot.get_user(inviterid)
-                logging.info(f'{inviterDiscord.name} has been rewarded 50,000 Credits for inviting {member.name} to the server.')
-                await channel.send(f'# {inviterDiscord.mention} has been rewarded 50,000 Credits and 500 EXP for inviting {member.name} to the server.')
-            except Exception as e:
-                logging.error(f'No DBinvites, Error adding invite to the database: {e}')
+        #         except Exception as e:
+        #             logging.error(f'DBinvites exists, but Error adding invite to the database: {e}')
+        # else:
+        #     try:
+        #         newinvite = Invite(0, guildid, inviterid, inviteeid, code, datetime.now())
+        #         invDao.add_new_invite(newinvite)
+        #         inviterUser = dao.get_user(inviterid)
+        #         inviterUser.currency += 50000
+        #         inviterUser.exp += 500
+        #         inviterUser.exp_gained += 500
+        #         inviterUser.season_exp += 500
+        #         dao.update_user(inviterUser)
+        #         inviterDiscord = self.bot.get_user(inviterid)
+        #         logging.info(f'{inviterDiscord.name} has been rewarded 50,000 Credits for inviting {member.name} to the server.')
+        #         await channel.send(f'# {inviterDiscord.mention} has been rewarded 50,000 Credits and 500 EXP for inviting {member.name} to the server.')
+        #     except Exception as e:
+        #         logging.error(f'No DBinvites, Error adding invite to the database: {e}')
 
 
         # Clear processed_invites after invite processing
