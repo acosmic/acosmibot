@@ -31,7 +31,8 @@ class Slots(commands.Cog):
                       "<:kkona5G:1258070861257244693>", 
                       "<:uriahBlinker:1219818964314755142>",
                       "✈️",
-                      "🏬", 
+                      "🏬",
+                      "<a:docPLSjail:1258436674250084383>", 
                       "<:acosmicD:1171219346299814009>"]
 
     @app_commands.command(name="slots", description="Play a game of slots")
@@ -44,9 +45,11 @@ class Slots(commands.Cog):
         exp_gained = 0
         amount_won = 0
         amount_lost = 0
+        exp_lost = 0
 
 
         general_channel = self.bot.get_channel(1155577095787917384)
+        jail_channel = self.bot.get_channel(1233867818055893062)
 
         if user.currency < cost:
             await interaction.response.send_message("You don't have enough credits to place this bet.", ephemeral=True)
@@ -91,7 +94,6 @@ class Slots(commands.Cog):
             # Mega Jackpot
             exp_gained = math.ceil(cost * .025) # 2.5% of the bet
             amount_won = cost * 50 # Mega Jackpot
-            # EMBED
             embed.description = f"# <a:peepoGamba:1247551104414257262> MEGA Jackpot <a:peepoGamba:1247551104414257262>\n\n\n # {result}\n{interaction.user.mention} hit the MEGA Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!!"
             embed.color = discord.Color.gold()
             general_embed = discord.Embed()
@@ -99,11 +101,28 @@ class Slots(commands.Cog):
             general_embed.color = discord.Color.gold()
             general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
             await general_channel.send(embed=general_embed)
+        
+        # JAIL POT
+        elif slot1 == slot2 == slot3 == "<a:docPLSjail:1258436674250084383>":
+            # Jail Jackpot
+            exp_lost = math.ceil(user.season_exp * .10) # 10% of the user's exp
+            amount_lost = math.ceil(user.currency * 0.10) # 10% of the user's credits
+            embed.description = f"# <:kekpoint:1224792810889154760> JAIL JACKPOT <:kekpoint:1224792810889154760>\n\n\n # {result}\n{interaction.user.mention} hit the Jail Jackpot and lost {amount_lost:,.0f} Credits and {exp_lost:,.0f} XP!! and sent to Jail!"
+            embed.color = discord.Color.gold()
+            general_embed = discord.Embed()
+            general_embed.description = f"# <:kekpoint:1224792810889154760> JAIL JACKPOT <:kekpoint:1224792810889154760>\n\n\n # {result}\n{interaction.user.mention} hit the Jail Jackpot and lost {amount_lost:,.0f} Credits and {exp_lost:,.0f} XP!! and sent to Jail!"
+            general_embed.color = discord.Color.gold()
+            general_embed.set_footer(text="Try your luck with /slots! in 🎰︱casino")
+            inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")
+            if inmate_role in interaction.user.roles:
+                return
+            await interaction.user.add_roles(inmate_role)
+            await general_channel.send(embed=general_embed)
+            await jail_channel.send(embed=general_embed)                    
         elif slot1 == slot2 == slot3:
             # Jackpot
             exp_gained = math.ceil(cost * .0125) # 1.25% of the bet 
             amount_won = cost * 25 # Jackpot
-            #EMBED
             embed.description = f"# <a:peepoGamba:1247551104414257262> Jackpot <a:peepoGamba:1247551104414257262>\n\n\n # {result}\n{interaction.user.mention} hit the Jackpot and won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.gold()
             general_embed = discord.Embed()
@@ -132,7 +151,6 @@ class Slots(commands.Cog):
             amount_won = cost * 5 # Small win
             embed.description = f"# <a:peepoGamba:1247551104414257262> {interaction.user.name} <a:peepoGamba:1247551104414257262>\n\n\n # {result}\nYou matched two! You won {amount_won:,.0f} credits and {exp_gained:,.0f} EXP!"
             embed.color = discord.Color.green()
-        
 
         else:
             vdao = VaultDao()
@@ -153,6 +171,7 @@ class Slots(commands.Cog):
         user.exp += exp_gained
         user.exp_gained += exp_gained
         user.season_exp += exp_gained
+        user.exp_lost -= exp_lost
 
         dao.update_user(user)
         slotDao.add_new_event(new_event)

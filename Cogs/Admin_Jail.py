@@ -35,7 +35,7 @@ class Admin_Jail(commands.Cog):
         #     return
 
         # Add the 'Inmate' role
-        inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")  # Update with actual inmate role name
+        inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate") 
         if inmate_role in member.roles:
             await interaction.response.send_message(f"{member.name} is already in Jail!", ephemeral=True)
             return
