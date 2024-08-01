@@ -43,6 +43,8 @@ class Bot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
+            "Cogs.Admin_Start_Lotto",
+            "Cogs.Video_To_MP3",
             "Cogs.Admin_Jail",
             "Cogs.Admin_Stats",
             "Cogs.Slots",
@@ -80,12 +82,12 @@ class Bot(commands.Bot):
         
     
     async def setup_hook(self):
-        if not hasattr(self, 'gm_na_task_obj') or self.gm_na_task_obj.done():
-            self.gm_na_task_obj = self.loop.create_task(self.gm_na_task())
-        if not hasattr(self, 'gm_eu_task_obj') or self.gm_eu_task_obj.done():
-            self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
-        if not hasattr(self, 'bg_task_lottery_obj') or self.bg_task_lottery_obj.done():
-            self.bg_task_lottery_obj = self.loop.create_task(self.bg_task_lottery())
+        # if not hasattr(self, 'gm_na_task_obj') or self.gm_na_task_obj.done():
+        #     self.gm_na_task_obj = self.loop.create_task(self.gm_na_task())
+        # if not hasattr(self, 'gm_eu_task_obj') or self.gm_eu_task_obj.done():
+        #     self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
+        # if not hasattr(self, 'bg_task_lottery_obj') or self.bg_task_lottery_obj.done():
+        #     self.bg_task_lottery_obj = self.loop.create_task(self.bg_task_lottery())
         if not hasattr(self, 'bg_task_lottery_end_obj') or self.bg_task_lottery_end_obj.done():
             self.bg_task_lottery_end_obj = self.loop.create_task(self.bg_task_lottery_end())
         if not hasattr(self, 'check_if_live_task_obj') or self.check_if_live_task_obj.done():
@@ -127,135 +129,196 @@ class Bot(commands.Bot):
     #         await asyncio.sleep(60)
             
 
-    async def gm_na_task(self): # good morning gif
-        await self.wait_until_ready()
-        channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
-        search_term = 'rhino'  
-        logger.info(f'goodmorning gif search_term: {search_term}')
-        while not self.is_closed():
+    # async def gm_na_task(self): # good morning gif
+    #     await self.wait_until_ready()
+    #     channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
+    #     search_term = 'rhino'  
+    #     logger.info(f'goodmorning gif search_term: {search_term}')
+    #     while not self.is_closed():
             
-            logger.info('gm_na_task running')
-            if datetime.now().hour == 7 and datetime.now().minute == 50:
-                search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-                logger.info('gm_na_task running at 7:50am')
+    #         logger.info('gm_na_task running')
+    #         if datetime.now().hour == 7 and datetime.now().minute == 50:
+    #             search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
+    #             logger.info('gm_na_task running at 7:50am')
                 
-                try:
-                    gif = self.giphy_search(search_term)
-                    logger.info(f'search_term:')
-                    await channel.send(gif)
-                except Exception as e:
-                    logger.error(f'gm_na_task error: {e}')
-            await asyncio.sleep(60)
+    #             try:
+    #                 gif = self.giphy_search(search_term)
+    #                 logger.info(f'search_term:')
+    #                 await channel.send(gif)
+    #             except Exception as e:
+    #                 logger.error(f'gm_na_task error: {e}')
+    #         await asyncio.sleep(60)
 
-    async def gm_eu_task(self): # good morning gif
-        await self.wait_until_ready()
-        channel = self.get_channel(1155577095787917384)
-        # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-        search_term = 'monkey'
-        logger.info(f'goodmorning gif search_term: {search_term}')
-        while not self.is_closed():
-            logger.info('gm_eu_task running')
-            if datetime.now().hour == 2 and datetime.now().minute == 50:
-                logger.info('gm_eu_task running at 2:50am which is 7:50am in EU')
-                try:
-                    gif = self.giphy_search(search_term)
-                    logger.info(f'search_term: {search_term} gif: {gif}')
-                    await channel.send(gif)
-                    dao = UserDao()
-                    dao.reset_daily()
+    # async def gm_eu_task(self): # good morning gif
+    #     await self.wait_until_ready()
+    #     channel = self.get_channel(1155577095787917384)
+    #     # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
+    #     search_term = 'monkey'
+    #     logger.info(f'goodmorning gif search_term: {search_term}')
+    #     while not self.is_closed():
+    #         logger.info('gm_eu_task running')
+    #         if datetime.now().hour == 2 and datetime.now().minute == 50:
+    #             logger.info('gm_eu_task running at 2:50am which is 7:50am in EU')
+    #             try:
+    #                 gif = self.giphy_search(search_term)
+    #                 logger.info(f'search_term: {search_term} gif: {gif}')
+    #                 await channel.send(gif)
+    #                 dao = UserDao()
+    #                 dao.reset_daily()
                                         
-                    today = datetime.now().date()
-                    for member in channel.guild.members:
-                        current_user = dao.get_user(member.id)
-                        if current_user.last_daily is not None:
-                            last_daily_date = datetime.strptime(str(current_user.last_daily), "%Y-%m-%d %H:%M:%S").date()
-                            if last_daily_date < today - timedelta(days=1):
-                                if current_user.streak > 0:
-                                    dao.reset_streak(current_user.id)
-                                    logger.info(f'{current_user.discord_username} streak reset')
+    #                 today = datetime.now().date()
+    #                 for member in channel.guild.members:
+    #                     current_user = dao.get_user(member.id)
+    #                     if current_user.last_daily is not None:
+    #                         last_daily_date = datetime.strptime(str(current_user.last_daily), "%Y-%m-%d %H:%M:%S").date()
+    #                         if last_daily_date < today - timedelta(days=1):
+    #                             if current_user.streak > 0:
+    #                                 dao.reset_streak(current_user.id)
+    #                                 logger.info(f'{current_user.discord_username} streak reset')
                     
-                except Exception as e:
-                    logger.error(f'gm_eu_task error: {e}')
-                logger.info("DAILY RESET FOR ALL USERS")
-            await asyncio.sleep(60)
+    #             except Exception as e:
+    #                 logger.error(f'gm_eu_task error: {e}')
+    #             logger.info("DAILY RESET FOR ALL USERS")
+    #         await asyncio.sleep(60)
 
-    async def bg_task_lottery(self):
-        await self.wait_until_ready()
-        channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
-        # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
-        while not self.is_closed():
-            logger.info('bg_task_lottery running')
-            if datetime.now().weekday() == 0 and datetime.now().hour == 8 and datetime.now().minute == 0:
-                logger.info('bg_task_lottery running at 8:00am on Monday')
-                try:
+    # async def bg_task_lottery(self):
+    #     await self.wait_until_ready()
+    #     channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
+    #     # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
+    #     while not self.is_closed():
+    #         logger.info('bg_task_lottery running')
+    #         if datetime.now().weekday() == 0 and datetime.now().hour == 8 and datetime.now().minute == 0:
+    #             logger.info('bg_task_lottery running at 8:00am on Monday')
+    #             try:
                 
-                    le_dao = LotteryEventDao()
-                    # current_lottery = le_dao.get_current_event()
-                    vdao = VaultDao()
-                    vault_credits = vdao.get_currency()
+    #                 le_dao = LotteryEventDao()
+    #                 # current_lottery = le_dao.get_current_event()
+    #                 vdao = VaultDao()
+    #                 vault_credits = vdao.get_currency()
                     
-                    await channel.send(f'# React with 🎟️ to enter the lottery! There is currently {vault_credits:,.0f} Credits in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
+    #                 await channel.send(f'# React with 🎟️ to enter the lottery! There is currently {vault_credits:,.0f} Credits in the Vault.\nThe winner will be announced in 4 hours! <a:pepesith:1165101386921418792>')
 
-                    message = await channel.send("https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png?ex=65dea22f&is=65cc2d2f&hm=3a9e07cf1b55f87a1fcd664c766f11636bf55f305b715e0269851f18d154fd23&")
+    #                 message = await channel.send("https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png?ex=65dea22f&is=65cc2d2f&hm=3a9e07cf1b55f87a1fcd664c766f11636bf55f305b715e0269851f18d154fd23&")
                     
-                    await message.add_reaction('🎟️')
-                    end_time = datetime.now() + timedelta(hours=4, minutes=5)
-                    new_le = LotteryEvent(0, message.id, datetime.now(), end_time, 0, 0)
+    #                 await message.add_reaction('🎟️')
+    #                 end_time = datetime.now() + timedelta(hours=4, minutes=5)
+    #                 new_le = LotteryEvent(0, message.id, datetime.now(), end_time, 0, 0)
                     
-                    await message.pin()
+    #                 await message.pin()
                     
-                    le_dao.add_new_event(new_le)
-                except Exception as e:
-                    logger.error(f'bg_task_lottery error: {e}')
+    #                 le_dao.add_new_event(new_le)
+    #             except Exception as e:
+    #                 logger.error(f'bg_task_lottery error: {e}')
             
-            elif datetime.now().weekday() == 0 and datetime.now().hour == 11 and datetime.now().minute == 45:
-                await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
-            await asyncio.sleep(60)
+            # elif datetime.now().weekday() == 0 and datetime.now().hour == 11 and datetime.now().minute == 45:
+            #     await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in 15 minutes! Enter here -> {message.jump_url}")
+    #         await asyncio.sleep(60)
+
+    # async def bg_task_lottery_end(self):
+    #     await self.wait_until_ready()
+    #     channel = self.get_channel(1155577095787917384)
+    #     # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
+        
+    #     while not self.is_closed():
+    #         logger.info('bg_task_lottery_end running')
+    #         if datetime.now().weekday() == 0 and datetime.now().hour == 12 and datetime.now().minute == 0:
+    #             logger.info('bg_task_lottery_end running at 12:00pm on Monday')
+    #             try:
+    #                 vdao = VaultDao()
+    #                 lottery_credits = vdao.get_currency()
+    #                 le_dao = LotteryEventDao()
+    #                 lp_dao = LotteryParticipantDao()
+    #                 userDao = UserDao()
+    #                 current_lottery = le_dao.get_current_event()
+    #                 participants = lp_dao.get_participants(current_lottery.message_id)
+    #                 winner = random.choice(participants)
+    #                 user = userDao.get_user(winner.participant_id)
+    #                 discord_user = channel.guild.get_member(winner.participant_id)
+    #                 lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
+    #                 logger.info(f'winner: {user.discord_username}')
+    #                 await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
+    #                 current_lottery.winner_id = winner.participant_id
+    #                 current_lottery.end_time = datetime.now()
+    #                 current_lottery.credits = lottery_credits
+    #                 le_dao.update_event(current_lottery)
+    #                 user.currency += lottery_credits
+    #                 userDao.update_user(user)
+    #                 vdao.update_currency(0)
+    #                 message = await channel.fetch_message(current_lottery.message_id)
+    #                 await message.unpin()
+    #                 await message.delete()
+    #                 for member in channel.guild.members:
+    #                     await member.remove_roles(lottery_role)
+    #                 logger.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
+    #             except Exception as e:
+    #                 logger.error(f'bg_task_lottery_end error: {e}')
+    #         await asyncio.sleep(60)
 
     async def bg_task_lottery_end(self):
         await self.wait_until_ready()
-        channel = self.get_channel(1155577095787917384)
-        # channel = self.get_channel(1186805143296020520) # bot-testing channel id 1186805143296020520
-        
+        channel = self.get_channel(1155577095787917384)  # Acosmicord general channel id
+        # channel = self.get_channel(1186805143296020520)  # bot-testing channel id
+
         while not self.is_closed():
             logger.info('bg_task_lottery_end running')
-            if datetime.now().weekday() == 0 and datetime.now().hour == 12 and datetime.now().minute == 0:
-                logger.info('bg_task_lottery_end running at 12:00pm on Monday')
-                try:
-                    vdao = VaultDao()
-                    lottery_credits = vdao.get_currency()
-                    le_dao = LotteryEventDao()
-                    lp_dao = LotteryParticipantDao()
-                    userDao = UserDao()
-                    current_lottery = le_dao.get_current_event()
-                    participants = lp_dao.get_participants(current_lottery.message_id)
-                    winner = random.choice(participants)
-                    user = userDao.get_user(winner.participant_id)
-                    discord_user = channel.guild.get_member(winner.participant_id)
-                    lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
-                    logger.info(f'winner: {user.discord_username}')
-                    await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
-                    current_lottery.winner_id = winner.participant_id
-                    current_lottery.end_time = datetime.now()
-                    current_lottery.credits = lottery_credits
-                    le_dao.update_event(current_lottery)
-                    user.currency += lottery_credits
-                    userDao.update_user(user)
-                    vdao.update_currency(0)
-                    message = await channel.fetch_message(current_lottery.message_id)
-                    await message.unpin()
-                    await message.delete()
-                    for member in channel.guild.members:
-                        await member.remove_roles(lottery_role)
-                    logger.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
-                except Exception as e:
-                    logger.error(f'bg_task_lottery_end error: {e}')
+            try:
+                le_dao = LotteryEventDao()
+                current_lottery = le_dao.get_current_event()
+                if current_lottery:
+                    remaining_time = current_lottery.end_time - datetime.now()
+                    logger.debug(f'Remaining time: {remaining_time}')
+
+                    if remaining_time <= timedelta(minutes=1):
+                        logger.info('Ending current lottery event')
+
+                        vdao = VaultDao()
+                        lottery_credits = vdao.get_currency()
+                        lp_dao = LotteryParticipantDao()
+                        userDao = UserDao()
+                        participants = lp_dao.get_participants(current_lottery.message_id)
+                        if participants:  # Ensure there are participants
+                            winner = random.choice(participants)
+                            user = userDao.get_user(winner.participant_id)
+                            discord_user = channel.guild.get_member(winner.participant_id)
+                            lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
+                            logger.info(f'winner: {user.discord_username}')
+                            await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
+
+                            current_lottery.winner_id = winner.participant_id
+                            current_lottery.end_time = datetime.now()
+                            current_lottery.credits = lottery_credits
+                            le_dao.update_event(current_lottery)
+                            user.currency += lottery_credits
+                            userDao.update_user(user)
+                            vdao.update_currency(0)
+                            message = await channel.fetch_message(current_lottery.message_id)
+                            await message.unpin()
+                            await message.delete()
+                            for member in channel.guild.members:
+                                await member.remove_roles(lottery_role)
+                            logger.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
+                        else:
+                            logger.warning('No participants in the current lottery.')
+
+                    elif remaining_time <= timedelta(minutes=30):
+                        logger.debug('Lottery ending soon, checking reminders.')
+                        # Fetch the message if it hasn't been fetched yet
+                        if 'message' not in locals():
+                            message = await channel.fetch_message(current_lottery.message_id)
+
+                        # Check if we need to post reminders every 10 minutes, except at zero minutes
+                        if remaining_time.total_seconds() % 600 < 60 and remaining_time > timedelta(seconds=0):
+                            await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in {remaining_time // timedelta(minutes=1)} minutes! Enter here -> {message.jump_url}")
+
+            except Exception as e:
+                logger.error(f'bg_task_lottery_end error: {e}')
+                
             await asyncio.sleep(60)
 
     async def check_if_live_task(self):
         await self.wait_until_ready()
-        # channel = self.get_channel(1224417564684456146) # TWITCH ANNOUCEMENTS CHANNEL
-        channel = self.get_channel(1186805143296020520) # Bot Testing Channel
+        channel = self.get_channel(1224417564684456146) # TWITCH ANNOUCEMENTS CHANNEL
+        # channel = self.get_channel(1186805143296020520) # Bot Testing Channel
         while not self.is_closed():
             logger.info('check_if_live_task running')
             tw = Twitch()
