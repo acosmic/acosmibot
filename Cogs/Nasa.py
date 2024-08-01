@@ -4,7 +4,6 @@ from discord import app_commands
 from logger import AppLogger
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
 
 logger = AppLogger(__name__).get_logger()
 
@@ -25,6 +24,13 @@ class Nasa(commands.Cog):
                 return
 
             soup = BeautifulSoup(response.text, 'html.parser')
+            # Extract the title
+            title_tag = soup.find('b')
+            if title_tag:
+                title = title_tag.get_text()
+            else:
+                title = "Astronomy Picture of the Day"
+
             # Check for image or video content
             media_tag = soup.find('iframe') or soup.find('img')
             if not media_tag:
@@ -34,18 +40,17 @@ class Nasa(commands.Cog):
 
             if media_tag.name == 'iframe':  # It's a video
                 media_link = media_tag['src']
-                media_type = "a Video"
             else:  # It's an image
                 media_link = f"https://apod.nasa.gov/apod/{media_tag['src']}"
-                media_type = "an Image"
 
-            embed = discord.Embed(title="Astronomy Picture of the Day", description=f"Today's APOD is {media_type}.", color=interaction.user.color)
-            if media_type == "an Image":
-                
+            description = f"Click [here]({self.URL}) to view today's APOD."
+
+            embed = discord.Embed(title=title, description=description, color=interaction.user.color)
+            if media_tag.name == 'img':
                 embed.set_image(url=media_link)
             else:
                 embed.add_field(name="Watch Video", value=f"[Click here to watch the video]({media_link})")
-                # embed.set_image(url=media_link)
+
             embed.set_footer(text="Source: NASA APOD")
 
             await interaction.response.send_message(embed=embed)

@@ -236,7 +236,8 @@ class On_Message(commands.Cog):
                                 
                                 await message.channel.typing()
                                 # Get the response from OpenAI
-                                response = await self.chatgpt.get_chatgpt_response(prompt)
+                                # response = await self.chatgpt.get_chatgpt_response(prompt)
+                                response = await self.chatgpt.get_chatgpt_response_v2(prompt, message.author.name)
 
                                 # Send the response back to the channel
                                 
