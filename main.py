@@ -84,8 +84,8 @@ class Bot(commands.Bot):
     async def setup_hook(self):
         # if not hasattr(self, 'gm_na_task_obj') or self.gm_na_task_obj.done():
         #     self.gm_na_task_obj = self.loop.create_task(self.gm_na_task())
-        # if not hasattr(self, 'gm_eu_task_obj') or self.gm_eu_task_obj.done():
-        #     self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
+        if not hasattr(self, 'gm_eu_task_obj') or self.gm_eu_task_obj.done():
+            self.gm_eu_task_obj = self.loop.create_task(self.gm_eu_task())
         # if not hasattr(self, 'bg_task_lottery_obj') or self.bg_task_lottery_obj.done():
         #     self.bg_task_lottery_obj = self.loop.create_task(self.bg_task_lottery())
         if not hasattr(self, 'bg_task_lottery_end_obj') or self.bg_task_lottery_end_obj.done():
@@ -149,37 +149,37 @@ class Bot(commands.Bot):
     #                 logger.error(f'gm_na_task error: {e}')
     #         await asyncio.sleep(60)
 
-    # async def gm_eu_task(self): # good morning gif
-    #     await self.wait_until_ready()
-    #     channel = self.get_channel(1155577095787917384)
-    #     # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-    #     search_term = 'monkey'
-    #     logger.info(f'goodmorning gif search_term: {search_term}')
-    #     while not self.is_closed():
-    #         logger.info('gm_eu_task running')
-    #         if datetime.now().hour == 2 and datetime.now().minute == 50:
-    #             logger.info('gm_eu_task running at 2:50am which is 7:50am in EU')
-    #             try:
-    #                 gif = self.giphy_search(search_term)
-    #                 logger.info(f'search_term: {search_term} gif: {gif}')
-    #                 await channel.send(gif)
-    #                 dao = UserDao()
-    #                 dao.reset_daily()
+    async def gm_eu_task(self): # good morning gif
+        await self.wait_until_ready()
+        channel = self.get_channel(1155577095787917384)
+        # search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
+        search_term = 'monkey'
+        logger.info(f'goodmorning gif search_term: {search_term}')
+        while not self.is_closed():
+            logger.info('gm_eu_task running')
+            if datetime.now().hour == 2 and datetime.now().minute == 50:
+                logger.info('gm_eu_task running at 2:50am which is 7:50am in EU')
+                try:
+                    # gif = self.giphy_search(search_term)
+                    # logger.info(f'search_term: {search_term} gif: {gif}')
+                    # await channel.send(gif)
+                    dao = UserDao()
+                    dao.reset_daily()
                                         
-    #                 today = datetime.now().date()
-    #                 for member in channel.guild.members:
-    #                     current_user = dao.get_user(member.id)
-    #                     if current_user.last_daily is not None:
-    #                         last_daily_date = datetime.strptime(str(current_user.last_daily), "%Y-%m-%d %H:%M:%S").date()
-    #                         if last_daily_date < today - timedelta(days=1):
-    #                             if current_user.streak > 0:
-    #                                 dao.reset_streak(current_user.id)
-    #                                 logger.info(f'{current_user.discord_username} streak reset')
+                    today = datetime.now().date()
+                    for member in channel.guild.members:
+                        current_user = dao.get_user(member.id)
+                        if current_user.last_daily is not None:
+                            last_daily_date = datetime.strptime(str(current_user.last_daily), "%Y-%m-%d %H:%M:%S").date()
+                            if last_daily_date < today - timedelta(days=1):
+                                if current_user.streak > 0:
+                                    dao.reset_streak(current_user.id)
+                                    logger.info(f'{current_user.discord_username} streak reset')
                     
-    #             except Exception as e:
-    #                 logger.error(f'gm_eu_task error: {e}')
-    #             logger.info("DAILY RESET FOR ALL USERS")
-    #         await asyncio.sleep(60)
+                except Exception as e:
+                    logger.error(f'gm_eu_task error: {e}')
+                logger.info("DAILY RESET FOR ALL USERS")
+            await asyncio.sleep(60)
 
     # async def bg_task_lottery(self):
     #     await self.wait_until_ready()
