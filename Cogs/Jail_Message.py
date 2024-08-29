@@ -11,9 +11,9 @@ class Jail_Message(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="jailmail", description="send a message to the jail. Costs 100 credits.")
+    @app_commands.command(name="jailmail", description="send a message to or from the jail. Costs 1000000 credits.")
     async def jail(self, interaction: discord.Interaction, mail: str):
-        cost = 100
+        cost = 1000000
         dao = UserDao()
         user = dao.get_user(interaction.user.id)
 

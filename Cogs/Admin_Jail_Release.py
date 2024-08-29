@@ -15,14 +15,14 @@ role_level_6 = "Shungite Chewer"
 role_level_7 = "Illuminaughty"
 level_roles = [role_level_1, role_level_2, role_level_3, role_level_4, role_level_5, role_level_6, role_level_7]
 
-class Admin_Jail(commands.Cog):
+class Admin_Jail_Release(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
       
 
     # Command-Based Jailing
-    @app_commands.command(name="admin-jail", description="Send a user to jail.")
+    @app_commands.command(name="admin-jail-release", description="Release a user from jail.")
     async def jail(self, interaction: discord.Interaction, member: discord.Member):
         # Identify all removable roles that the user has
         # removable_roles = [role for role in member.roles if role.name in level_roles]  # Update with actual role names
@@ -35,16 +35,18 @@ class Admin_Jail(commands.Cog):
         #     await interaction.response.send_message(f"{member.name} is already in Jail!", ephemeral=True)
         #     return
 
-        # Add the 'Inmate' role
+        # Remove the 'Inmate' role
         inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate") 
         if inmate_role in member.roles:
-            await interaction.response.send_message(f"{member.name} is already in Jail!", ephemeral=True)
-            return
-        await member.add_roles(inmate_role)
-        await interaction.response.send_message(f"🚨 {member.name} has been sent to Jail! No parole! 🚨", ephemeral=False)
-        logger.info(f"{member.name} has been sent to Jail by {interaction.user.name}!")
+            await interaction.response.send_message(f"{member.name} has been released from Jail!", ephemeral=False)
+            await member.remove_roles(inmate_role)
+            logger.info(f"{member.name} has been released from Jail by {interaction.user.name}!")
+        else:
+            await interaction.response.send_message(f"{member.name} is not in Jail.", ephemeral=True)
+        
+        
 
 
 # Add the Cog to the bot
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Admin_Jail(bot))
+    await bot.add_cog(Admin_Jail_Release(bot))
