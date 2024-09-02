@@ -1,17 +1,8 @@
 class AI_Thread:
-    def __init__(self, id, discord_id, thread_id, timestamp) -> None:
-        self.id = id
+    def __init__(self, discord_id, thread_id, timestamp) -> None:
         self.discord_id = discord_id
         self.thread_id = thread_id
         self.timestamp = timestamp
-        
-    @property
-    def id(self):
-        return self._id
-    
-    @id.setter
-    def id(self, value):
-        self._id = value
 
     @property
     def discord_id(self):

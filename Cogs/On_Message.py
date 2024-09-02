@@ -43,6 +43,7 @@ class On_Message(commands.Cog):
         level_up_channel = self.bot.get_channel(1209288743912218644)
         daily_reward_channel = self.bot.get_channel(1224561092919951452)
         inmate_role = discord.utils.get(message.guild.roles, name='Inmate')
+        acosmic_role = discord.utils.get(message.guild.roles, name='Acosmic')
         
         if not message.author.bot:
             if inmate_role not in message.author.roles:
@@ -229,7 +230,7 @@ class On_Message(commands.Cog):
 
                     # --------------------------- OPENAI CHATGPT ---------------------------    
                     try:    
-                        if self.bot.user in message.mentions:
+                        if (self.bot.user in message.mentions):
                             # if message.author.id == 110637665128325120:
                                 # Remove the mention and strip the message
                                 prompt = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
@@ -237,7 +238,7 @@ class On_Message(commands.Cog):
                                 await message.channel.typing()
                                 # Get the response from OpenAI
                                 # response = await self.chatgpt.get_chatgpt_response(prompt)
-                                response = await self.chatgpt.get_chatgpt_response_v2(prompt, message.author.name)
+                                response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
 
                                 # Send the response back to the channel
                                 
