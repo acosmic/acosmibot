@@ -1,18 +1,3 @@
-# import logging
-# from logging.handlers import RotatingFileHandler
-
-# class AppLogger:
-#     def __init__(self, name=__name__, log_file='Logs/logs.txt', max_file_size=5*1024*1024, backup_count=5):
-#         self.logger = logging.getLogger(name)
-#         self.logger.setLevel(logging.DEBUG)
-#         handler = RotatingFileHandler(log_file, maxBytes=max_file_size, backupCount=backup_count)
-#         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-#         handler.setFormatter(formatter)
-#         self.logger.addHandler(handler)
-
-#     def get_logger(self):
-#         return self.logger
-    
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
@@ -20,7 +5,7 @@ import os
 class AppLogger:
     def __init__(self, name=__name__, log_dir='Logs', log_file='logs.txt', when='midnight', interval=1, backup_count=30):
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.ERROR)
 
         # Print the current working directory
         print(f"Current working directory: {os.getcwd()}")
@@ -49,6 +34,12 @@ class AppLogger:
         discord_logger = logging.getLogger('discord')
         discord_logger.addHandler(handler)
         discord_logger.setLevel(logging.INFO)
+
+        # Suppress lower-level logs for specific libraries
+        logging.getLogger('httpx').setLevel(logging.WARNING)
+        logging.getLogger('httpcore').setLevel(logging.WARNING)
+        logging.getLogger('urllib3').setLevel(logging.WARNING)
+        logging.getLogger('openai').setLevel(logging.WARNING)
 
     def get_logger(self):
         return self.logger

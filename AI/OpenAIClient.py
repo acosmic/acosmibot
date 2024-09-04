@@ -26,7 +26,7 @@ class OpenAIClient:
                 model="gpt-4o-mini",
                 tools = [{"type": "file_search"}],
             )
-
+        
     async def create_new_thread(self, discord_id):
         aidao = AIDao()
         try:
