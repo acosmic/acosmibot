@@ -13,12 +13,12 @@ class AIDao:
     def __init__(self):
         self.db = Database(db_host, db_user, db_password, db_name)
 
-    def add_new_thread(self, discord_id, thread_id):
+    def add_new_thread(self, discord_id, thread_id, temperature):
         sql = """
-            INSERT INTO ai_threads (discord_id, thread_id, timestamp)
-            VALUES (%s, %s, NOW())
+            INSERT INTO ai_threads (discord_id, thread_id, temperature, timestamp)
+            VALUES (%s, %s, %s, NOW())
         """
-        values = (discord_id, thread_id)
+        values = (discord_id, thread_id, temperature)
         self.db.mycursor.execute(sql, values)
         self.db.mydb.commit()
 
@@ -32,6 +32,17 @@ class AIDao:
         self.db.mycursor.execute(sql, values)
         thread_id = self.db.mycursor.fetchone()
         return thread_id[0] if thread_id else None
+    
+    def get_thread(self, discord_id):
+        sql = """
+            SELECT discord_id, thread_id, temperature, timestamp
+            FROM ai_threads
+            WHERE discord_id = %s
+        """
+        values = (discord_id,)
+        self.db.mycursor.execute(sql, values)
+        thread = self.db.mycursor.fetchone()
+        return AI_Thread(thread[0], thread[1], thread[2], thread[3]) if thread else None
     
     def delete_thread(self, discord_id):
         sql = """

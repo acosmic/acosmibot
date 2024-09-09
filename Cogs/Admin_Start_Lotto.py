@@ -20,7 +20,7 @@ class Admin_Start_Lotto(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        
+
 
     @app_commands.command(name = "admin-start-lotto", description = "Start a lottery.")
     async def admin_start_lotto(self, interaction: discord.Interaction, duration: int):

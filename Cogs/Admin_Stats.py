@@ -2,12 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
-import os
-from dotenv import load_dotenv
 from logger import AppLogger
 
-load_dotenv()
-MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
+
 logger = AppLogger(__name__).get_logger()
 
 class Admin_Stats(commands.Cog):

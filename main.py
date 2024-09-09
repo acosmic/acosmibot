@@ -48,7 +48,9 @@ class Bot(commands.Bot):
             "Cogs.Admin_Jail",
             "Cogs.Admin_Jail_Release",
             "Cogs.Admin_Stats",
+            "Cogs.DeleteAiThread",
             "Cogs.Slots",
+            "Cogs.Reset_AI_Thread",
             "Cogs.Reset_Season",
             "Cogs.Reset_Daily",
             # "Cogs.Roll_Dice",
@@ -361,8 +363,8 @@ class Bot(commands.Bot):
                         embed.add_field(name="Viewers", value=viewer_count, inline=False)
                         embed.add_field(name="Started", value=discord_timestamp, inline=False)
                         # embed.set_footer(text=discord_timestamp)
-                        await channel.send(f"@test {user_name} is live on Twitch! {stream_link}")
-                        await channel.send(embed=embed)
+                        # await channel.send(f"@test {user_name} is live on Twitch! {stream_link}")
+                        # await channel.send(embed=embed)
                         self.posted = True
                         logger.info(f"POSTED TWITCH ANNOUNCEMENT - posted bool: {self.posted}")
                     else:

@@ -5,7 +5,7 @@ import os
 class AppLogger:
     def __init__(self, name=__name__, log_dir='Logs', log_file='logs.txt', when='midnight', interval=1, backup_count=30):
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.ERROR)
+        self.logger.setLevel(logging.INFO)
 
         # Print the current working directory
         print(f"Current working directory: {os.getcwd()}")

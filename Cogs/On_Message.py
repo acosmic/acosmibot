@@ -285,6 +285,9 @@ class On_Message(commands.Cog):
                 logger.info(f'{message.author} is an inmate - skipped level up exp rewards')
                 # if message.channel.id == jail_channel.id:
                 #     await bot_testing.send(f'Inmate {message.author} sends the following message from jail: {message.content}')
+    
+    
+            
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(On_Message(bot))
