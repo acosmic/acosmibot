@@ -80,6 +80,7 @@ class Bot(commands.Bot):
             "Cogs.On_Message",
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
+            "Cogs.On_Raw_Member_Remove",
         ]
         self.posted = False
         
