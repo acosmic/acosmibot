@@ -235,10 +235,10 @@ class On_Message(commands.Cog):
                                 # Remove the mention and strip the message
                                 prompt = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
                                 
-                                await message.channel.typing()
+                                async with message.channel.typing():
                                 # Get the response from OpenAI
                                 # response = await self.chatgpt.get_chatgpt_response(prompt)
-                                response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
+                                    response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
 
                                 # Send the response back to the channel
                                 
