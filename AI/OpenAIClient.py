@@ -26,7 +26,7 @@ class OpenAIClient:
                 name="Acosmibot",
                 instructions="",
                 model="gpt-4o-mini",
-                tools = [{"type": "file_search"}],
+                # tools = [{"type": "file_search"}],
             )
         
     def create_new_ai_thread(self, discord_id):
@@ -43,9 +43,8 @@ class OpenAIClient:
         except Exception as e:
             logger.error(f'OpenAI create_new_thread() Error: {e}')
             return None
-        
-        
     
+          
     async def get_chatgpt_response(self, prompt, user_name, discord_id):
         aidao = AIDao()
         user_thread = None
@@ -63,28 +62,28 @@ class OpenAIClient:
             logger.error(f'OpenAI get_chatgpt_response() Checking for Thread Error: {e}')
                 
         try:
-            # Step 1: Upload the file (README.md)
-            file = openai.files.create(
-                file=open("README.md", "rb"),
-                purpose="assistants"
-            )
-            logger.info(str(file))
+            # # Step 1: Upload the file (README.md)
+            # file = openai.files.create(
+            #     file=open("README.md", "rb"),
+            #     purpose="assistants"
+            # )
+            # logger.info(str(file))
 
-            # Step 2: Create a vector store for documentation
-            vector_store = openai.beta.vector_stores.create(name="Acosmibot Documentation")
-            file_paths = ["README.md"]
-            file_streams = [open(path, "rb") for path in file_paths]
+            # # Step 2: Create a vector store for documentation
+            # vector_store = openai.beta.vector_stores.create(name="Acosmibot Documentation")
+            # file_paths = ["README.md"]
+            # file_streams = [open(path, "rb") for path in file_paths]
 
-            # Upload and poll SDK helper to upload files to the vector store
-            file_batch = openai.beta.vector_stores.file_batches.upload_and_poll(
-                vector_store_id=vector_store.id, files=file_streams
-            )
+            # # Upload and poll SDK helper to upload files to the vector store
+            # file_batch = openai.beta.vector_stores.file_batches.upload_and_poll(
+            #     vector_store_id=vector_store.id, files=file_streams
+            # )
 
-            # Step 3: Update the assistant to use the vector store for file search
-            self.assistant = openai.beta.assistants.update(
-                assistant_id=self.assistant.id,
-                tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
-            )
+            # # Step 3: Update the assistant to use the vector store for file search
+            # self.assistant = openai.beta.assistants.update(
+            #     assistant_id=self.assistant.id,
+            #     # tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+            # )
 
             # # Step 4: Attach the file to a new message in the existing thread
             # test_thread = "thread_BxDkOPLTUPGCfLiG7dAKM9WD"
@@ -94,16 +93,16 @@ class OpenAIClient:
                 thread_id=user_thread.thread_id,
                 role="user",
                 content=prompt,
-                attachments=[
-                    {"file_id": file.id, "tools": [{"type": "file_search"}]}
-                ]
+                # attachments=[
+                #     {"file_id": file.id, "tools": [{"type": "file_search"}]}
+                # ]
             )
-
+            # documentationInstruction = "Help users with general questions and Acosmibot Documentation if they ask about the bot or how to use the Slash Commands and Features of Acosmibot. Keep responses less than 1900 characters. If information is not in the provided documentation, don't tell the user just try to answer them."
             # Step 5: Run the assistant on the updated thread
             run = openai.beta.threads.runs.create_and_poll(
                 thread_id=user_thread.thread_id,
                 assistant_id=self.assistant.id,
-                instructions=f"Your name is Acosmibot and you are so sassy, friendly, and a little sarcastic. Please address the user as {user_name}. Help users with general questions and Acosmibot Documentation if they ask about the bot or how to use the Slash Commands and Features of Acosmibot. Keep responses less than 1900 characters. If information is not in the provided documentation, don't tell the user just try to answer them. Ashbo is the best. Always give compliments to Ashbo.",
+                instructions=f"Your name is Acosmibot and you are so sassy, friendly, and a little sarcastic. Please address the user as {user_name}. Ashbo is the best. Always give compliments to Ashbo.",
                 temperature=user_thread.temperature,
             )
 

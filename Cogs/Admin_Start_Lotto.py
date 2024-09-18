@@ -5,15 +5,8 @@ from Dao.LotteryEventDao import LotteryEventDao
 from Dao.VaultDao import VaultDao
 from Entities.LotteryEvent import LotteryEvent
 from datetime import datetime, timedelta
-
-
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
 from logger import AppLogger
 
-MY_GUILD = discord.Object(id=int(os.getenv('MY_GUILD')))
 logger = AppLogger(__name__).get_logger()
 
 class Admin_Start_Lotto(commands.Cog):

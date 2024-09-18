@@ -1,4 +1,3 @@
-from math import exp
 import math
 import typing
 import discord

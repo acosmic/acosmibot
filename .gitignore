@@ -1,4 +1,6 @@
-.env
+.env.production
+.env.development
+.env.*
 logs.txt
 logs-*.txt
 logs*
