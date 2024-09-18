@@ -1,6 +1,7 @@
 .env.production
 .env.development
 .env.*
+.env
 logs.txt
 logs-*.txt
 logs*
