@@ -1,0 +1,13 @@
+.env.*
+.env
+logs.txt
+logs-*.txt
+logs*
+Logs/*
+logs.txt*
+.gitignore
+trash*.py
+trash*
+RankCards/*
+.*
+*.pyc
