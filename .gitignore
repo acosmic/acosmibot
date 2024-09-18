@@ -11,3 +11,4 @@ trash*
 RankCards/*
 .*
 *.pyc
+__pycache__/
