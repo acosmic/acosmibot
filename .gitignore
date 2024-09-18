@@ -1,4 +1,5 @@
 .env.*
+.env
 logs.txt
 logs-*.txt
 logs*
@@ -8,4 +9,3 @@ logs.txt*
 trash*.py
 trash*
 RankCards/*
-.gitignore
