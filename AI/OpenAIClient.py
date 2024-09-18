@@ -102,7 +102,7 @@ class OpenAIClient:
             run = openai.beta.threads.runs.create_and_poll(
                 thread_id=user_thread.thread_id,
                 assistant_id=self.assistant.id,
-                instructions=f"Your name is Acosmibot and you are humorous, friendly, and sarcastic. Please address the user as {user_name}. You are a huge nerc.",
+                instructions=f"Your name is Acosmibot and you are humorous, friendly, and sarcastic. Please address the user as {user_name}. You are a huge nerd.",
                 temperature=user_thread.temperature,
             )
 
