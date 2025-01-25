@@ -79,7 +79,7 @@ class Deathroll_View(discord.ui.View):
     def create_embed(self):
         embed = discord.Embed(title=f"💀 Deathroll for {self.bet:,.0f} Credits!? 💀 \n {self.initiator.display_name} has challenged {self.target.display_name}", description="Two players roll a dice and the first player to roll a 1 loses!", color=discord.Color.dark_theme())
 
-        deathroll_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1211862442335010856/ac_deathroll.png?ex=6614a7d9&is=660232d9&hm=e9f7ca466de764b405456d0dbc6b7b41320f3d7bea819824ae5646692b41d136&"
+        deathroll_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1283617949806100581/ac_deathroll-halloween.png?ex=66fcb25f&is=66fb60df&hm=532af5e01ea12f64d0f2c12eb0d593c9961a8bdd4da2209680fbe14753f71e04&"
         embed.set_image(url=deathroll_image)
         return embed
     

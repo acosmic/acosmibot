@@ -6,14 +6,14 @@ from logger import AppLogger
 
 logger = AppLogger(__name__).get_logger()
 
-role_level_1 = "Globehead"  
-role_level_2 = "Antivaxxer"  
-role_level_3 = "Moon Landing Hoax"  
-role_level_4 = "Abducted and Probed"  
-role_level_5 = "Flat Gang Baby!"
-role_level_6 = "Shungite Chewer"  
-role_level_7 = "Illuminaughty"
-level_roles = [role_level_1, role_level_2, role_level_3, role_level_4, role_level_5, role_level_6, role_level_7]
+role_level_1 = "Lil Boo"  
+role_level_2 = "Discount Dracula"  
+role_level_3 = "Wicked Witch"  
+role_level_4 = "Goofy Goblin"  
+role_level_5 = "Zombie CEO"
+role_level_6 = "Lord of Bad Decisions"
+
+level_roles = [role_level_1, role_level_2, role_level_3, role_level_4, role_level_5, role_level_6]
 
 class Admin_Jail(commands.Cog):
     def __init__(self, bot):

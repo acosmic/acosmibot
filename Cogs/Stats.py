@@ -56,7 +56,7 @@ class Stats(commands.Cog):
         if user_rank is not None:
             name_from_db = user_rank[1]
             display_name = discord_user.name if discord_user.name is not None else name_from_db
-            level_emoji = "🌎"
+            level_emoji = "<a:NODDERS:1312038419517673566>"
             if current_user.season_level >= 5:
                 level_emoji = "<:antivax:1258070199945531402>"
             if current_user.season_level >= 10:

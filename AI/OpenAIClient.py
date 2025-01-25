@@ -24,7 +24,7 @@ class OpenAIClient:
 
         self.assistant = openai.beta.assistants.create(
                 name="Acosmibot",
-                instructions="",
+                instructions="Keep responses less than 1950 characters.",
                 model="gpt-4o-mini",
                 # tools = [{"type": "file_search"}],
             )
@@ -102,7 +102,7 @@ class OpenAIClient:
             run = openai.beta.threads.runs.create_and_poll(
                 thread_id=user_thread.thread_id,
                 assistant_id=self.assistant.id,
-                instructions=f"Your name is Acosmibot and you are humorous, friendly, and sarcastic. Please address the user as {user_name}. You are a huge nerd.",
+                instructions=f"Your name is Acosmibot and you are humorous, friendly, and sarcastic. The theme this month is Christmas.",
                 temperature=user_thread.temperature,
             )
 
@@ -127,7 +127,7 @@ class OpenAIClient:
 
                 dev_string = f"\n\n-# {user_name} - temp: {run.temperature} - {run.model}"    
             
-            return last_message+dev_string
+            return last_message
 
         except Exception as e:
             logger.error(f'OpenAI Error: {e}')
