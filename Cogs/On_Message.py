@@ -3,6 +3,7 @@ import os
 import json
 import math
 import discord
+from discord import Message
 from discord.ext import commands
 from dotenv import load_dotenv
 from Dao.UserDao import UserDao
@@ -12,13 +13,13 @@ from logger import AppLogger
 from AI.OpenAIClient import OpenAIClient
 
 
-role_level_1 = "Globehead"  
-role_level_2 = "Antivaxxer"  
-role_level_3 = "Moon Landing Hoax"  
-role_level_4 = "Abducted and Probed"  
-role_level_5 = "Flat Gang Baby!"
-role_level_6 = "Shungite Chewer"  
-role_level_7 = "Illuminaughty"
+role_level_1 = "Santa's Helper"  
+role_level_2 = "Naughty List"
+role_level_3 = "Nice List"  
+role_level_4 = "Grinch Patrol"  
+role_level_5 = "Cold Guy"
+  
+
 
 logger = AppLogger(__name__).get_logger()
 
@@ -36,7 +37,7 @@ class On_Message(commands.Cog):
             self.inappropriate_words = []
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: Message):
         general_channel = self.bot.get_channel(1155577095787917384)
         jail_channel = self.bot.get_channel(1233867818055893062)
         bot_testing = self.bot.get_channel(1186805143296020520)
@@ -167,9 +168,9 @@ class On_Message(commands.Cog):
                         current_user.currency += calculated_season_level_reward
 
                         if streak > 0:
-                            await level_up_channel.send(f'## <a:shungite:1258061858586365963> {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <:CONSPIRACY:1258071611047678073>')
+                            await level_up_channel.send(f'## <a:peepoTree:1312043349305196574> {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <a:NODDERS:1312038419517673566>')
                         else:
-                            await level_up_channel.send(f'## <a:shungite:1258061858586365963> {message.author.mention} SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <:CONSPIRACY:1258071611047678073>')
+                            await level_up_channel.send(f'## <a:peepoTree:1312043349305196574> {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <a:NODDERS:1312038419517673566>')
  
                     current_user.season_level = new_season_level
                     
@@ -209,11 +210,11 @@ class On_Message(commands.Cog):
                         if role not in user_roles:
                             roles.append(role)
 
-                    # if current_user.level >= 30:
-                    if current_user.season_level >= 30:
-                        role = discord.utils.get(message.guild.roles, name=role_level_7) # Illuminaughty
-                        if role not in user_roles:
-                            roles.append(role)
+                    # # if current_user.level >= 30:
+                    # if current_user.season_level >= 30:
+                    #     role = discord.utils.get(message.guild.roles, name=role_level_7) # Illuminaughty
+                    #     if role not in user_roles:
+                    #         roles.append(role)
                     
                     try:
                         dao.update_user(current_user)
@@ -241,14 +242,29 @@ class On_Message(commands.Cog):
                                     response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
 
                                 # Send the response back to the channel
+                                response_list = []
+                                if len(response) <= 2000:
+                                    response_list.append(response)
+                                else:
+                                    while len(response) > 2000:
+                                        response_list.append(response[:2000])
+                                        response = response[2000:]
+
                                 
-                                await message.channel.send(response)
+                                for res in response_list:
+                                    await message.channel.send(res)
+                                
+                                # await message.channel.send(response)
                             # else:
                                 # await message.channel.send(f'Hello {message.author.mention}! I am a bot created by <@110637665128325120>. The AI feature is currently in development. Please be patient!')
                     except Exception as e:
                         logger.error(f'OpenAI Error: {e}')
 
                     # Process other commands
+
+                    if message.content.lower() == "yo":
+                        await message.add_reaction("<:Wave:1203565577881526352>")
+
                     
 
                 else:

@@ -12,13 +12,11 @@ from Entities.LotteryParticipant import LotteryParticipant
 
 logging = AppLogger(__name__).get_logger()
 
-role_level_1 = "Globehead"  
-role_level_2 = "Antivaxxer"  
-role_level_3 = "Moon Landing Hoax"  
-role_level_4 = "Abducted and Probed"  
-role_level_5 = "Flat Gang Baby!"
-role_level_6 = "Shungite Chewer"  
-role_level_7 = "Illuminaughty"
+role_level_1 = "Santa's Helper"  
+role_level_2 = "Naughty List"
+role_level_3 = "Nice List"  
+role_level_4 = "Grinch Patrol"  
+role_level_5 = "Cold Guy"
 
 class On_Reaction(commands.Cog):
     def __init__(self, bot: commands.Bot):

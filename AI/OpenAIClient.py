@@ -24,7 +24,7 @@ class OpenAIClient:
 
         self.assistant = openai.beta.assistants.create(
                 name="Acosmibot",
-                instructions="",
+                instructions="Keep responses less than 1950 characters.",
                 model="gpt-4o-mini",
                 # tools = [{"type": "file_search"}],
             )
@@ -127,7 +127,7 @@ class OpenAIClient:
 
                 dev_string = f"\n\n-# {user_name} - temp: {run.temperature} - {run.model}"    
             
-            return last_message+dev_string
+            return last_message
 
         except Exception as e:
             logger.error(f'OpenAI Error: {e}')

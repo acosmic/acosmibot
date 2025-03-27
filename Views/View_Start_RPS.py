@@ -64,7 +64,7 @@ class View_Start_RPS(discord.ui.View):
     def create_embed(self):
         desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet} Credits!"
         embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
-        rps_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1207160371798872165/acosmic_rock-paper-scissors.png?ex=65dea2b4&is=65cc2db4&hm=10f27e83933362fdd34dd986d958aa19dd27ac90d54be09e876a2b7e82afba25&"
+        rps_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1283269805520195634/ac_rock-paper-scissors-halloween.png?ex=66fc16e3&is=66fac563&hm=4075e9d6a6d29bb9845c327c8c9d9fe826d277021f1e15ab423e44371e3842a7&"
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
         embed.add_field(inline=True, name="🔄 Joined - 0 Bet", value=self.convert_user_list_to_str(self.tentative_users))
         embed.add_field(inline=True, name="❌ Declined", value=self.convert_user_list_to_str(self.declined_users))

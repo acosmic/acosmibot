@@ -7,10 +7,17 @@ from logger import AppLogger
 logging = AppLogger(__name__).get_logger()
 
 # Rename role level 1 to Globehead
-ROLE_GLOBEHEAD = "Globehead"  # Previously "Microbe"
+NEW_LEVEL_1 = "Santa's Helper"  # Previously "Microbe"
+
+role_level_1 = "Globehead"  
+role_level_2 = "Discount Dracula"  
+role_level_3 = "Wicked Witch"  
+role_level_4 = "Goofy Goblin"  
+role_level_5 = "Zombie CEO"
+role_level_6 = "Lord of Bad Decisions"  
 
 # List of leveling roles
-LEVELING_ROLES = ["Fish", "Monkey", "Human", "Unicorn"]  # Previously defined roles
+LEVELING_ROLES = [role_level_2, role_level_3, role_level_4, role_level_5, role_level_6]  # Previously defined roles
 
 class Reset_Season(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -33,7 +40,7 @@ class Reset_Season(commands.Cog):
                 logging.info(f"Removed leveling roles from {member.name}")
 
                 # Add the Globehead role
-                role = discord.utils.get(member.guild.roles, name=ROLE_GLOBEHEAD)
+                role = discord.utils.get(member.guild.roles, name=NEW_LEVEL_1)
                 if role not in member.roles:
                     await member.add_roles(role)
                     logging.info(f"Added Globehead role to {member.name}")
