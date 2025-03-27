@@ -13,3 +13,5 @@ RankCards/*
 .*
 *.pyc
 __pycache__/
+*.pyo
+*.pyd

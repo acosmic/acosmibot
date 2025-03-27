@@ -1,3 +1,4 @@
+from json import load
 import discord
 from datetime import datetime
 from Dao.InviteDao import InviteDao
@@ -6,13 +7,19 @@ from Entities.User import User
 from Entities.Invite import Invite
 from logger import AppLogger
 from discord.ext import commands
+import os
+from dotenv import load_dotenv
 import asyncio
 
-role_level_1 = "Santa's Helper"  
-role_level_2 = "Naughty List"
-role_level_3 = "Nice List"  
-role_level_4 = "Grinch Patrol"  
-role_level_5 = "Cold Guy" 
+load_dotenv()
+role_level_1 = os.getenv('ROLE_LEVEL_1')
+role_level_2 = os.getenv('ROLE_LEVEL_2')
+role_level_3 = os.getenv('ROLE_LEVEL_3')
+role_level_4 = os.getenv('ROLE_LEVEL_4')
+role_level_5 = os.getenv('ROLE_LEVEL_5')
+role_level_6 = os.getenv('ROLE_LEVEL_6')
+role_level_7 = os.getenv('ROLE_LEVEL_7')
+
 
 logging = AppLogger(__name__).get_logger()
 

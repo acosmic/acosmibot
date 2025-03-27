@@ -12,12 +12,17 @@ from Leveling import Leveling
 from logger import AppLogger
 from AI.OpenAIClient import OpenAIClient
 
+# Load environment variables from .env file
+load_dotenv()
 
-role_level_1 = "Santa's Helper"  
-role_level_2 = "Naughty List"
-role_level_3 = "Nice List"  
-role_level_4 = "Grinch Patrol"  
-role_level_5 = "Cold Guy"
+role_level_1 = os.getenv('ROLE_LEVEL_1')
+role_level_2 = os.getenv('ROLE_LEVEL_2')
+role_level_3 = os.getenv('ROLE_LEVEL_3')
+role_level_4 = os.getenv('ROLE_LEVEL_4')
+role_level_5 = os.getenv('ROLE_LEVEL_5')
+role_level_6 = os.getenv('ROLE_LEVEL_6')
+role_level_7 = os.getenv('ROLE_LEVEL_7')
+
   
 
 
@@ -180,41 +185,41 @@ class On_Message(commands.Cog):
                     roles = []
                     # if current_user.level < 5:
                     if current_user.season_level < 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_1) # Globe 
+                        role = discord.utils.get(message.guild.roles, name=role_level_1) 
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 5:
                     if current_user.season_level >= 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_2) # Vax 
+                        role = discord.utils.get(message.guild.roles, name=role_level_2) 
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 10:
                     if current_user.season_level >= 10:
-                        role = discord.utils.get(message.guild.roles, name=role_level_3) # Moon
+                        role = discord.utils.get(message.guild.roles, name=role_level_3) 
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 15:
                     if current_user.season_level >= 15:
-                        role = discord.utils.get(message.guild.roles, name=role_level_4) # Abducted
+                        role = discord.utils.get(message.guild.roles, name=role_level_4) 
                         if role not in user_roles:
                             roles.append(role)
                     # if current_user.level >= 20:
                     if current_user.season_level >= 20:
-                        role = discord.utils.get(message.guild.roles, name=role_level_5) # Flat
+                        role = discord.utils.get(message.guild.roles, name=role_level_5) 
                         if role not in user_roles:
                             roles.append(role)
 
                     # if current_user.level >= 25:
                     if current_user.season_level >= 25:
-                        role = discord.utils.get(message.guild.roles, name=role_level_6) # Shungite
+                        role = discord.utils.get(message.guild.roles, name=role_level_6) 
                         if role not in user_roles:
                             roles.append(role)
 
-                    # # if current_user.level >= 30:
-                    # if current_user.season_level >= 30:
-                    #     role = discord.utils.get(message.guild.roles, name=role_level_7) # Illuminaughty
-                    #     if role not in user_roles:
-                    #         roles.append(role)
+                    # if current_user.level >= 30:
+                    if current_user.season_level >= 30:
+                        role = discord.utils.get(message.guild.roles, name=role_level_7) 
+                        if role not in user_roles:
+                            roles.append(role)
                     
                     try:
                         dao.update_user(current_user)
