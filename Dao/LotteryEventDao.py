@@ -1,22 +1,58 @@
+from typing import Optional, List, Dict, Any, Tuple
+from datetime import datetime
 from database import Database
+from Dao.BaseDao import BaseDao
 from Entities.LotteryEvent import LotteryEvent
-from dotenv import load_dotenv
-import os
+import logging
 
-load_dotenv()
-db_host = os.getenv('db_host')
-db_user = os.getenv('db_user')
-db_password = os.getenv('db_password')
-db_name = os.getenv('db_name')
-
-class LotteryEventDao:
-    def __init__(self):
-        self.db = Database(db_host, db_user, db_password, db_name)
-
-    def add_new_event(self, lottery_event):
+class LotteryEventDao(BaseDao[LotteryEvent]):
+    """
+    Data Access Object for LotteryEvent entities.
+    Provides methods to interact with the LotteryEvents table in the database.
+    """
+    
+    def __init__(self, db: Optional[Database] = None):
+        """
+        Initialize the LotteryEventDao with connection parameters.
+        
+        Args:
+            db (Optional[Database], optional): Database connection. Defaults to None.
+        """
+        super().__init__(LotteryEvent, "LotteryEvents", db)
+        
+        # Create the table if it doesn't exist
+        self._create_table_if_not_exists()
+    
+    def _create_table_if_not_exists(self) -> None:
+        """
+        Create the LotteryEvents table if it doesn't exist.
+        """
+        create_table_sql = '''
+        CREATE TABLE IF NOT EXISTS LotteryEvents (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            message_id BIGINT NOT NULL,
+            start_time DATETIME NOT NULL,
+            end_time DATETIME NOT NULL,
+            credits BIGINT DEFAULT 0,
+            winner_id BIGINT DEFAULT 0,
+            guild_id BIGINT NOT NULL
+        )
+        '''
+        self.create_table_if_not_exists(create_table_sql)
+    
+    def add_new_event(self, lottery_event: LotteryEvent) -> bool:
+        """
+        Add a new lottery event to the database.
+        
+        Args:
+            lottery_event (LotteryEvent): Lottery event to add
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
         sql = """
-            INSERT INTO LotteryEvents (id, message_id, start_time, end_time, credits, winner_id)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO LotteryEvents (id, message_id, start_time, end_time, credits, winner_id, guild_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         values = (
             lottery_event.id,
@@ -24,66 +60,195 @@ class LotteryEventDao:
             lottery_event.start_time,
             lottery_event.end_time,
             lottery_event.credits,
-            lottery_event.winner_id
+            lottery_event.winner_id,
+            lottery_event.guild_id
         )
-        self.db.mycursor.execute(sql, values)
-        self.db.mydb.commit()
-
-    def get_current_event(self):
-        sql = """
-            SELECT id, message_id, start_time, end_time, credits, winner_id
-            FROM LotteryEvents
-            WHERE end_time > NOW()
-            ORDER BY start_time DESC
-            LIMIT 1
-        """
-        self.db.mycursor.execute(sql)
-        current_event = self.db.mycursor.fetchone()
-        if current_event:
-            return LotteryEvent(current_event[0], current_event[1], current_event[2], current_event[3], current_event[4], current_event[5])
-        else:
-            return None
         
-    def get_past_events(self):
-        sql = """
-            SELECT id, message_id, start_time, end_time, credits, winner_id
-            FROM LotteryEvents
-            WHERE end_time < NOW()
-            ORDER BY start_time DESC
-            LIMIT 5
+        try:
+            self.execute_query(sql, values, commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error adding lottery event: {e}")
+            return False
+
+    def get_current_event(self, guild_id: Optional[int] = None) -> Optional[LotteryEvent]:
         """
-        self.db.mycursor.execute(sql)
-        past_events = self.db.mycursor.fetchall()
-        return [LotteryEvent(event[0], event[1], event[2], event[3], event[4], event[5]) for event in past_events]
-    
-    def get_all_events(self):
-        sql = """
-            SELECT id, message_id, start_time, end_time, credits, winner_id
-            FROM LotteryEvents
-            ORDER BY start_time DESC
+        Get the current active lottery event.
+        
+        Args:
+            guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
+            
+        Returns:
+            Optional[LotteryEvent]: Current event if found, None otherwise
         """
-        self.db.mycursor.execute(sql)
-        all_events = self.db.mycursor.fetchall()
-        return [LotteryEvent(event[0], event[1], event[2], event[3], event[4], event[5]) for event in all_events]
+        if guild_id:
+            sql = """
+                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+                FROM LotteryEvents
+                WHERE end_time > NOW() AND guild_id = %s
+                ORDER BY start_time DESC
+                LIMIT 1
+            """
+            params = (guild_id,)
+        else:
+            sql = """
+                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+                FROM LotteryEvents
+                WHERE end_time > NOW()
+                ORDER BY start_time DESC
+                LIMIT 1
+            """
+            params = None
+        
+        try:
+            result = self.execute_query(sql, params)
+            
+            if result and len(result) > 0:
+                event_data = result[0]
+                return LotteryEvent(
+                    event_data[0], event_data[1], event_data[2], 
+                    event_data[3], event_data[4], event_data[5], event_data[6]
+                )
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting current event: {e}")
+            return None
     
-    def get_event_by_id(self, id):
+    def get_past_events(self, limit: int = 5, guild_id: Optional[int] = None) -> List[LotteryEvent]:
+        """
+        Get past lottery events.
+        
+        Args:
+            limit (int, optional): Maximum number of events to return. Defaults to 5.
+            guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
+            
+        Returns:
+            List[LotteryEvent]: List of past events
+        """
+        if guild_id:
+            sql = """
+                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+                FROM LotteryEvents
+                WHERE end_time < NOW() AND guild_id = %s
+                ORDER BY start_time DESC
+                LIMIT %s
+            """
+            params = (guild_id, limit)
+        else:
+            sql = """
+                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+                FROM LotteryEvents
+                WHERE end_time < NOW()
+                ORDER BY start_time DESC
+                LIMIT %s
+            """
+            params = (limit,)
+        
+        try:
+            results = self.execute_query(sql, params)
+            
+            events = []
+            if results:
+                for event_data in results:
+                    events.append(LotteryEvent(
+                        event_data[0], event_data[1], event_data[2], 
+                        event_data[3], event_data[4], event_data[5], event_data[6]
+                    ))
+            
+            return events
+            
+        except Exception as e:
+            self.logger.error(f"Error getting past events: {e}")
+            return []
+    
+    def get_all_events(self, guild_id: Optional[int] = None) -> List[LotteryEvent]:
+        """
+        Get all lottery events.
+        
+        Args:
+            guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
+            
+        Returns:
+            List[LotteryEvent]: List of all events
+        """
+        if guild_id:
+            sql = """
+                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+                FROM LotteryEvents
+                WHERE guild_id = %s
+                ORDER BY start_time DESC
+            """
+            params = (guild_id,)
+        else:
+            sql = """
+                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+                FROM LotteryEvents
+                ORDER BY start_time DESC
+            """
+            params = None
+        
+        try:
+            results = self.execute_query(sql, params)
+            
+            events = []
+            if results:
+                for event_data in results:
+                    events.append(LotteryEvent(
+                        event_data[0], event_data[1], event_data[2], 
+                        event_data[3], event_data[4], event_data[5], event_data[6]
+                    ))
+            
+            return events
+            
+        except Exception as e:
+            self.logger.error(f"Error getting all events: {e}")
+            return []
+    
+    def get_event_by_id(self, id: int) -> Optional[LotteryEvent]:
+        """
+        Get a lottery event by its ID.
+        
+        Args:
+            id (int): Event ID
+            
+        Returns:
+            Optional[LotteryEvent]: Event if found, None otherwise
+        """
         sql = """
-            SELECT id, message_id, start_time, end_time, credits, winner_id
+            SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
             FROM LotteryEvents
             WHERE id = %s
         """
-        values = (id,)
-        self.db.mycursor.execute(sql, values)
-        event = self.db.mycursor.fetchone()
-        if event:
-            return LotteryEvent(event[0], event[1], event[2], event[3], event[4], event[5])
-        else:
-            return None
         
-    def update_event(self, lottery_event):
+        try:
+            result = self.execute_query(sql, (id,))
+            
+            if result and len(result) > 0:
+                event_data = result[0]
+                return LotteryEvent(
+                    event_data[0], event_data[1], event_data[2], 
+                    event_data[3], event_data[4], event_data[5], event_data[6]
+                )
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting event by ID: {e}")
+            return None
+    
+    def update_event(self, lottery_event: LotteryEvent) -> bool:
+        """
+        Update an existing lottery event.
+        
+        Args:
+            lottery_event (LotteryEvent): Event to update
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
         sql = """
             UPDATE LotteryEvents
-            SET message_id = %s, start_time = %s, end_time = %s, credits = %s, winner_id = %s
+            SET message_id = %s, start_time = %s, end_time = %s, credits = %s, winner_id = %s, guild_id = %s
             WHERE id = %s
         """
         values = (
@@ -92,29 +257,94 @@ class LotteryEventDao:
             lottery_event.end_time,
             lottery_event.credits,
             lottery_event.winner_id,
+            lottery_event.guild_id,
             lottery_event.id
         )
-        self.db.mycursor.execute(sql, values)
-        self.db.mydb.commit()
+        
+        try:
+            self.execute_query(sql, values, commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating event: {e}")
+            return False
 
-    def delete_event(self, id):
+    def delete_event(self, id: int) -> bool:
+        """
+        Delete a lottery event by its ID.
+        
+        Args:
+            id (int): Event ID
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
         sql = """
             DELETE FROM LotteryEvents
             WHERE id = %s
         """
-        values = (id,)
-        self.db.mycursor.execute(sql, values)
-        self.db.mydb.commit()
+        
+        try:
+            self.execute_query(sql, (id,), commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error deleting event: {e}")
+            return False
 
-    def get_total_credits(self):
-        sql = """
-            SELECT SUM(credits) AS total_credits
-            FROM LotteryEvents
+    def get_total_credits(self, guild_id: Optional[int] = None) -> int:
         """
-        self.db.mycursor.execute(sql)
-        total_credits = self.db.mycursor.fetchone()
-        return total_credits[0]
+        Get the total amount of credits awarded in all lottery events.
+        
+        Args:
+            guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
+            
+        Returns:
+            int: Total credits
+        """
+        if guild_id:
+            sql = """
+                SELECT SUM(credits) AS total_credits
+                FROM LotteryEvents
+                WHERE guild_id = %s
+            """
+            params = (guild_id,)
+        else:
+            sql = """
+                SELECT SUM(credits) AS total_credits
+                FROM LotteryEvents
+            """
+            params = None
+        
+        try:
+            result = self.execute_query(sql, params)
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting total credits: {e}")
+            return 0
     
-    def close_connection(self):
-        self.db.close_connection()
-
+    def save(self, lottery_event: LotteryEvent) -> Optional[LotteryEvent]:
+        """
+        Save a lottery event to the database (insert if new, update if exists).
+        
+        Args:
+            lottery_event (LotteryEvent): Event to save
+            
+        Returns:
+            Optional[LotteryEvent]: Saved event or None on error
+        """
+        try:
+            # Check if event exists
+            existing_event = self.get_event_by_id(lottery_event.id) if lottery_event.id else None
+            
+            if existing_event:
+                # Update
+                if self.update_event(lottery_event):
+                    return lottery_event
+            else:
+                # Insert
+                if self.add_new_event(lottery_event):
+                    return lottery_event
+            
+            return None
+        except Exception as e:
+            self.logger.error(f"Error saving lottery event: {e}")
+            return None

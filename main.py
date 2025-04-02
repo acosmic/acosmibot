@@ -267,52 +267,61 @@ class Bot(commands.Bot):
             logger.info('bg_task_lottery_end running')
             try:
                 le_dao = LotteryEventDao()
-                current_lottery = le_dao.get_current_event()
-                if current_lottery:
-                    remaining_time = current_lottery.end_time - datetime.now()
-                    logger.debug(f'Remaining time: {remaining_time}')
+                # Get current lottery for this guild/server
+                if channel and channel.guild:
+                    current_lottery = le_dao.get_current_event(guild_id=channel.guild.id)
+                    if current_lottery:
+                        remaining_time = current_lottery.end_time - datetime.now()
+                        logger.debug(f'Remaining time: {remaining_time}')
 
-                    if remaining_time <= timedelta(minutes=1):
-                        logger.info('Ending current lottery event')
+                        if remaining_time <= timedelta(minutes=1):
+                            logger.info('Ending current lottery event')
 
-                        vdao = VaultDao()
-                        lottery_credits = vdao.get_currency()
-                        lp_dao = LotteryParticipantDao()
-                        userDao = UserDao()
-                        participants = lp_dao.get_participants(current_lottery.message_id)
-                        if participants:  # Ensure there are participants
-                            winner = random.choice(participants)
-                            user = userDao.get_user(winner.participant_id)
-                            discord_user = channel.guild.get_member(winner.participant_id)
-                            lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
-                            logger.info(f'winner: {user.discord_username}')
-                            await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
+                            vdao = VaultDao()
+                            lottery_credits = vdao.get_currency()
+                            lp_dao = LotteryParticipantDao()
+                            userDao = UserDao()
+                            participants = lp_dao.get_participants(current_lottery.message_id)
+                            if participants:  # Ensure there are participants
+                                winner = random.choice(participants)
+                                user = userDao.get_user(winner.participant_id)
+                                discord_user = channel.guild.get_member(winner.participant_id)
+                                lottery_role = discord.utils.get(channel.guild.roles, name="LotteryParticipant")
+                                logger.info(f'winner: {user.discord_username}')
+                                await channel.send(f'# {lottery_role.mention} Congratulations to {discord_user.mention} for winning {lottery_credits:,.0f} Credits in the lottery! <a:pepesith:1165101386921418792>')
 
-                            current_lottery.winner_id = winner.participant_id
-                            current_lottery.end_time = datetime.now()
-                            current_lottery.credits = lottery_credits
-                            le_dao.update_event(current_lottery)
-                            user.currency += lottery_credits
-                            userDao.update_user(user)
-                            vdao.update_currency(0)
-                            message = await channel.fetch_message(current_lottery.message_id)
-                            await message.unpin()
-                            await message.delete()
-                            for member in channel.guild.members:
-                                await member.remove_roles(lottery_role)
-                            logger.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
-                        else:
-                            logger.warning('No participants in the current lottery.')
+                                # Update lottery event with winner and credits
+                                current_lottery.winner_id = winner.participant_id
+                                current_lottery.end_time = datetime.now()
+                                current_lottery.credits = lottery_credits
+                                le_dao.update_event(current_lottery)
+                                
+                                # Update user currency
+                                user.currency += lottery_credits
+                                userDao.update_user(user)
+                                
+                                # Reset vault currency
+                                vdao.update_currency(0)
+                                
+                                # Clean up message and roles
+                                message = await channel.fetch_message(current_lottery.message_id)
+                                await message.unpin()
+                                await message.delete()
+                                for member in channel.guild.members:
+                                    await member.remove_roles(lottery_role)
+                                logger.info(f'winner: {user.discord_username} won {lottery_credits} Credits and updated to db')
+                            else:
+                                logger.warning('No participants in the current lottery.')
 
-                    elif remaining_time <= timedelta(minutes=30):
-                        logger.debug('Lottery ending soon, checking reminders.')
-                        # Fetch the message if it hasn't been fetched yet
-                        if 'message' not in locals():
-                            message = await channel.fetch_message(current_lottery.message_id)
+                        elif remaining_time <= timedelta(minutes=30):
+                            logger.debug('Lottery ending soon, checking reminders.')
+                            # Fetch the message if it hasn't been fetched yet
+                            if 'message' not in locals():
+                                message = await channel.fetch_message(current_lottery.message_id)
 
-                        # Check if we need to post reminders every 10 minutes, except at zero minutes
-                        if remaining_time.total_seconds() % 600 < 60 and remaining_time > timedelta(seconds=0):
-                            await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in {remaining_time // timedelta(minutes=1)} minutes! Enter here -> {message.jump_url}")
+                            # Check if we need to post reminders every 10 minutes, except at zero minutes
+                            if remaining_time.total_seconds() % 600 < 60 and remaining_time > timedelta(seconds=0):
+                                await channel.send(f"## <a:pepesith:1165101386921418792> The lottery ends in {remaining_time // timedelta(minutes=1)} minutes! Enter here -> {message.jump_url}")
 
             except Exception as e:
                 logger.error(f'bg_task_lottery_end error: {e}')

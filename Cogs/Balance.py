@@ -18,7 +18,7 @@ class Balance(commands.Cog):
             if user is None or user.bot == False:
                 if user is None:
                     bot_user = dao.get_user(interaction.user.id)
-                    message_text = f"## Your balance: {bot_user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}" 
+                    message_text = f"## Your balance: {bot_user.currency:,.0f} Credits. 💰 {interaction.user.mention}" 
                 else:
                     bot_user = dao.get_user(user.id)
                     message_text = f"## {user.name}'s balance: {bot_user.currency:,.0f} Credits. <:PepeRich:1200265584877772840> {interaction.user.mention}" 

@@ -173,9 +173,9 @@ class On_Message(commands.Cog):
                         current_user.currency += calculated_season_level_reward
 
                         if streak > 0:
-                            await level_up_channel.send(f'## <a:peepoTree:1312043349305196574> {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! <a:NODDERS:1312038419517673566>')
+                            await level_up_channel.send(f'## 🐣 {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! 🐣')
                         else:
-                            await level_up_channel.send(f'## <a:peepoTree:1312043349305196574> {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! <a:NODDERS:1312038419517673566>')
+                            await level_up_channel.send(f'## 🐣 {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 🐣')
  
                     current_user.season_level = new_season_level
                     
