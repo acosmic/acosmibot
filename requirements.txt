@@ -2,7 +2,14 @@ beautifulsoup4==4.12.3
 discord==2.3.2
 mysql-connector-python==9.1.0
 pytz==2022.1
-requests==2.25.1
+requests~=2.28.2
 urllib3==1.26.5
 pytest==8.2.2
-openai==1.35.3
+openai==1.88.0
+dotenv~=0.9.9
+python-dotenv~=1.1.0
+discord.py~=2.5.2
+more-itertools~=9.1.0
+youtube-dl~=2021.12.17
+pydub~=0.25.1
+pillow~=11.2.1
