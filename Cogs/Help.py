@@ -21,10 +21,6 @@ class Help(commands.Cog):
             if not "admin" in command.name:
                 # logger.info(f"Command: {command.name} - {command.description}")
                 embed.add_field(name=f"/{command.name}", value=command.description, inline=False)
-                            
-
-
-
 
         # embed.add_field(name="/rank", value="Returns your current rank based on exp and general stats.", inline=False)
         # embed.add_field(name="/balance", value="Returns your current balance.", inline=False)

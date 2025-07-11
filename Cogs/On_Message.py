@@ -6,8 +6,8 @@ import discord
 from discord import Message
 from discord.ext import commands
 from dotenv import load_dotenv
-from Dao.UserDao import UserDao
-from Entities.User import User
+from Dao.GuildUserDao import GuildUserDao
+from Entities.GuildUser import GuildUser
 from Leveling import Leveling
 from logger import AppLogger
 from AI.OpenAIClient import OpenAIClient
@@ -23,9 +23,6 @@ role_level_5 = os.getenv('ROLE_LEVEL_5')
 role_level_6 = os.getenv('ROLE_LEVEL_6')
 role_level_7 = os.getenv('ROLE_LEVEL_7')
 
-  
-
-
 logger = AppLogger(__name__).get_logger()
 
 
@@ -34,285 +31,356 @@ class On_Message(commands.Cog):
         super().__init__()
         self.bot = bot
         self.chatgpt = OpenAIClient()
-        load_dotenv()  # Load environment variables from .env file
+        load_dotenv()
         inappropriate_words_str = os.getenv('INAPPROPRIATE_WORDS')
         if inappropriate_words_str:
             self.inappropriate_words = json.loads(inappropriate_words_str)
         else:
             self.inappropriate_words = []
 
+    def find_channel_by_name(self, guild: discord.Guild, channel_names: list) -> discord.TextChannel:
+        """Find a channel by name in the guild, accounting for emojis and special characters"""
+        for name in channel_names:
+            # First try exact match
+            channel = discord.utils.get(guild.text_channels, name=name)
+            if channel and channel.permissions_for(guild.me).send_messages:
+                return channel
+
+            # If no exact match, try partial matching (case-insensitive)
+            for channel in guild.text_channels:
+                if channel.permissions_for(guild.me).send_messages:
+                    # Remove emojis and special characters for comparison
+                    clean_channel_name = self.clean_channel_name(channel.name.lower())
+                    clean_search_name = self.clean_channel_name(name.lower())
+
+                    # Check if the search term is in the channel name
+                    if clean_search_name in clean_channel_name:
+                        return channel
+
+        # Fallback: find any channel the bot can send messages to
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                return channel
+
+        return None
+
+    def clean_channel_name(self, name: str) -> str:
+        """Remove emojis, special characters, and separators from channel name"""
+        import re
+
+        # Remove emojis (Unicode emoji pattern)
+        emoji_pattern = re.compile("["
+                                   u"\U0001F600-\U0001F64F"  # emoticons
+                                   u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                   u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                   u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                   u"\U00002702-\U000027B0"  # Dingbats
+                                   u"\U000024C2-\U0001F251"
+                                   "]+", flags=re.UNICODE)
+
+        cleaned = emoji_pattern.sub('', name)
+
+        # Remove common separators and special characters
+        cleaned = re.sub(r'[︱｜|‖∥]', '', cleaned)  # Various vertical bar characters
+        cleaned = re.sub(r'[-_\s]+', '', cleaned)  # Hyphens, underscores, spaces
+        cleaned = re.sub(r'[^\w]', '', cleaned)  # Any remaining non-word characters
+
+        return cleaned.strip()
+
     @commands.Cog.listener()
     async def on_message(self, message: Message):
-        general_channel = self.bot.get_channel(1155577095787917384)
-        jail_channel = self.bot.get_channel(1233867818055893062)
-        bot_testing = self.bot.get_channel(1186805143296020520)
-        level_up_channel = self.bot.get_channel(1209288743912218644)
-        daily_reward_channel = self.bot.get_channel(1224561092919951452)
+        # Skip if not in a guild or if author is a bot
+        if not message.guild or message.author.bot:
+            return
+
+        # Find appropriate channels for this guild
+        level_up_channel = self.find_channel_by_name(message.guild,
+                                                     ['level-up', 'levelup', 'levels', 'bot-updates', 'general'])
+        daily_reward_channel = self.find_channel_by_name(message.guild,
+                                                         ['daily-rewards', 'daily', 'rewards', 'bot-updates',
+                                                          'general'])
+
+        # Get guild-specific roles
         inmate_role = discord.utils.get(message.guild.roles, name='Inmate')
-        acosmic_role = discord.utils.get(message.guild.roles, name='Acosmic')
-        
-        if not message.author.bot:
-            if inmate_role not in message.author.roles:
-                logger.info(f'Message from {message.author} - {message.channel.name} - {message.id}; {message.content}')
-                dao = UserDao()
-                current_user = dao.get_user(message.author.id)
-                logger.info(f'{str(current_user.discord_username)} grabbed from get_user(id) in on_message()')
-                if current_user is not None:
-                    # SPAM PROTECTION
-                    last_active = current_user.last_active
-                    now = datetime.now()
-                    if now - last_active > timedelta(seconds=4):
-                        base_exp = 10
-                    else:
-                        base_exp = 0
-                        logger.info(f'{str(current_user.discord_username)} - MESSAGE SENT TOO SOON - NO EXP GAINED')
 
-                    # CHECK FOR INAPPROPRIATE WORDS
-                    message_content_lower = message.content.lower()
-                    for word in self.inappropriate_words:
-                        if word.lower() in message_content_lower:
-                            logger.info(f'{str(current_user.discord_username)} - INAPPROPRIATE WORD DETECTED: {message.content}')
-                            await message.delete()
-                            return
+        # Skip processing if user is in jail
+        if inmate_role and inmate_role in message.author.roles:
+            logger.info(f'{message.author} is an inmate in {message.guild.name} - skipped processing')
+            return
 
-                    # CALCULATE EXP GAINED
-                    bonus_exp = current_user.streak * 0.05
+        # Get or create guild user
+        guild_user_dao = GuildUserDao()
+        current_guild_user = guild_user_dao.get_guild_user(message.author.id, message.guild.id)
 
-                    exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
-                    current_user.exp += exp_gain
-                    current_user.exp_gained += exp_gain
-                    current_user.season_exp += exp_gain
-                    current_user.messages_sent += 1
-                    current_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    logger.info(f'{current_user.discord_username} - EXP GAINED = {exp_gain}')
+        if current_guild_user is None:
+            # Create new guild user
+            current_guild_user = await self.create_new_guild_user(message.author, message.guild, guild_user_dao)
+            if not current_guild_user:
+                return
 
-                    # CHECK IF - DAILY REWARD
-                    if current_user.daily == 0:
-                        logger.info(f"{current_user.discord_username} - COMPLETED DAILY REWARD")
+        logger.info(f'Processing message from {message.author} in {message.guild.name}')
 
-                        # Check if last_daily was yesterday
-                        
-                        today = datetime.now().date()
-                        if current_user.last_daily is None:
-                            current_user.streak = 0
-                        else:
-                            if current_user.last_daily.date() == today - timedelta(days=1):
-                                # Increment streak
-                                current_user.streak += 1
-                                if current_user.streak > current_user.highest_streak:
-                                    current_user.highest_streak = current_user.streak
-                                    logger.info(f"{current_user.discord_username} - HIGHEST STREAK INCREMENTED TO {current_user.highest_streak}")
-                                logger.info(f"{current_user.discord_username} - STREAK INCREMENTED TO {current_user.streak}")
-                            elif current_user.last_daily.date() < today - timedelta(days=1):
-                                # Reset streak
-                                current_user.streak = 1
-                                logger.info(f"{current_user.discord_username} - STREAK RESET TO {current_user.streak}")
+        try:
+            # SPAM PROTECTION
+            last_active = current_guild_user.last_active
+            now = datetime.now()
+            if isinstance(last_active, str):
+                last_active = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S")
 
-
-                        # CALCULATE DAILY REWARD
-                        base_daily = 100
-                        streak = current_user.streak if current_user.streak < 20 else 20
-                        base_bonus_multiplier = 0.05
-                        streak_bonus_percentage = streak * base_bonus_multiplier
-                        streak_bonus = math.floor(base_daily * streak_bonus_percentage)
-                        calculated_daily_reward = base_daily + streak_bonus
-                        current_user.currency += calculated_daily_reward
-
-
-
-                        # Set daily and last_daily
-                        current_user.daily = 1
-                        current_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
-
-
-                        streak = current_user.streak if current_user.streak < 20 else 20
-                        if streak > 0:
-                            await daily_reward_channel.send(f'## {message.author}, You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! <:PepeCelebrate:1165105393362555021>')
-                        else:
-                            await daily_reward_channel.send(f'## {message.author}, You have collected your daily reward - 100 Credits! <:PepeCelebrate:1165105393362555021>')
-
-                    else:
-                        logger.info(f"{current_user.discord_username} HAS ALREADY COMPLETED THE DAILY")
-
-
-                    
-                    # CHECK IF - LEVELING UP
-                    lvl = Leveling()
-                    new_level = lvl.calc_level(current_user.exp)
-                    new_season_level = lvl.calc_level(current_user.season_exp)   
-
-                    if new_level > current_user.level:
-                        
-                        # CALCULATE LEVEL UP REWARD
-                        base_level_up_reward = 1000
-                        streak = current_user.streak if current_user.streak < 20 else 20
-                        base_bonus_multiplier = 0.05
-                        streak_bonus_percentage = streak * base_bonus_multiplier
-                        streak_bonus = math.floor(base_level_up_reward * streak_bonus_percentage)
-                        calculated_level_reward = base_level_up_reward + streak_bonus
-                        current_user.currency += calculated_level_reward
-
-                        if streak > 0:
-                            await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! 1,000 + {streak_bonus} from max of {streak}x Streak!  <:FeelsGroovy:1199735360616407041>')
-                        else:
-                            await level_up_channel.send(f'## {message.author.mention} LEVEL UP! You have reached level {new_level}! Gained {calculated_level_reward} Credits! <:FeelsGroovy:1199735360616407041>')
-                    
-                    current_user.level = new_level
-                    
-
-                    # SEASON LEVEL UP
-                    if new_season_level > current_user.season_level:
-
-                        # CALCULATE SEASON LEVEL UP REWARD
-                        base_season_level_up_reward = 5000
-                        streak = current_user.streak if current_user.streak < 20 else 20
-                        base_bonus_multiplier = 0.05
-                        streak_bonus_percentage = streak * base_bonus_multiplier
-                        streak_bonus = math.floor(base_season_level_up_reward * streak_bonus_percentage)
-                        calculated_season_level_reward = base_season_level_up_reward + streak_bonus
-                        current_user.currency += calculated_season_level_reward
-
-                        if streak > 0:
-                            await level_up_channel.send(f'## 🐣 {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 5,000 + {streak_bonus} from {streak}x Streak! 🐣')
-                        else:
-                            await level_up_channel.send(f'## 🐣 {message.author.mention} HOLIDAY SEASON LEVEL UP! You have reached season level {new_season_level}! Gained {calculated_season_level_reward} Credits! 🐣')
- 
-                    current_user.season_level = new_season_level
-                    
-                    
-                    # DETECT ROLE CHANGE
-                    user_roles = message.author.roles
-                    roles = []
-                    # if current_user.level < 5:
-                    if current_user.season_level < 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_1) 
-                        if role not in user_roles:
-                            roles.append(role)
-                    # if current_user.level >= 5:
-                    if current_user.season_level >= 5:
-                        role = discord.utils.get(message.guild.roles, name=role_level_2) 
-                        if role not in user_roles:
-                            roles.append(role)
-                    # if current_user.level >= 10:
-                    if current_user.season_level >= 10:
-                        role = discord.utils.get(message.guild.roles, name=role_level_3) 
-                        if role not in user_roles:
-                            roles.append(role)
-                    # if current_user.level >= 15:
-                    if current_user.season_level >= 15:
-                        role = discord.utils.get(message.guild.roles, name=role_level_4) 
-                        if role not in user_roles:
-                            roles.append(role)
-                    # if current_user.level >= 20:
-                    if current_user.season_level >= 20:
-                        role = discord.utils.get(message.guild.roles, name=role_level_5) 
-                        if role not in user_roles:
-                            roles.append(role)
-
-                    # if current_user.level >= 25:
-                    if current_user.season_level >= 25:
-                        role = discord.utils.get(message.guild.roles, name=role_level_6) 
-                        if role not in user_roles:
-                            roles.append(role)
-
-                    # if current_user.level >= 30:
-                    if current_user.season_level >= 30:
-                        role = discord.utils.get(message.guild.roles, name=role_level_7) 
-                        if role not in user_roles:
-                            roles.append(role)
-                    
-                    try:
-                        dao.update_user(current_user)
-                        logger.info(f'{str(message.author)} updated in database in on_message()')
-                    except Exception as e: 
-                        logger.error(f'Error updating {message.author} to the database: {e}')
-                    
-                    # UPDATE ROLES
-                    try:
-                        await message.author.add_roles(*roles)
-                        logger.info(f'{str(message.author)} roles updated in on_message()')
-                    except Exception as e:
-                        logger.error(f'Error updating {message.author} roles: {e}')
-
-                    # --------------------------- OPENAI CHATGPT ---------------------------    
-                    try:    
-                        if (self.bot.user in message.mentions):
-                            # if message.author.id == 110637665128325120:
-                                # Remove the mention and strip the message
-                                prompt = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
-                                
-                                async with message.channel.typing():
-                                # Get the response from OpenAI
-                                # response = await self.chatgpt.get_chatgpt_response(prompt)
-                                    response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
-
-                                # Send the response back to the channel
-                                response_list = []
-                                if len(response) <= 2000:
-                                    response_list.append(response)
-                                else:
-                                    while len(response) > 2000:
-                                        response_list.append(response[:2000])
-                                        response = response[2000:]
-
-                                
-                                for res in response_list:
-                                    await message.channel.send(res)
-                                
-                                # await message.channel.send(response)
-                            # else:
-                                # await message.channel.send(f'Hello {message.author.mention}! I am a bot created by <@110637665128325120>. The AI feature is currently in development. Please be patient!')
-                    except Exception as e:
-                        logger.error(f'OpenAI Error: {e}')
-
-                    # Process other commands
-
-                    if message.content.lower() == "yo":
-                        await message.add_reaction("<:Wave:1203565577881526352>")
-
-                    
-
-                else:
-                    return
-                    # join_date = message.author.joined_at
-
-                    # # Convert join_date to a format suitable for database insertion (e.g., as a string)
-                    # formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
-
-                    # new_user_data = {
-                    # 'id': message.author.id,
-                    # 'discord_username': str(message.author),
-                    # 'level': 1,
-                    # 'streak': 0,
-                    # 'exp': 0,
-                    # 'exp_gained': 0,
-                    # 'exp_lost': 0,
-                    # 'currency': 0,
-                    # 'messages_sent': 1,
-                    # 'reactions_sent': 0,
-                    # 'created': formatted_join_date,
-                    # 'last_active': formatted_join_date,
-                    # 'daily': 0
-
-                    # }
-                    # new_user = User(**new_user_data)
-                    # logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY nothing added to db')
-                    # # try:
-                    # #     # dao.add_user(new_user)
-                    # #     logging.info(f'{message.author} added to the database. - on_message() - DISABLED CURRENTLY')
-                    # # except Exception as e:
-                    # #     logging.error(f'on_message() - Error adding user to the database: {e}')
+            if now - last_active > timedelta(seconds=4):
+                base_exp = 10
             else:
-                logger.info(f'{message.author} is an inmate - skipped level up exp rewards')
-                # if message.channel.id == jail_channel.id:
-                #     await bot_testing.send(f'Inmate {message.author} sends the following message from jail: {message.content}')
-    
-    
-            
+                base_exp = 0
+                logger.info(f'{message.author.name} - MESSAGE SENT TOO SOON - NO EXP GAINED')
+
+            # CHECK FOR INAPPROPRIATE WORDS
+            message_content_lower = message.content.lower()
+            for word in self.inappropriate_words:
+                if word.lower() in message_content_lower:
+                    logger.info(f'{message.author.name} - INAPPROPRIATE WORD DETECTED in {message.guild.name}')
+                    await message.delete()
+                    return
+
+            # CALCULATE EXP GAINED
+            bonus_exp = current_guild_user.streak * 0.05
+            exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
+
+            current_guild_user.exp += exp_gain
+            current_guild_user.exp_gained += exp_gain
+            current_guild_user.season_exp += exp_gain
+            current_guild_user.messages_sent += 1
+            current_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gain}')
+
+            # CHECK IF - DAILY REWARD
+            if current_guild_user.daily == 0:
+                logger.info(f"{message.author.name} - COMPLETED DAILY REWARD in {message.guild.name}")
+                await self.process_daily_reward(current_guild_user, message.author, daily_reward_channel)
+
+            # CHECK IF - LEVELING UP
+            lvl = Leveling()
+            new_level = lvl.calc_level(current_guild_user.exp)
+            new_season_level = lvl.calc_level(current_guild_user.season_exp)
+
+            # LEVEL UP
+            if new_level > current_guild_user.level:
+                await self.process_level_up(current_guild_user, message.author, new_level, level_up_channel,
+                                            is_season=False)
+
+            current_guild_user.level = new_level
+
+            # SEASON LEVEL UP
+            if new_season_level > current_guild_user.season_level:
+                await self.process_level_up(current_guild_user, message.author, new_season_level, level_up_channel,
+                                            is_season=True)
+
+            current_guild_user.season_level = new_season_level
+
+            # UPDATE ROLES
+            await self.update_user_roles(current_guild_user, message.author, message.guild)
+
+            # SAVE TO DATABASE
+            guild_user_dao.update_guild_user(current_guild_user)
+            logger.info(f'{message.author} updated in database for guild {message.guild.name}')
+
+            # OPENAI CHATGPT
+            await self.handle_ai_interaction(message)
+
+            # OTHER REACTIONS
+            if message.content.lower() == "yo":
+                try:
+                    await message.add_reaction("👋")  # Using standard wave emoji as fallback
+                except:
+                    pass  # If reaction fails, just continue
+
+        except Exception as e:
+            logger.error(f'Error processing message from {message.author} in {message.guild.name}: {e}')
+
+    async def create_new_guild_user(self, member: discord.Member, guild: discord.Guild,
+                                    guild_user_dao: GuildUserDao) -> GuildUser:
+        """Create a new guild user"""
+        try:
+            formatted_join_date = member.joined_at.strftime(
+                "%Y-%m-%d %H:%M:%S") if member.joined_at else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            new_guild_user = GuildUser(
+                user_id=member.id,
+                guild_id=guild.id,
+                nickname=member.display_name,
+                level=0,
+                season_level=0,
+                season_exp=0,
+                streak=0,
+                highest_streak=0,
+                exp=0,
+                exp_gained=0,
+                exp_lost=0,
+                currency=1000,  # Starting currency for new users
+                messages_sent=0,
+                reactions_sent=0,
+                joined_at=formatted_join_date,
+                last_active=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                daily=0,
+                last_daily=None,
+                is_active=True
+            )
+
+            if guild_user_dao.add_guild_user(new_guild_user):
+                logger.info(f'Created new guild user: {member.name} in {guild.name}')
+                return new_guild_user
+            else:
+                logger.error(f'Failed to create guild user: {member.name} in {guild.name}')
+                return None
+
+        except Exception as e:
+            logger.error(f'Error creating guild user {member.name} in {guild.name}: {e}')
+            return None
+
+    async def process_daily_reward(self, guild_user: GuildUser, member: discord.Member,
+                                   daily_channel: discord.TextChannel):
+        """Process daily reward for guild user"""
+        try:
+            today = datetime.now().date()
+
+            if guild_user.last_daily is None:
+                guild_user.streak = 1
+            else:
+                last_daily_date = guild_user.last_daily
+                if isinstance(last_daily_date, str):
+                    last_daily_date = datetime.strptime(last_daily_date, "%Y-%m-%d %H:%M:%S").date()
+                elif isinstance(last_daily_date, datetime):
+                    last_daily_date = last_daily_date.date()
+
+                if last_daily_date == today - timedelta(days=1):
+                    # Increment streak
+                    guild_user.streak += 1
+                    if guild_user.streak > guild_user.highest_streak:
+                        guild_user.highest_streak = guild_user.streak
+                        logger.info(f"{member.name} - HIGHEST STREAK INCREMENTED TO {guild_user.highest_streak}")
+                    logger.info(f"{member.name} - STREAK INCREMENTED TO {guild_user.streak}")
+                elif last_daily_date < today - timedelta(days=1):
+                    # Reset streak
+                    guild_user.streak = 1
+                    logger.info(f"{member.name} - STREAK RESET TO {guild_user.streak}")
+
+            # CALCULATE DAILY REWARD
+            base_daily = 100
+            streak = guild_user.streak if guild_user.streak < 20 else 20
+            base_bonus_multiplier = 0.05
+            streak_bonus_percentage = streak * base_bonus_multiplier
+            streak_bonus = math.floor(base_daily * streak_bonus_percentage)
+            calculated_daily_reward = base_daily + streak_bonus
+            guild_user.currency += calculated_daily_reward
+
+            # Set daily and last_daily
+            guild_user.daily = 1
+            guild_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Send daily reward message
+            if daily_channel:
+                if streak > 0:
+                    await daily_channel.send(
+                        f'## {member.mention}, You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! 🎉')
+                else:
+                    await daily_channel.send(
+                        f'## {member.mention}, You have collected your daily reward - 100 Credits! 🎉')
+
+        except Exception as e:
+            logger.error(f'Error processing daily reward for {member.name}: {e}')
+
+    async def process_level_up(self, guild_user: GuildUser, member: discord.Member, new_level: int,
+                               level_channel: discord.TextChannel, is_season: bool = False):
+        """Process level up for guild user"""
+        try:
+            # CALCULATE LEVEL UP REWARD
+            if is_season:
+                base_reward = 5000
+                level_type = "HOLIDAY SEASON"
+                emoji = "🐣"
+            else:
+                base_reward = 1000
+                level_type = ""
+                emoji = "🎉"
+
+            streak = guild_user.streak if guild_user.streak < 20 else 20
+            base_bonus_multiplier = 0.05
+            streak_bonus_percentage = streak * base_bonus_multiplier
+            streak_bonus = math.floor(base_reward * streak_bonus_percentage)
+            calculated_reward = base_reward + streak_bonus
+            guild_user.currency += calculated_reward
+
+            # Send level up message
+            if level_channel:
+                if streak > 0:
+                    await level_channel.send(
+                        f'## {emoji} {member.mention} {level_type} LEVEL UP! You have reached level {new_level}! Gained {calculated_reward} Credits! {base_reward:,} + {streak_bonus} from {streak}x Streak! {emoji}')
+                else:
+                    await level_channel.send(
+                        f'## {emoji} {member.mention} {level_type} LEVEL UP! You have reached level {new_level}! Gained {calculated_reward} Credits! {emoji}')
+
+        except Exception as e:
+            logger.error(f'Error processing level up for {member.name}: {e}')
+
+    async def update_user_roles(self, guild_user: GuildUser, member: discord.Member, guild: discord.Guild):
+        """Update user roles based on season level"""
+        try:
+            user_roles = member.roles
+            roles_to_add = []
+
+            # Define role thresholds
+            role_thresholds = [
+                (0, role_level_1),
+                (5, role_level_2),
+                (10, role_level_3),
+                (15, role_level_4),
+                (20, role_level_5),
+                (25, role_level_6),
+                (30, role_level_7)
+            ]
+
+            # Find the highest role the user qualifies for
+            for threshold, role_name in reversed(role_thresholds):
+                if guild_user.season_level >= threshold and role_name:
+                    role = discord.utils.get(guild.roles, name=role_name)
+                    if role and role not in user_roles:
+                        roles_to_add.append(role)
+                        break  # Only add the highest qualifying role
+
+            # Add roles
+            if roles_to_add:
+                await member.add_roles(*roles_to_add)
+                logger.info(f'Added roles to {member.name} in {guild.name}: {[role.name for role in roles_to_add]}')
+
+        except Exception as e:
+            logger.error(f'Error updating roles for {member.name} in {guild.name}: {e}')
+
+    async def handle_ai_interaction(self, message: Message):
+        """Handle AI interactions when bot is mentioned"""
+        try:
+            if self.bot.user in message.mentions:
+                # Remove the mention and strip the message
+                prompt = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
+
+                async with message.channel.typing():
+                    response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
+
+                # Split long responses
+                response_list = []
+                if len(response) <= 2000:
+                    response_list.append(response)
+                else:
+                    while len(response) > 2000:
+                        response_list.append(response[:2000])
+                        response = response[2000:]
+
+                # Send responses
+                for res in response_list:
+                    await message.channel.send(res)
+
+        except Exception as e:
+            logger.error(f'OpenAI Error in {message.guild.name}: {e}')
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(On_Message(bot))
-        
-
-
-

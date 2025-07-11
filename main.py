@@ -81,6 +81,7 @@ class Bot(commands.Bot):
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
             "Cogs.On_Raw_Member_Remove",
+            "Cogs.On_Guild_Join"
         ]
         self.posted = False
         
@@ -117,41 +118,6 @@ class Bot(commands.Bot):
 
         await self.setup_hook()
         await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
-
-    # async def poll_task(self):
-    #     await self.wait_until_ready()
-    #     channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
-    #     while not self.is_closed():
-    #         message_link = "https://discord.com/channels/1155577094940655696/1155577095787917384/1256328502022770862" # Change to new poll link when needed
-    #         logger.info('poll_task running')
-    #         if datetime.now().minute == 0:
-    #             logger.info('poll_task running at the top of the hour')
-    #             try:
-    #                 await channel.send(f"# <a:pepesith:1165101386921418792> Season 3 is ending! Please vote for next season's Theme -> {message_link}")
-    #             except Exception as e:
-    #                 logger.error(f'poll_task error: {e}')
-    #         await asyncio.sleep(60)
-            
-
-    # async def gm_na_task(self): # good morning gif
-    #     await self.wait_until_ready()
-    #     channel = self.get_channel(1155577095787917384) # general channel id 1155577095787917384
-    #     search_term = 'rhino'  
-    #     logger.info(f'goodmorning gif search_term: {search_term}')
-    #     while not self.is_closed():
-            
-    #         logger.info('gm_na_task running')
-    #         if datetime.now().hour == 7 and datetime.now().minute == 50:
-    #             search_term = 'goodmorning-' + datetime.now().strftime('%A').lower()
-    #             logger.info('gm_na_task running at 7:50am')
-                
-    #             try:
-    #                 gif = self.giphy_search(search_term)
-    #                 logger.info(f'search_term:')
-    #                 await channel.send(gif)
-    #             except Exception as e:
-    #                 logger.error(f'gm_na_task error: {e}')
-    #         await asyncio.sleep(60)
 
     async def gm_eu_task(self): # good morning gif
         await self.wait_until_ready()
