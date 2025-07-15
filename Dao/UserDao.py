@@ -49,7 +49,8 @@ class UserDao(BaseDao[User]):
                            ),
                                avatar_url TEXT,
                                is_bot BOOLEAN DEFAULT FALSE,
-                               total_exp INT DEFAULT 0,
+                               global_exp INT DEFAULT 0,
+                               global_level INT DEFAULT 0,
                                total_currency INT DEFAULT 0,
                                total_messages INT DEFAULT 0,
                                total_reactions INT DEFAULT 0,
@@ -57,7 +58,10 @@ class UserDao(BaseDao[User]):
                                first_seen DATETIME,
                                last_seen DATETIME,
                                privacy_settings JSON,
-                               global_settings JSON
+                               global_settings JSON,
+                               INDEX idx_global_exp (global_exp DESC),
+                               INDEX idx_global_level (global_level DESC),
+                               INDEX idx_total_currency (total_currency DESC)
                                ) \
                            '''
         self.create_table_if_not_exists(create_table_sql)
@@ -78,7 +82,8 @@ class UserDao(BaseDao[User]):
                                  global_name, \
                                  avatar_url, \
                                  is_bot, \
-                                 total_exp, \
+                                 global_exp, \
+                                 global_level, \
                                  total_currency, \
                                  total_messages, \
                                  total_reactions, \
@@ -87,7 +92,7 @@ class UserDao(BaseDao[User]):
                                  last_seen, \
                                  privacy_settings, \
                                  global_settings) \
-              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
               '''
         values = (
             new_user.id,
@@ -95,7 +100,8 @@ class UserDao(BaseDao[User]):
             new_user.global_name,
             new_user.avatar_url,
             new_user.is_bot,
-            new_user.total_exp,
+            new_user.global_exp,
+            new_user.global_level,
             new_user.total_currency,
             new_user.total_messages,
             new_user.total_reactions,
@@ -129,11 +135,13 @@ class UserDao(BaseDao[User]):
                   global_name      = %s,
                   avatar_url       = %s,
                   is_bot           = %s,
-                  total_exp        = %s,
+                  global_exp       = %s,
+                  global_level     = %s,
                   total_currency   = %s,
                   total_messages   = %s,
                   total_reactions  = %s,
                   account_created  = %s,
+                  first_seen       = %s,
                   last_seen        = %s,
                   privacy_settings = %s,
                   global_settings  = %s
@@ -144,11 +152,13 @@ class UserDao(BaseDao[User]):
             updated_user.global_name,
             updated_user.avatar_url,
             updated_user.is_bot,
-            updated_user.total_exp,
+            updated_user.global_exp,
+            updated_user.global_level,
             updated_user.total_currency,
             updated_user.total_messages,
             updated_user.total_reactions,
             updated_user.account_created,
+            updated_user.first_seen,
             updated_user.last_seen,
             updated_user.privacy_settings,
             updated_user.global_settings,
@@ -185,15 +195,16 @@ class UserDao(BaseDao[User]):
                     global_name=user_data[2],
                     avatar_url=user_data[3],
                     is_bot=user_data[4],
-                    total_exp=user_data[5],
-                    total_currency=user_data[6],
-                    total_messages=user_data[7],
-                    total_reactions=user_data[8],
-                    account_created=user_data[9],
-                    first_seen=user_data[10],
-                    last_seen=user_data[11],
-                    privacy_settings=user_data[12],
-                    global_settings=user_data[13]
+                    global_exp=user_data[5],
+                    global_level=user_data[6],
+                    total_currency=user_data[7],
+                    total_messages=user_data[8],
+                    total_reactions=user_data[9],
+                    account_created=user_data[10],
+                    first_seen=user_data[11],
+                    last_seen=user_data[12],
+                    privacy_settings=user_data[13],
+                    global_settings=user_data[14]
                 )
                 return user
             return None
@@ -225,15 +236,16 @@ class UserDao(BaseDao[User]):
                     global_name=user_data[2],
                     avatar_url=user_data[3],
                     is_bot=user_data[4],
-                    total_exp=user_data[5],
-                    total_currency=user_data[6],
-                    total_messages=user_data[7],
-                    total_reactions=user_data[8],
-                    account_created=user_data[9],
-                    first_seen=user_data[10],
-                    last_seen=user_data[11],
-                    privacy_settings=user_data[12],
-                    global_settings=user_data[13]
+                    global_exp=user_data[5],
+                    global_level=user_data[6],
+                    total_currency=user_data[7],
+                    total_messages=user_data[8],
+                    total_reactions=user_data[9],
+                    account_created=user_data[10],
+                    first_seen=user_data[11],
+                    last_seen=user_data[12],
+                    privacy_settings=user_data[13],
+                    global_settings=user_data[14]
                 )
                 return user
             return None
@@ -242,9 +254,9 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting user by username: {e}")
             return None
 
-    def get_user_rank_by_exp(self, id: int) -> Optional[Tuple]:
+    def get_user_rank_by_global_exp(self, id: int) -> Optional[Tuple]:
         """
-        Get a user's rank based on total experience points.
+        Get a user's rank based on global experience points.
 
         Args:
             id (int): User ID
@@ -258,7 +270,8 @@ class UserDao(BaseDao[User]):
                             global_name, \
                             avatar_url, \
                             is_bot, \
-                            total_exp, \
+                            global_exp, \
+                            global_level, \
                             total_currency, \
                             total_messages, \
                             total_reactions, \
@@ -269,7 +282,7 @@ class UserDao(BaseDao[User]):
                             global_settings, \
                             (SELECT COUNT(*) + 1 \
                              FROM Users u2 \
-                             WHERE u2.total_exp > u1.total_exp AND u2.is_bot = FALSE) AS user_rank
+                             WHERE u2.global_exp > u1.global_exp AND u2.is_bot = FALSE) AS user_rank
                      FROM Users u1
                      WHERE id = %s; \
                      '''
@@ -278,7 +291,7 @@ class UserDao(BaseDao[User]):
             result = self.execute_query(rank_query, (id,))
             return result[0] if result else None
         except Exception as e:
-            self.logger.error(f"Error getting user rank by exp: {e}")
+            self.logger.error(f"Error getting user rank by global exp: {e}")
             return None
 
     def get_user_rank_by_currency(self, id: int) -> Optional[Tuple]:
@@ -297,7 +310,8 @@ class UserDao(BaseDao[User]):
                             global_name, \
                             avatar_url, \
                             is_bot, \
-                            total_exp, \
+                            global_exp, \
+                            global_level, \
                             total_currency, \
                             total_messages, \
                             total_reactions, \
@@ -320,9 +334,9 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting user rank by currency: {e}")
             return None
 
-    def get_top_users_by_exp(self, limit: int = 5) -> List[Tuple]:
+    def get_top_users_by_global_exp(self, limit: int = 5) -> List[Tuple]:
         """
-        Get the top users by total experience.
+        Get the top users by global experience.
 
         Args:
             limit (int, optional): Maximum number of users to return. Defaults to 5.
@@ -331,17 +345,17 @@ class UserDao(BaseDao[User]):
             List[Tuple]: List of top users
         """
         sql = '''
-              SELECT id, discord_username, global_name, total_exp
+              SELECT id, discord_username, global_name, global_exp, global_level
               FROM Users
               WHERE is_bot = FALSE
-              ORDER BY total_exp DESC
+              ORDER BY global_exp DESC
                   LIMIT %s \
               '''
 
         try:
             return self.execute_query(sql, (limit,)) or []
         except Exception as e:
-            self.logger.error(f"Error getting top users by exp: {e}")
+            self.logger.error(f"Error getting top users by global exp: {e}")
             return []
 
     def get_top_users_by_currency(self, limit: int = 5) -> List[Tuple]:
@@ -440,6 +454,22 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting total currency: {e}")
             return 0
 
+    def get_total_global_exp(self) -> int:
+        """
+        Get the total amount of global experience points earned by all users.
+
+        Returns:
+            int: Total global experience points
+        """
+        sql = 'SELECT SUM(global_exp) FROM Users WHERE is_bot = FALSE'
+
+        try:
+            result = self.execute_query(sql)
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting total global experience: {e}")
+            return 0
+
     def get_total_users(self) -> int:
         """
         Get the total number of users (excluding bots).
@@ -480,22 +510,6 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting total active users: {e}")
             return 0
 
-    def get_total_exp(self) -> int:
-        """
-        Get the total amount of experience points earned by all users.
-
-        Returns:
-            int: Total experience points
-        """
-        sql = 'SELECT SUM(total_exp) FROM Users WHERE is_bot = FALSE'
-
-        try:
-            result = self.execute_query(sql)
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting total experience: {e}")
-            return 0
-
     def get_users_by_date_range(self, start_date: datetime, end_date: datetime) -> List[User]:
         """
         Get users who first joined within a date range.
@@ -527,15 +541,16 @@ class UserDao(BaseDao[User]):
                         global_name=user_data[2],
                         avatar_url=user_data[3],
                         is_bot=user_data[4],
-                        total_exp=user_data[5],
-                        total_currency=user_data[6],
-                        total_messages=user_data[7],
-                        total_reactions=user_data[8],
-                        account_created=user_data[9],
-                        first_seen=user_data[10],
-                        last_seen=user_data[11],
-                        privacy_settings=user_data[12],
-                        global_settings=user_data[13]
+                        global_exp=user_data[5],
+                        global_level=user_data[6],
+                        total_currency=user_data[7],
+                        total_messages=user_data[8],
+                        total_reactions=user_data[9],
+                        account_created=user_data[10],
+                        first_seen=user_data[11],
+                        last_seen=user_data[12],
+                        privacy_settings=user_data[13],
+                        global_settings=user_data[14]
                     ))
 
             return users
@@ -563,14 +578,14 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error updating last seen: {e}")
             return False
 
-    def increment_user_stats(self, user_id: int, exp_gain: int = 0, currency_gain: int = 0,
+    def increment_user_stats(self, user_id: int, global_exp_gain: int = 0, currency_gain: int = 0,
                              messages_gain: int = 0, reactions_gain: int = 0) -> bool:
         """
         Increment user statistics.
 
         Args:
             user_id (int): User ID
-            exp_gain (int, optional): Experience to add. Defaults to 0.
+            global_exp_gain (int, optional): Global experience to add. Defaults to 0.
             currency_gain (int, optional): Currency to add. Defaults to 0.
             messages_gain (int, optional): Messages to add. Defaults to 0.
             reactions_gain (int, optional): Reactions to add. Defaults to 0.
@@ -580,7 +595,7 @@ class UserDao(BaseDao[User]):
         """
         sql = '''
               UPDATE Users
-              SET total_exp       = total_exp + %s,
+              SET global_exp      = global_exp + %s,
                   total_currency  = total_currency + %s,
                   total_messages  = total_messages + %s,
                   total_reactions = total_reactions + %s,
@@ -589,7 +604,7 @@ class UserDao(BaseDao[User]):
               '''
 
         try:
-            self.execute_query(sql, (exp_gain, currency_gain, messages_gain, reactions_gain, user_id), commit=True)
+            self.execute_query(sql, (global_exp_gain, currency_gain, messages_gain, reactions_gain, user_id), commit=True)
             return True
         except Exception as e:
             self.logger.error(f"Error incrementing user stats: {e}")

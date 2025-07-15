@@ -2,12 +2,16 @@ from datetime import datetime, timedelta
 import os
 import json
 import math
+from typing import Optional
+
 import discord
 from discord import Message
 from discord.ext import commands
 from dotenv import load_dotenv
 from Dao.GuildUserDao import GuildUserDao
+from Dao.UserDao import UserDao
 from Entities.GuildUser import GuildUser
+from Entities.User import User
 from Leveling import Leveling
 from logger import AppLogger
 from AI.OpenAIClient import OpenAIClient
@@ -108,14 +112,23 @@ class On_Message(commands.Cog):
             logger.info(f'{message.author} is an inmate in {message.guild.name} - skipped processing')
             return
 
-        # Get or create guild user
+        # Get or create guild user and global user
         guild_user_dao = GuildUserDao()
+        user_dao = UserDao()
+
         current_guild_user = guild_user_dao.get_guild_user(message.author.id, message.guild.id)
+        current_user = user_dao.get_user(message.author.id)
 
         if current_guild_user is None:
             # Create new guild user
             current_guild_user = await self.create_new_guild_user(message.author, message.guild, guild_user_dao)
             if not current_guild_user:
+                return
+
+        if current_user is None:
+            # Create new global user
+            current_user = await self.create_new_global_user(message.author, user_dao)
+            if not current_user:
                 return
 
         logger.info(f'Processing message from {message.author} in {message.guild.name}')
@@ -145,43 +158,51 @@ class On_Message(commands.Cog):
             bonus_exp = current_guild_user.streak * 0.05
             exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
 
+            # Update guild-specific exp
             current_guild_user.exp += exp_gain
             current_guild_user.exp_gained += exp_gain
-            current_guild_user.season_exp += exp_gain
             current_guild_user.messages_sent += 1
             current_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gain}')
+            # Update global exp and stats
+            current_user.global_exp += exp_gain # ERROR HERE
+            current_user.total_messages += 1
+            current_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gain} (Guild + Global)')
 
             # CHECK IF - DAILY REWARD
             if current_guild_user.daily == 0:
                 logger.info(f"{message.author.name} - COMPLETED DAILY REWARD in {message.guild.name}")
                 await self.process_daily_reward(current_guild_user, message.author, daily_reward_channel)
 
-            # CHECK IF - LEVELING UP
+            # CHECK IF - GUILD LEVELING UP
             lvl = Leveling()
-            new_level = lvl.calc_level(current_guild_user.exp)
-            new_season_level = lvl.calc_level(current_guild_user.season_exp)
+            new_guild_level = lvl.calc_level(current_guild_user.exp)
 
-            # LEVEL UP
-            if new_level > current_guild_user.level:
-                await self.process_level_up(current_guild_user, message.author, new_level, level_up_channel,
-                                            is_season=False)
+            # GUILD LEVEL UP
+            if new_guild_level > current_guild_user.level:
+                await self.process_level_up(current_guild_user, message.author, new_guild_level, level_up_channel,
+                                            level_type="GUILD")
 
-            current_guild_user.level = new_level
+            current_guild_user.level = new_guild_level
 
-            # SEASON LEVEL UP
-            if new_season_level > current_guild_user.season_level:
-                await self.process_level_up(current_guild_user, message.author, new_season_level, level_up_channel,
-                                            is_season=True)
+            # CHECK IF - GLOBAL LEVELING UP
+            new_global_level = lvl.calc_level(current_user.global_exp)
 
-            current_guild_user.season_level = new_season_level
+            # GLOBAL LEVEL UP
+            if new_global_level > current_user.global_level:
+                await self.process_level_up(current_guild_user, message.author, new_global_level, level_up_channel,
+                                            level_type="ACOSMIBOT", user_obj=current_user)
 
-            # UPDATE ROLES
-            await self.update_user_roles(current_guild_user, message.author, message.guild)
+            current_user.global_level = new_global_level
+
+            # UPDATE ROLES (based on global level now)
+            await self.update_user_roles(current_user, message.author, message.guild)
 
             # SAVE TO DATABASE
             guild_user_dao.update_guild_user(current_guild_user)
+            user_dao.update_user(current_user)
             logger.info(f'{message.author} updated in database for guild {message.guild.name}')
 
             # OPENAI CHATGPT
@@ -198,7 +219,7 @@ class On_Message(commands.Cog):
             logger.error(f'Error processing message from {message.author} in {message.guild.name}: {e}')
 
     async def create_new_guild_user(self, member: discord.Member, guild: discord.Guild,
-                                    guild_user_dao: GuildUserDao) -> GuildUser:
+                                    guild_user_dao: GuildUserDao) -> Optional[GuildUser]:
         """Create a new guild user"""
         try:
             formatted_join_date = member.joined_at.strftime(
@@ -209,8 +230,6 @@ class On_Message(commands.Cog):
                 guild_id=guild.id,
                 nickname=member.display_name,
                 level=0,
-                season_level=0,
-                season_exp=0,
                 streak=0,
                 highest_streak=0,
                 exp=0,
@@ -237,8 +256,52 @@ class On_Message(commands.Cog):
             logger.error(f'Error creating guild user {member.name} in {guild.name}: {e}')
             return None
 
+    async def create_new_global_user(self, member: discord.Member, user_dao: UserDao) -> Optional[User]:
+        """Create a new global user"""
+        try:
+            formatted_creation_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Handle account creation date safely
+            try:
+                if member.created_at:
+                    account_created = member.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    account_created = formatted_creation_date
+            except Exception as e:
+                logger.warning(f"Could not format member.created_at for {member.name}: {e}")
+                account_created = formatted_creation_date
+
+            new_user = User(
+                id=member.id,
+                discord_username=member.name,
+                global_name=member.global_name if hasattr(member, 'global_name') else member.name,
+                avatar_url=str(member.avatar.url) if member.avatar else None,
+                is_bot=member.bot,
+                global_exp=0,
+                global_level=0,
+                total_currency=0,
+                total_messages=0,
+                total_reactions=0,
+                account_created=account_created,
+                first_seen=formatted_creation_date,
+                last_seen=formatted_creation_date,
+                privacy_settings=None,
+                global_settings=None
+            )
+
+            if user_dao.add_user(new_user):
+                logger.info(f'Created new global user: {member.name}')
+                return new_user
+            else:
+                logger.error(f'Failed to create global user: {member.name}')
+                return None
+
+        except Exception as e:
+            logger.error(f'Error creating global user {member.name}: {e}')
+            return None
+
     async def process_daily_reward(self, guild_user: GuildUser, member: discord.Member,
-                                   daily_channel: discord.TextChannel):
+                                   daily_channel: Optional[discord.TextChannel]):
         """Process daily reward for guild user"""
         try:
             today = datetime.now().date()
@@ -290,17 +353,16 @@ class On_Message(commands.Cog):
             logger.error(f'Error processing daily reward for {member.name}: {e}')
 
     async def process_level_up(self, guild_user: GuildUser, member: discord.Member, new_level: int,
-                               level_channel: discord.TextChannel, is_season: bool = False):
-        """Process level up for guild user"""
+                               level_channel: Optional[discord.TextChannel], level_type: str = "GUILD",
+                               user_obj: Optional[User] = None):
+        """Process level up for guild user or global user"""
         try:
             # CALCULATE LEVEL UP REWARD
-            if is_season:
+            if level_type == "ACOSMIBOT":
                 base_reward = 5000
-                level_type = "HOLIDAY SEASON"
-                emoji = "🐣"
+                emoji = "🤖"
             else:
                 base_reward = 1000
-                level_type = ""
                 emoji = "🎉"
 
             streak = guild_user.streak if guild_user.streak < 20 else 20
@@ -322,13 +384,13 @@ class On_Message(commands.Cog):
         except Exception as e:
             logger.error(f'Error processing level up for {member.name}: {e}')
 
-    async def update_user_roles(self, guild_user: GuildUser, member: discord.Member, guild: discord.Guild):
-        """Update user roles based on season level"""
+    async def update_user_roles(self, user: User, member: discord.Member, guild: discord.Guild):
+        """Update user roles based on global level"""
         try:
             user_roles = member.roles
             roles_to_add = []
 
-            # Define role thresholds
+            # Define role thresholds based on global level
             role_thresholds = [
                 (0, role_level_1),
                 (5, role_level_2),
@@ -341,7 +403,7 @@ class On_Message(commands.Cog):
 
             # Find the highest role the user qualifies for
             for threshold, role_name in reversed(role_thresholds):
-                if guild_user.season_level >= threshold and role_name:
+                if user.global_level >= threshold and role_name:
                     role = discord.utils.get(guild.roles, name=role_name)
                     if role and role not in user_roles:
                         roles_to_add.append(role)

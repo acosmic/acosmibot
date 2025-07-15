@@ -6,7 +6,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.GuildUserDao import GuildUserDao
+from Dao.UserDao import UserDao
 from Entities.GuildUser import GuildUser
+from Entities.User import User
 from logger import AppLogger
 from Leveling import Leveling
 
@@ -28,16 +30,19 @@ class Rank(commands.Cog):
             return
 
         guild_user_dao = GuildUserDao()
+        user_dao = UserDao()
         target_user = user if user else interaction.user
 
         try:
             # Get guild user rank and data
             user_rank = guild_user_dao.get_guild_user_rank(target_user.id, interaction.guild.id)
             current_guild_user = guild_user_dao.get_guild_user(target_user.id, interaction.guild.id)
+            current_global_user = user_dao.get_user(target_user.id)
 
             if user_rank is not None and current_guild_user is not None:
                 # Create the rank card image
-                img_path = self.create_rank_card(target_user, current_guild_user, user_rank[-1], interaction.guild)
+                img_path = self.create_rank_card(target_user, current_guild_user, current_global_user, user_rank[-1],
+                                                 interaction.guild)
                 await interaction.response.send_message(file=discord.File(img_path))
 
                 # Clean up the image file
@@ -62,16 +67,16 @@ class Rank(commands.Cog):
             logger.error(f"Error in /rank command for {target_user.name} in {interaction.guild.name}: {e}")
             await interaction.response.send_message("An error occurred while generating the rank card.", ephemeral=True)
 
-    def create_rank_card(self, user, current_guild_user, rank, guild):
+    def create_rank_card(self, user, current_guild_user, current_global_user, rank, guild):
         try:
             # Create RankCards directory if it doesn't exist
             rank_cards_dir = "RankCards"
             if not os.path.exists(rank_cards_dir):
                 os.makedirs(rank_cards_dir)
 
-            # Create a larger image with a dark background
-            img_width = 1200  # Increased from 800
-            img_height = 400  # Increased from 250
+            # Use original dimensions
+            img_width = 800
+            img_height = 250
             img = Image.new('RGB', (img_width, img_height), color=(24, 25, 28))
 
             # Set font paths (try multiple common paths)
@@ -80,6 +85,7 @@ class Rank(commands.Cog):
                 '/System/Library/Fonts/Arial.ttf',  # macOS
                 'C:/Windows/Fonts/arialbd.ttf',  # Windows
                 '/usr/share/fonts/TTF/arial.ttf',  # Some Linux distros
+                '/Users/acosmic/Library/Fonts/MartianMonoNerdFont-Regular.ttf',  # Keep the macOS path
             ]
 
             font_bold = None
@@ -92,80 +98,88 @@ class Rank(commands.Cog):
                     except:
                         continue
 
-            # Load fonts with much bigger sizes for larger image
+            # Load fonts with original sizes
             try:
-                font_username = ImageFont.truetype(font_bold,
-                                                   72) if font_bold else ImageFont.load_default()  # Username - much bigger
+                font_username = ImageFont.truetype(font_bold, 48) if font_bold else ImageFont.load_default()  # Username
                 font_rank_level = ImageFont.truetype(font_bold,
-                                                     48) if font_bold else ImageFont.load_default()  # Rank/Level - much bigger
-                font_xp = ImageFont.truetype(font_bold,
-                                             36) if font_bold else ImageFont.load_default()  # XP text - much bigger
-                font_guild = ImageFont.truetype(font_bold,
-                                                28) if font_bold else ImageFont.load_default()  # Guild name - bigger
+                                                     32) if font_bold else ImageFont.load_default()  # Rank/Level
+                font_xp = ImageFont.truetype(font_bold, 24) if font_bold else ImageFont.load_default()  # XP text
+                font_guild = ImageFont.truetype(font_bold, 18) if font_bold else ImageFont.load_default()  # Guild name
+                font_global = ImageFont.truetype(font_bold,
+                                                 16) if font_bold else ImageFont.load_default()  # Global level (smaller)
             except:
                 font_username = ImageFont.load_default()
                 font_rank_level = ImageFont.load_default()
                 font_xp = ImageFont.load_default()
                 font_guild = ImageFont.load_default()
+                font_global = ImageFont.load_default()
 
             # Create a drawing context
             d = ImageDraw.Draw(img)
 
-            # Fetch and create a larger profile picture
+            # Fetch and create profile picture (original size)
             try:
                 if user.avatar:
                     avatar_url = str(user.avatar.url)
                     response = requests.get(avatar_url, timeout=10)
                     avatar = Image.open(BytesIO(response.content)).convert("RGBA")
-                    avatar = avatar.resize((200, 200), Image.LANCZOS)  # Bigger avatar
+                    avatar = avatar.resize((140, 140), Image.LANCZOS)  # Original size
 
                     # Create a circular mask for the avatar
-                    mask = Image.new("L", (200, 200), 0)
+                    mask = Image.new("L", (140, 140), 0)
                     draw = ImageDraw.Draw(mask)
-                    draw.ellipse((0, 0, 200, 200), fill=255)
+                    draw.ellipse((0, 0, 140, 140), fill=255)
 
                     # Create the black circular outline
-                    outline = Image.new("RGBA", (210, 210), (0, 0, 0, 0))
+                    outline = Image.new("RGBA", (150, 150), (0, 0, 0, 0))
                     draw = ImageDraw.Draw(outline)
-                    draw.ellipse((3, 3, 207, 207), outline="black", width=3)
+                    draw.ellipse((2, 2, 148, 148), outline="black", width=2)
 
                     # Apply the mask to the avatar
                     avatar.putalpha(mask)
 
                     # Combine the avatar with the outline
-                    combined_avatar = Image.new("RGBA", (210, 210), (0, 0, 0, 0))
+                    combined_avatar = Image.new("RGBA", (150, 150), (0, 0, 0, 0))
                     combined_avatar.paste(avatar, (5, 5), avatar)
                     combined_avatar.paste(outline, (0, 0), outline)
 
                     # Calculate the vertical position to center the avatar
-                    avatar_y_position = (img_height - 210) // 2
+                    avatar_y_position = (img_height - 150) // 2
 
-                    # Paste the combined avatar on the rank card
-                    img.paste(combined_avatar, (30, avatar_y_position), combined_avatar)
+                    # Paste the combined avatar on the rank card (original position)
+                    img.paste(combined_avatar, (20, avatar_y_position), combined_avatar)
             except Exception as e:
                 logger.warning(f"Could not load avatar for {user.name}: {e}")
 
-            # Adjust all text positions for larger image
-            text_start_x = 270  # More space for bigger avatar
+            # Adjust text positions for original layout
+            text_start_x = 180  # Original position
 
             # Guild name (small, at top)
             guild_text = f"in {guild.name}"
-            d.text((text_start_x, 40), guild_text, font=font_guild, fill=(150, 150, 150))
+            d.text((text_start_x, 20), guild_text, font=font_guild, fill=(150, 150, 150))
+
+            # Global level in top right corner (small and subtle)
+            global_level = current_global_user.global_level if current_global_user else 0
+            global_text = f"Global Lvl {global_level}"
+            global_bbox = d.textbbox((0, 0), global_text, font=font_global)
+            global_width = global_bbox[2] - global_bbox[0]
+            global_x = img_width - global_width - 20  # 20px padding from right edge
+            d.text((global_x, 20), global_text, font=font_global,
+                   fill=(255, 165, 0, 180))  # Slightly transparent orange
 
             # User name (big)
             display_name = current_guild_user.nickname or user.display_name or user.name
             username_text = f"{display_name}"
-            d.text((text_start_x, 80), username_text, font=font_username, fill=(255, 255, 255))
+            d.text((text_start_x, 50), username_text, font=font_username, fill=(255, 255, 255))
 
-            # Rank and Level on same line
+            # Rank and Level on same line (original style)
             rank_text = f"RANK  #{rank}"
             level_text = f"LVL  {current_guild_user.level}"
-            season_level_text = f"SEASON LVL  {current_guild_user.season_level}"
 
-            # Use season_exp for XP display
-            current_exp = current_guild_user.season_exp
-            current_level_exp = self.leveling.calc_exp_required(current_guild_user.season_level)
-            next_level_exp = self.leveling.calc_exp_required(current_guild_user.season_level + 1)
+            # Use guild exp for XP display (updated from season_exp)
+            current_exp = current_guild_user.exp
+            current_level_exp = self.leveling.calc_exp_required(current_guild_user.level)
+            next_level_exp = self.leveling.calc_exp_required(current_guild_user.level + 1)
             exp_progress = current_exp - current_level_exp
             exp_needed = next_level_exp - current_level_exp
 
@@ -178,18 +192,26 @@ class Rank(commands.Cog):
                 xp_bar_fill = 1.0
             xp_bar_fill = max(0, min(1, xp_bar_fill))  # Clamp between 0 and 1
 
-            # Position text with proportional spacing for larger image
-            d.text((text_start_x, 170), rank_text, font=font_rank_level, fill=(255, 255, 255))
-            d.text((text_start_x + 250, 170), level_text, font=font_rank_level, fill=(73, 23, 214))  # purple level text
-            d.text((text_start_x + 450, 170), season_level_text, font=font_rank_level,
-                   fill=(255, 165, 0))  # orange season level
-            d.text((text_start_x, 230), xp_text, font=font_xp, fill=(200, 200, 200))
+            # Position text with dynamic spacing based on text width
+            # Draw rank text
+            d.text((text_start_x, 110), rank_text, font=font_rank_level, fill=(255, 255, 255))
 
-            # XP bar sized proportionally for larger image
+            # Get text width for dynamic positioning
+            rank_text_bbox = d.textbbox((0, 0), rank_text, font=font_rank_level)
+            rank_text_width = rank_text_bbox[2] - rank_text_bbox[0]
+
+            # Draw level text with padding after rank
+            level_x = text_start_x + rank_text_width + 25  # 25px padding
+            d.text((level_x, 110), level_text, font=font_rank_level, fill=(73, 23, 214))  # purple level text
+
+            # XP text remains at original position
+            d.text((text_start_x, 150), xp_text, font=font_xp, fill=(200, 200, 200))
+
+            # XP bar with original dimensions
             bar_x = text_start_x
-            bar_y = 280
-            bar_width = 800  # Wider bar
-            bar_height = 40  # Taller bar
+            bar_y = 180
+            bar_width = 530  # Original width
+            bar_height = 30  # Original height
 
             # Create XP bar background
             xp_bar_bg = Image.new("RGBA", (bar_width, bar_height), (0, 0, 0, 0))

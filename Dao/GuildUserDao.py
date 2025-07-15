@@ -36,8 +36,6 @@ class GuildUserDao(BaseDao[GuildUser]):
                 guild_id BIGINT NOT NULL,
                 nickname VARCHAR(255),
                 level INT DEFAULT 0,
-                season_level INT DEFAULT 0,
-                season_exp INT DEFAULT 0,
                 streak INT DEFAULT 0,
                 highest_streak INT DEFAULT 0,
                 exp INT DEFAULT 0,
@@ -55,7 +53,6 @@ class GuildUserDao(BaseDao[GuildUser]):
                 INDEX idx_guild_exp (guild_id, exp DESC),
                 INDEX idx_guild_currency (guild_id, currency DESC),
                 INDEX idx_guild_level (guild_id, level DESC),
-                INDEX idx_guild_season_level (guild_id, season_level DESC),
                 INDEX idx_last_active (guild_id, last_active DESC)
             )
         """
@@ -79,19 +76,17 @@ class GuildUserDao(BaseDao[GuildUser]):
         """
         sql = """
             INSERT INTO GuildUsers (
-                user_id, guild_id, nickname, level, season_level, season_exp,
+                user_id, guild_id, nickname, level,
                 streak, highest_streak, exp, exp_gained, exp_lost, currency,
                 messages_sent, reactions_sent, joined_at, last_active,
                 daily, last_daily, is_active
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
             new_guild_user.user_id,
             new_guild_user.guild_id,
             new_guild_user.nickname,
             new_guild_user.level,
-            new_guild_user.season_level,
-            new_guild_user.season_exp,
             new_guild_user.streak,
             new_guild_user.highest_streak,
             new_guild_user.exp,
@@ -126,7 +121,7 @@ class GuildUserDao(BaseDao[GuildUser]):
         """
         sql = """
             UPDATE GuildUsers
-            SET nickname = %s, level = %s, season_level = %s, season_exp = %s,
+            SET nickname = %s, level = %s,
                 streak = %s, highest_streak = %s, exp = %s, exp_gained = %s,
                 exp_lost = %s, currency = %s, messages_sent = %s, reactions_sent = %s,
                 last_active = %s, daily = %s, last_daily = %s, is_active = %s
@@ -135,8 +130,6 @@ class GuildUserDao(BaseDao[GuildUser]):
         values = (
             updated_guild_user.nickname,
             updated_guild_user.level,
-            updated_guild_user.season_level,
-            updated_guild_user.season_exp,
             updated_guild_user.streak,
             updated_guild_user.highest_streak,
             updated_guild_user.exp,
@@ -222,21 +215,19 @@ class GuildUserDao(BaseDao[GuildUser]):
                     guild_id=user_data[1],
                     nickname=user_data[2],
                     level=user_data[3],
-                    season_level=user_data[4],
-                    season_exp=user_data[5],
-                    streak=user_data[6],
-                    highest_streak=user_data[7],
-                    exp=user_data[8],
-                    exp_gained=user_data[9],
-                    exp_lost=user_data[10],
-                    currency=user_data[11],
-                    messages_sent=user_data[12],
-                    reactions_sent=user_data[13],
-                    joined_at=user_data[14],
-                    last_active=user_data[15],
-                    daily=user_data[16],
-                    last_daily=user_data[17],
-                    is_active=bool(user_data[18])
+                    streak=user_data[4],
+                    highest_streak=user_data[5],
+                    exp=user_data[6],
+                    exp_gained=user_data[7],
+                    exp_lost=user_data[8],
+                    currency=user_data[9],
+                    messages_sent=user_data[10],
+                    reactions_sent=user_data[11],
+                    joined_at=user_data[12],
+                    last_active=user_data[13],
+                    daily=user_data[14],
+                    last_daily=user_data[15],
+                    is_active=bool(user_data[16])
                 )
                 return guild_user
             return None
@@ -257,7 +248,7 @@ class GuildUserDao(BaseDao[GuildUser]):
             Optional[Tuple]: User data with rank if found, None otherwise
         """
         rank_query = """
-            SELECT user_id, guild_id, nickname, level, season_level, season_exp,
+            SELECT user_id, guild_id, nickname, level,
                    streak, highest_streak, exp, exp_gained, exp_lost, currency,
                    messages_sent, reactions_sent, joined_at, last_active,
                    daily, last_daily, is_active,
@@ -330,21 +321,19 @@ class GuildUserDao(BaseDao[GuildUser]):
                         guild_id=user_data[1],
                         nickname=user_data[2],
                         level=user_data[3],
-                        season_level=user_data[4],
-                        season_exp=user_data[5],
-                        streak=user_data[6],
-                        highest_streak=user_data[7],
-                        exp=user_data[8],
-                        exp_gained=user_data[9],
-                        exp_lost=user_data[10],
-                        currency=user_data[11],
-                        messages_sent=user_data[12],
-                        reactions_sent=user_data[13],
-                        joined_at=user_data[14],
-                        last_active=user_data[15],
-                        daily=user_data[16],
-                        last_daily=user_data[17],
-                        is_active=bool(user_data[18])
+                        streak=user_data[4],
+                        highest_streak=user_data[5],
+                        exp=user_data[6],
+                        exp_gained=user_data[7],
+                        exp_lost=user_data[8],
+                        currency=user_data[9],
+                        messages_sent=user_data[10],
+                        reactions_sent=user_data[11],
+                        joined_at=user_data[12],
+                        last_active=user_data[13],
+                        daily=user_data[14],
+                        last_daily=user_data[15],
+                        is_active=bool(user_data[16])
                     ))
 
             return guild_users
@@ -380,21 +369,19 @@ class GuildUserDao(BaseDao[GuildUser]):
                         guild_id=user_data[1],
                         nickname=user_data[2],
                         level=user_data[3],
-                        season_level=user_data[4],
-                        season_exp=user_data[5],
-                        streak=user_data[6],
-                        highest_streak=user_data[7],
-                        exp=user_data[8],
-                        exp_gained=user_data[9],
-                        exp_lost=user_data[10],
-                        currency=user_data[11],
-                        messages_sent=user_data[12],
-                        reactions_sent=user_data[13],
-                        joined_at=user_data[14],
-                        last_active=user_data[15],
-                        daily=user_data[16],
-                        last_daily=user_data[17],
-                        is_active=bool(user_data[18])
+                        streak=user_data[4],
+                        highest_streak=user_data[5],
+                        exp=user_data[6],
+                        exp_gained=user_data[7],
+                        exp_lost=user_data[8],
+                        currency=user_data[9],
+                        messages_sent=user_data[10],
+                        reactions_sent=user_data[11],
+                        joined_at=user_data[12],
+                        last_active=user_data[13],
+                        daily=user_data[14],
+                        last_daily=user_data[15],
+                        is_active=bool(user_data[16])
                     ))
 
             return guild_users

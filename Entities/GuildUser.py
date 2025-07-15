@@ -15,8 +15,6 @@ class GuildUser(BaseEntity):
             guild_id: int,
             nickname: Optional[str] = None,
             level: int = 0,
-            season_level: int = 0,
-            season_exp: int = 0,
             streak: int = 0,
             highest_streak: int = 0,
             exp: int = 0,
@@ -39,8 +37,6 @@ class GuildUser(BaseEntity):
             guild_id (int): Discord guild ID
             nickname (Optional[str], optional): User's nickname in this guild. Defaults to None.
             level (int, optional): User's level in this guild. Defaults to 0.
-            season_level (int, optional): User's season level in this guild. Defaults to 0.
-            season_exp (int, optional): User's season experience points in this guild. Defaults to 0.
             streak (int, optional): User's current streak in this guild. Defaults to 0.
             highest_streak (int, optional): User's highest streak in this guild. Defaults to 0.
             exp (int, optional): User's total experience points in this guild. Defaults to 0.
@@ -59,8 +55,6 @@ class GuildUser(BaseEntity):
         self.guild_id = guild_id
         self.nickname = nickname
         self.level = level
-        self.season_level = season_level
-        self.season_exp = season_exp
         self.streak = streak
         self.highest_streak = highest_streak
         self.exp = exp
@@ -114,26 +108,6 @@ class GuildUser(BaseEntity):
     def level(self, value: int) -> None:
         """Set user's level in this guild"""
         self._level = value
-
-    @property
-    def season_level(self) -> int:
-        """User's season level in this guild"""
-        return self._season_level
-
-    @season_level.setter
-    def season_level(self, value: int) -> None:
-        """Set user's season level in this guild"""
-        self._season_level = value
-
-    @property
-    def season_exp(self) -> int:
-        """User's season experience points in this guild"""
-        return self._season_exp
-
-    @season_exp.setter
-    def season_exp(self, value: int) -> None:
-        """Set user's season experience points in this guild"""
-        self._season_exp = value
 
     @property
     def streak(self) -> int:

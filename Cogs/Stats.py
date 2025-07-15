@@ -1,22 +1,12 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from Dao.GuildUserDao import GuildUserDao
 from Dao.UserDao import UserDao
 from Dao.CoinflipDao import CoinflipDao
+from Entities.GuildUser import GuildUser
 from Entities.User import User
 from logger import AppLogger
-
-
-# role_level_1 = "Level One"
-# role_level_2 = "Level Two"
-# role_level_3 = "Level Three"
-# role_level_4 = "Level Four"
-# role_level_5 = "Level Five"
-# role_level_6 = "Level Six"
-# role_level_7 = "Level Seven"
-# role_level_8 = "Level Eight"
-# role_level_9 = "Level Nine"
-# role_level_10 = "Level Ten"
 
 logging = AppLogger(__name__).get_logger()
 
@@ -26,109 +16,104 @@ class Stats(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "stats", description = "Leave blank to see your own stats, or mention another user to see their stats.") 
+    @app_commands.command(name="stats",
+                          description="Leave blank to see your own stats, or mention another user to see their stats.")
     async def stats(self, interaction: discord.Interaction, user: discord.User = None):
-        
-        dao = UserDao()
+
+        guild_user_dao = GuildUserDao()
+        user_dao = UserDao()
         cfdao = CoinflipDao()
+
         if user is not None:
-            user_rank = dao.get_user_rank(user.id)
-            current_user = dao.get_user(user.id)
-            discord_user = user
-        else: 
-            user_rank = dao.get_user_rank(interaction.user.id)
-            current_user = dao.get_user(interaction.user.id)
-            discord_user = interaction.user
+            target_user = user
+        else:
+            target_user = interaction.user
 
+        # Get guild-specific data
+        user_rank = guild_user_dao.get_guild_user_rank(target_user.id, interaction.guild.id)
+        current_guild_user = guild_user_dao.get_guild_user(target_user.id, interaction.guild.id)
 
-        flips = cfdao.get_total_flips(current_user.id) if cfdao.get_total_flips(current_user.id) is not None else 0
-        flip_wins = cfdao.get_flip_wins(current_user.id) if cfdao.get_flip_wins(current_user.id) is not None else 0
-        flip_losses = cfdao.get_flip_losses(current_user.id) if cfdao.get_flip_losses(current_user.id) is not None else 0
+        # Get global data
+        current_global_user = user_dao.get_user(target_user.id)
 
-        flip_amount_won = cfdao.get_total_won(current_user.id) if cfdao.get_total_won(current_user.id) is not None else 0
-        flip_amount_lost = cfdao.get_total_lost(current_user.id) if cfdao.get_total_lost(current_user.id) is not None else 0
+        if current_guild_user is None:
+            if target_user == interaction.user:
+                await interaction.response.send_message(
+                    "You don't have stats in this server yet. Send a message to get started!", ephemeral=True)
+            else:
+                await interaction.response.send_message(f"{target_user.name} doesn't have stats in this server yet.",
+                                                        ephemeral=True)
+            return
+
+        # Get coinflip stats
+        flips = cfdao.get_total_flips(current_guild_user.user_id) if cfdao.get_total_flips(
+            current_guild_user.user_id) is not None else 0
+        flip_wins = cfdao.get_flip_wins(current_guild_user.user_id) if cfdao.get_flip_wins(
+            current_guild_user.user_id) is not None else 0
+        flip_losses = cfdao.get_flip_losses(current_guild_user.user_id) if cfdao.get_flip_losses(
+            current_guild_user.user_id) is not None else 0
+
+        flip_amount_won = cfdao.get_total_won(current_guild_user.user_id) if cfdao.get_total_won(
+            current_guild_user.user_id) is not None else 0
+        flip_amount_lost = cfdao.get_total_lost(current_guild_user.user_id) if cfdao.get_total_lost(
+            current_guild_user.user_id) is not None else 0
 
         flip_win_rate = flip_wins / flips * 100 if flips > 0 else 0
 
-        streak = current_user.streak   
-        streak_emoji = f"🔥 x{streak}"  if streak > 0 else "Chat again tomorrow to increase your streak! <:NicolasCagePOG:1203568248885346334>"
+        streak = current_guild_user.streak
+        streak_emoji = f"🔥 x{streak}" if streak > 0 else "Chat again tomorrow to increase your streak! <:NicolasCagePOG:1203568248885346334>"
 
         if user_rank is not None:
-            name_from_db = user_rank[1]
-            display_name = discord_user.name if discord_user.name is not None else name_from_db
+            name_from_db = user_rank[2]  # nickname from guild_user_rank query
+            display_name = target_user.name if target_user.name is not None else name_from_db
+
+            # Level emoji based on global level
             level_emoji = "<a:NODDERS:1312038419517673566>"
-            if current_user.season_level >= 5:
+            if current_global_user and current_global_user.global_level >= 5:
                 level_emoji = "<:antivax:1258070199945531402>"
-            if current_user.season_level >= 10:
+            if current_global_user and current_global_user.global_level >= 10:
                 level_emoji = "<:moonlandinghoax:1258075177934131200>"
-            if current_user.season_level >= 15:
+            if current_global_user and current_global_user.global_level >= 15:
                 level_emoji = "<:aliens:1258067124623114351>"
-            if current_user.season_level >= 20:
+            if current_global_user and current_global_user.global_level >= 20:
                 level_emoji = "<:flatearth:1258058656465817691>"
-            if current_user.season_level >= 25:
+            if current_global_user and current_global_user.global_level >= 25:
                 level_emoji = "<a:shungite:1258061858586365963>"
-            if current_user.season_level >= 30:
-                level_emoji = "<:illuminati:1258059529510195200>" 
-            
+            if current_global_user and current_global_user.global_level >= 30:
+                level_emoji = "<:illuminati:1258059529510195200>"
+
             embed = discord.Embed(
-            # title=f"### {discord_user.name}",
-            description=(
-            f"# {display_name} {level_emoji}\n\n"
-            f"### Ranked #{user_rank[-1]}\n"
-            f"Season Level: {current_user.season_level}\n"
-            f"Season EXP: {current_user.season_exp:,.0f}\n"
-            f"Current Level: {current_user.level}\n"
-            f"Current EXP: {current_user.exp:,.0f}\n"
-            f"Messages: {current_user.messages_sent:,.0f}\n"
-            f"Reactions: {current_user.reactions_sent:,.0f}\n"
-            f"Coinflips: {flips}\n"
-            f"Coinflip Wins: {flip_wins}\n"
-            f"Coinflip Losses: {flip_losses}\n"
-            f"Coinflip Credits Won: {flip_amount_won:,.0f}\n"
-            f"Coinflip Credits Lost: {flip_amount_lost:,.0f}\n"
-            f"Coinflip Win Rate: {flip_win_rate:.2f}%\n\n"
-            f"### Streak: {streak_emoji}\n"
-            f"Highest: {current_user.highest_streak}\n"
-            ),
-            color=discord_user.color)
-            embed.set_thumbnail(url=discord_user.avatar)
+                description=(
+                    f"# {display_name} {level_emoji}\n\n"
+                    f"### Guild Ranked #{user_rank[-1]} in {interaction.guild.name}\n"
+                    f"Guild Level: {current_guild_user.level}\n"
+                    f"Guild EXP: {current_guild_user.exp:,.0f}\n"
+                    f"Messages: {current_guild_user.messages_sent:,.0f}\n"
+                    f"Reactions: {current_guild_user.reactions_sent:,.0f}\n\n"
+                    f"### 🤖 Acosmibot Global Stats\n"
+                    f"Global Level: {current_global_user.global_level if current_global_user else 0}\n"
+                    f"Global EXP: {current_global_user.global_exp if current_global_user else 0:,.0f}\n\n"
+                    f"### 🎰 Gambling Stats\n"
+                    f"Coinflips: {flips}\n"
+                    f"Coinflip Wins: {flip_wins}\n"
+                    f"Coinflip Losses: {flip_losses}\n"
+                    f"Coinflip Credits Won: {flip_amount_won:,.0f}\n"
+                    f"Coinflip Credits Lost: {flip_amount_lost:,.0f}\n"
+                    f"Coinflip Win Rate: {flip_win_rate:.2f}%\n\n"
+                    f"### Streak: {streak_emoji}\n"
+                    f"Highest: {current_guild_user.highest_streak}\n"
+                ),
+                color=target_user.color)
+            embed.set_thumbnail(url=target_user.avatar)
 
             await interaction.response.send_message(embed=embed)
+            logging.info(
+                f"{interaction.user.name} used /stats command for {target_user.name} in {interaction.guild.name}")
 
         else:
-        #     logging.info(f"The user with Discord username {interaction.user.name} was not found in the database.")
-            
-        #     role = discord.utils.get(interaction.user.guild.roles, name=role_level_1)
-        #     await interaction.user.add_roles(role)
-        #     join_date = interaction.user.joined_at
-
-        #     # Convert join_date to a format suitable for database insertion (e.g., as a string)
-        #     formatted_join_date = join_date.strftime("%Y-%m-%d %H:%M:%S")
-
-        #     user_data = {
-        #     'id': interaction.user.id,
-        #     'discord_username': str(interaction.user.name),
-        #     'level': 1,
-        #     'streak': 0,
-        #     'exp': 0,
-        #     'exp_gained': 0,
-        #     'exp_lost': 0,
-        #     'currency': 0,
-        #     'messages_sent': 1,
-        #     'reactions_sent': 0,
-        #     'created': formatted_join_date,
-        #     'last_active': formatted_join_date,
-        #     'daily': 0,
-        #     'last_daily': None,
-        #     }
-
-        #     new_user = User(**user_data)
-        #     dao.add_user(new_user)
-        #     logging.info(f'{new_user.discord_username} added to the database.')
-        #     await interaction.response.send_message(f'{interaction.user.name} was not found in the database. {new_user.discord_username} added to the database.')
-        # # await interaction.response.send_message("Hello!") 
-        # logging.info(f"{interaction.user.name} used /rank command")
+            await interaction.response.send_message("User data not found.", ephemeral=True)
             return
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Stats(bot))
