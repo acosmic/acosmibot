@@ -14,7 +14,6 @@ from Entities.GuildUser import GuildUser
 from Entities.User import User
 from Leveling import Leveling
 from logger import AppLogger
-from AI.OpenAIClient import OpenAIClient
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,7 +33,6 @@ class On_Message(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        self.chatgpt = OpenAIClient()
         load_dotenv()
         inappropriate_words_str = os.getenv('INAPPROPRIATE_WORDS')
         if inappropriate_words_str:
@@ -164,10 +162,13 @@ class On_Message(commands.Cog):
             current_guild_user.messages_sent += 1
             current_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Update global exp and stats
-            current_user.global_exp += exp_gain # ERROR HERE
-            current_user.total_messages += 1
-            current_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Update global exp and stats (with safe attribute access)
+            if hasattr(current_user, 'global_exp'):
+                current_user.global_exp += exp_gain
+            if hasattr(current_user, 'total_messages'):
+                current_user.total_messages += 1
+            if hasattr(current_user, 'last_seen'):
+                current_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gain} (Guild + Global)')
 
@@ -187,26 +188,24 @@ class On_Message(commands.Cog):
 
             current_guild_user.level = new_guild_level
 
-            # CHECK IF - GLOBAL LEVELING UP
-            new_global_level = lvl.calc_level(current_user.global_exp)
+            # CHECK IF - GLOBAL LEVELING UP (with safe attribute access)
+            if hasattr(current_user, 'global_exp') and hasattr(current_user, 'global_level'):
+                new_global_level = lvl.calc_level(current_user.global_exp)
 
-            # GLOBAL LEVEL UP
-            if new_global_level > current_user.global_level:
-                await self.process_level_up(current_guild_user, message.author, new_global_level, level_up_channel,
-                                            level_type="ACOSMIBOT", user_obj=current_user)
+                # GLOBAL LEVEL UP
+                if new_global_level > current_user.global_level:
+                    await self.process_level_up(current_guild_user, message.author, new_global_level, level_up_channel,
+                                                level_type="ACOSMIBOT", user_obj=current_user)
 
-            current_user.global_level = new_global_level
+                current_user.global_level = new_global_level
 
-            # UPDATE ROLES (based on global level now)
-            await self.update_user_roles(current_user, message.author, message.guild)
+                # UPDATE ROLES (based on global level now)
+                await self.update_user_roles(current_user, message.author, message.guild)
 
             # SAVE TO DATABASE
             guild_user_dao.update_guild_user(current_guild_user)
             user_dao.update_user(current_user)
             logger.info(f'{message.author} updated in database for guild {message.guild.name}')
-
-            # OPENAI CHATGPT
-            await self.handle_ai_interaction(message)
 
             # OTHER REACTIONS
             if message.content.lower() == "yo":
@@ -387,6 +386,11 @@ class On_Message(commands.Cog):
     async def update_user_roles(self, user: User, member: discord.Member, guild: discord.Guild):
         """Update user roles based on global level"""
         try:
+            # Check if user has global_level attribute
+            if not hasattr(user, 'global_level'):
+                logger.warning(f"User {member.name} does not have global_level attribute")
+                return
+
             user_roles = member.roles
             roles_to_add = []
 
@@ -416,32 +420,6 @@ class On_Message(commands.Cog):
 
         except Exception as e:
             logger.error(f'Error updating roles for {member.name} in {guild.name}: {e}')
-
-    async def handle_ai_interaction(self, message: Message):
-        """Handle AI interactions when bot is mentioned"""
-        try:
-            if self.bot.user in message.mentions:
-                # Remove the mention and strip the message
-                prompt = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
-
-                async with message.channel.typing():
-                    response = await self.chatgpt.get_chatgpt_response(prompt, message.author.name, message.author.id)
-
-                # Split long responses
-                response_list = []
-                if len(response) <= 2000:
-                    response_list.append(response)
-                else:
-                    while len(response) > 2000:
-                        response_list.append(response[:2000])
-                        response = response[2000:]
-
-                # Send responses
-                for res in response_list:
-                    await message.channel.send(res)
-
-        except Exception as e:
-            logger.error(f'OpenAI Error in {message.guild.name}: {e}')
 
 
 async def setup(bot: commands.Bot):

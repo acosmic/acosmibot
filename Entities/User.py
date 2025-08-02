@@ -145,3 +145,23 @@ class User(BaseEntity):
     def __str__(self) -> str:
         """String representation of the user"""
         return f"User(id={self.id}, username={self.discord_username}, global_name={self.global_name})"
+
+    @global_exp.setter
+    def global_exp(self, value):
+        self._global_exp = value
+
+    @total_messages.setter
+    def total_messages(self, value):
+        self._total_messages = value
+
+    @last_seen.setter
+    def last_seen(self, value):
+        self._last_seen = value
+
+    @global_level.setter
+    def global_level(self, value):
+        self._global_level = value
+
+    @total_currency.setter
+    def total_currency(self, value):
+        self._total_currency = value

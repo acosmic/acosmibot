@@ -1,3 +1,5 @@
+from operator import truediv
+
 import discord
 from discord.ext import commands
 from datetime import datetime
@@ -74,7 +76,17 @@ class On_Guild_Join(commands.Cog):
                     active=True,
                     settings=None,  # Can be expanded later for guild-specific settings
                     created=formatted_join_date,
-                    last_active=formatted_join_date
+                    last_active=formatted_join_date,
+                    vault_currency=0,  # Default vault currency
+                    ai_enabled=True,  # AI enabled by default
+                    ai_thread_id=None,  # Will be set when AI is first used
+                    ai_temperature=1.0,  # Default temperature
+                    ai_personality_traits={
+                        "humor_level": "high",
+                        "sarcasm_level": "medium",
+                        "nerd_level": "high",
+                        "friendliness": "high"
+                    }  # Default personality traits
                 )
 
                 if guild_dao.add_new_guild(new_guild):
@@ -101,11 +113,13 @@ class On_Guild_Join(commands.Cog):
                 existing_guild_user = guild_user_dao.get_guild_user(member.id, guild.id)
 
                 if existing_guild_user:
-                    # Reactivate if they were previously deactivated
-                    if not existing_guild_user.is_active:
-                        guild_user_dao.activate_guild_user(member.id, guild.id)
-                        members_updated += 1
-                        logger.info(f"Reactivated guild user: {member.name} in {guild.name}")
+                    # Update name, nickname, and reactivate in one call
+                    existing_guild_user.name = member.name
+                    existing_guild_user.nickname = member.display_name
+                    existing_guild_user.is_active = True
+                    guild_user_dao.update_guild_user(existing_guild_user)
+                    members_updated += 1
+                    logger.info(f"Updated guild user: {member.name} (nickname: {member.display_name}) in {guild.name}")
                 else:
                     # Create new guild user record
                     formatted_join_date = member.joined_at.strftime(
@@ -114,10 +128,9 @@ class On_Guild_Join(commands.Cog):
                     new_guild_user = GuildUser(
                         user_id=member.id,
                         guild_id=guild.id,
+                        name=member.name,
                         nickname=member.display_name,
                         level=0,
-                        season_level=0,
-                        season_exp=0,
                         streak=0,
                         highest_streak=0,
                         exp=0,
@@ -144,20 +157,47 @@ class On_Guild_Join(commands.Cog):
         except Exception as e:
             logger.error(f"Error adding guild members for {guild.name}: {e}")
 
+    def clean_channel_name(self, name: str) -> str:
+        """Remove emojis, special characters, and separators from channel name"""
+        import re
+
+        # Remove emojis (Unicode emoji pattern)
+        emoji_pattern = re.compile("["
+                                   u"\U0001F600-\U0001F64F"  # emoticons
+                                   u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                   u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                   u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                   u"\U00002702-\U000027B0"  # Dingbats
+                                   u"\U000024C2-\U0001F251"
+                                   "]+", flags=re.UNICODE)
+
+        cleaned = emoji_pattern.sub('', name)
+
+        # Remove common separators and special characters
+        cleaned = re.sub(r'[︱｜|‖∥]', '', cleaned)  # Various vertical bar characters
+        cleaned = re.sub(r'[-_\s]+', '', cleaned)  # Hyphens, underscores, spaces
+        cleaned = re.sub(r'[^\w]', '', cleaned)  # Any remaining non-word characters
+
+        return cleaned.strip()
+
     async def _send_welcome_message(self, guild: discord.Guild):
         """
         Send a welcome message to the guild.
         """
         try:
             # Look for common channel names to send welcome message
-            welcome_channels = ['general', 'welcome', 'bot-commands', 'commands']
+            welcome_channels = ['general', 'welcome', 'botcommands', 'commands', 'chat', 'main']
 
             target_channel = None
 
-            # Try to find a suitable channel
+            # Try to find a suitable channel using cleaned names
             for channel in guild.text_channels:
-                if channel.name.lower() in welcome_channels:
-                    if channel.permissions_for(guild.me).send_messages:
+                if channel.permissions_for(guild.me).send_messages:
+                    # Check both original and cleaned channel names
+                    original_name = channel.name.lower()
+                    cleaned_name = self.clean_channel_name(channel.name).lower()
+
+                    if original_name in welcome_channels or cleaned_name in welcome_channels:
                         target_channel = channel
                         break
 
@@ -183,15 +223,15 @@ class On_Guild_Join(commands.Cog):
 
                 embed.add_field(
                     name="🎮 Features",
-                    value="• Leveling system with XP and rewards\n• Economy with Credits\n• Fun games like slots, coinflip, and more\n• Leaderboards and stats",
+                    value="• Leveling system with XP and rewards\n• Economy with Credits\n• Fun games like slots, coinflip, and more\n• AI chat capabilities\n• Leaderboards and stats",
                     inline=False
                 )
 
-                # embed.add_field(
-                #     name="⚙️ Setup",
-                #     value="The bot is ready to use! All databases have been initialized.",
-                #     inline=False
-                # )
+                embed.add_field(
+                    name="🤖 AI Features",
+                    value="• AI-powered conversations\n• Customizable personality traits\n• Contextual responses\n• Use AI commands to get started!",
+                    inline=False
+                )
 
                 embed.set_footer(text="Developed by Acosmic")
 

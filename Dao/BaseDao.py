@@ -79,6 +79,15 @@ class BaseDao(Generic[T]):
                 self.db.mydb.rollback()
             return False if commit else None
 
+    def get_last_insert_id(self) -> Optional[int]:
+        """Get the last inserted ID"""
+        try:
+            result = self.execute_query("SELECT LAST_INSERT_ID()")
+            return result[0][0] if result and result[0][0] else None
+        except Exception as e:
+            self.logger.error(f"Error getting last insert ID: {e}")
+            return None
+
     def create_table_if_not_exists(self, create_table_sql: str) -> bool:
         """
         Create a table if it doesn't exist.

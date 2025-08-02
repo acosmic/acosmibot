@@ -69,7 +69,7 @@ class Bot(commands.Bot):
             "Cogs.Rank",
             "Cogs.Stats",
             "Cogs.Give",
-            "Cogs.Check_Vault",
+            "Cogs.Check_Bank",
             "Cogs.Eightball",
             "Cogs.Polymorph",
             "Cogs.Coinflip",
@@ -81,7 +81,8 @@ class Bot(commands.Bot):
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
             "Cogs.On_Raw_Member_Remove",
-            "Cogs.On_Guild_Join"
+            "Cogs.On_Guild_Join",
+            "Cogs.AIControls"
         ]
         self.posted = False
         

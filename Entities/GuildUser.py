@@ -13,6 +13,7 @@ class GuildUser(BaseEntity):
             self,
             user_id: int,
             guild_id: int,
+            name: str,
             nickname: Optional[str] = None,
             level: int = 0,
             streak: int = 0,
@@ -53,6 +54,7 @@ class GuildUser(BaseEntity):
         """
         self.user_id = user_id
         self.guild_id = guild_id
+        self.name = name
         self.nickname = nickname
         self.level = level
         self.streak = streak
@@ -88,6 +90,16 @@ class GuildUser(BaseEntity):
     def guild_id(self, value: int) -> None:
         """Set guild's Discord ID"""
         self._guild_id = value
+
+    @property
+    def name(self) -> Optional[str]:
+        """User's name in this guild"""
+        return self._name
+
+    @name.setter
+    def name(self, value: Optional[str]) -> None:
+        """Set user's name in this guild"""
+        self._name = value
 
     @property
     def nickname(self) -> Optional[str]:
