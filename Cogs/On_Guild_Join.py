@@ -5,8 +5,10 @@ from discord.ext import commands
 from datetime import datetime
 from Dao.GuildDao import GuildDao
 from Dao.GuildUserDao import GuildUserDao
+from Dao.UserDao import UserDao
 from Entities.Guild import Guild
 from Entities.GuildUser import GuildUser
+from Entities.User import User
 from logger import AppLogger
 import os
 from dotenv import load_dotenv
@@ -32,12 +34,13 @@ class On_Guild_Join(commands.Cog):
             # Initialize DAOs
             guild_dao = GuildDao()
             guild_user_dao = GuildUserDao()
+            user_dao = UserDao()
 
             # Create guild record
             await self._create_guild_record(guild, guild_dao)
 
-            # Add all existing members to the database
-            await self._add_guild_members(guild, guild_user_dao)
+            # Add all existing members to the database (both global and guild-specific)
+            await self._add_guild_members(guild, guild_user_dao, user_dao)
 
             # Send welcome message to a general channel if possible
             await self._send_welcome_message(guild)
@@ -97,19 +100,69 @@ class On_Guild_Join(commands.Cog):
         except Exception as e:
             logger.error(f"Error creating guild record for {guild.name}: {e}")
 
-    async def _add_guild_members(self, guild: discord.Guild, guild_user_dao: GuildUserDao):
+    async def _add_guild_members(self, guild: discord.Guild, guild_user_dao: GuildUserDao, user_dao: UserDao):
         """
-        Add all current guild members to the database.
+        Add all current guild members to the database (both global and guild-specific).
         """
         try:
-            members_added = 0
-            members_updated = 0
+            guild_users_added = 0
+            guild_users_updated = 0
+            global_users_added = 0
+            global_users_updated = 0
 
             for member in guild.members:
                 if member.bot:
                     continue  # Skip bots
 
-                # Check if guild user already exists
+                # Handle global user first
+                existing_global_user = user_dao.get_user(member.id)
+
+                if existing_global_user:
+                    # Update existing global user
+                    existing_global_user._discord_username = member.name
+                    existing_global_user._global_name = member.global_name if hasattr(member,
+                                                                                      'global_name') else member.name
+                    existing_global_user._avatar_url = str(
+                        member.avatar.url) if member.avatar else existing_global_user.avatar_url
+                    existing_global_user._last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    user_dao.update_user(existing_global_user)
+                    global_users_updated += 1
+                    logger.info(f"Updated global user: {member.name}")
+                else:
+                    # Create new global user
+                    formatted_creation_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    try:
+                        account_created = member.created_at.strftime(
+                            "%Y-%m-%d %H:%M:%S") if member.created_at else formatted_creation_date
+                    except Exception:
+                        account_created = formatted_creation_date
+
+                    new_global_user = User(
+                        id=member.id,
+                        discord_username=member.name,
+                        global_name=member.global_name if hasattr(member, 'global_name') else member.name,
+                        avatar_url=str(member.avatar.url) if member.avatar else None,
+                        is_bot=member.bot,
+                        global_exp=0,
+                        global_level=0,
+                        total_currency=0,
+                        total_messages=0,
+                        total_reactions=0,
+                        account_created=account_created,
+                        first_seen=formatted_creation_date,
+                        last_seen=formatted_creation_date,
+                        privacy_settings=None,
+                        global_settings=None
+                    )
+
+                    if user_dao.add_user(new_global_user):
+                        global_users_added += 1
+                        logger.info(f"Created new global user: {member.name}")
+                    else:
+                        logger.error(f"Failed to create global user: {member.name}")
+
+                # Handle guild user
                 existing_guild_user = guild_user_dao.get_guild_user(member.id, guild.id)
 
                 if existing_guild_user:
@@ -118,7 +171,7 @@ class On_Guild_Join(commands.Cog):
                     existing_guild_user.nickname = member.display_name
                     existing_guild_user.is_active = True
                     guild_user_dao.update_guild_user(existing_guild_user)
-                    members_updated += 1
+                    guild_users_updated += 1
                     logger.info(f"Updated guild user: {member.name} (nickname: {member.display_name}) in {guild.name}")
                 else:
                     # Create new guild user record
@@ -136,7 +189,7 @@ class On_Guild_Join(commands.Cog):
                         exp=0,
                         exp_gained=0,
                         exp_lost=0,
-                        currency=0,  # Starting currency for new users
+                        currency=1000,  # Starting currency for new users
                         messages_sent=0,
                         reactions_sent=0,
                         joined_at=formatted_join_date,
@@ -147,12 +200,15 @@ class On_Guild_Join(commands.Cog):
                     )
 
                     if guild_user_dao.add_guild_user(new_guild_user):
-                        members_added += 1
+                        guild_users_added += 1
                     else:
                         logger.error(f"Failed to add guild user: {member.name} to {guild.name}")
 
             logger.info(
-                f"Guild member processing complete for {guild.name}: {members_added} added, {members_updated} reactivated")
+                f"Member processing complete for {guild.name}: "
+                f"Global users: {global_users_added} added, {global_users_updated} updated | "
+                f"Guild users: {guild_users_added} added, {guild_users_updated} reactivated"
+            )
 
         except Exception as e:
             logger.error(f"Error adding guild members for {guild.name}: {e}")
