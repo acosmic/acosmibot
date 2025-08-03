@@ -480,6 +480,111 @@ class GuildUserDao(BaseDao[GuildUser]):
             self.logger.error(f"Error getting guild stats: {e}")
             return {}
 
+    def get_or_create_guild_user_from_discord(self, discord_member, guild_id: int) -> Optional[GuildUser]:
+        """
+        Get existing guild user or create new one from Discord member object.
+
+        Args:
+            discord_member: Discord member object (discord.Member)
+            guild_id (int): Guild ID
+
+        Returns:
+            Optional[GuildUser]: GuildUser object or None on error
+        """
+        try:
+            # First try to get existing guild user
+            existing_guild_user = self.get_guild_user(discord_member.id, guild_id)
+            if existing_guild_user:
+                # Update basic info and reactivate if needed
+                existing_guild_user.name = discord_member.name
+                existing_guild_user.nickname = discord_member.display_name
+                existing_guild_user.is_active = True
+                existing_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.update_guild_user(existing_guild_user)
+                return existing_guild_user
+
+            # Create new guild user
+            formatted_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Handle joined_at safely
+            try:
+                joined_at = discord_member.joined_at.strftime(
+                    "%Y-%m-%d %H:%M:%S") if discord_member.joined_at else formatted_date
+            except Exception:
+                joined_at = formatted_date
+
+            new_guild_user = GuildUser(
+                user_id=discord_member.id,
+                guild_id=guild_id,
+                name=discord_member.name,
+                nickname=discord_member.display_name,
+                level=0,
+                streak=0,
+                highest_streak=0,
+                exp=0,
+                exp_gained=0,
+                exp_lost=0,
+                currency=1000,  # Starting currency
+                messages_sent=0,
+                reactions_sent=0,
+                joined_at=joined_at,
+                last_active=formatted_date,
+                daily=0,
+                last_daily=None,
+                is_active=True
+            )
+
+            if self.add_guild_user(new_guild_user):
+                self.logger.info(f"Created new guild user: {discord_member.name} in guild {guild_id}")
+                return new_guild_user
+            else:
+                self.logger.error(f"Failed to create guild user: {discord_member.name} in guild {guild_id}")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"Error getting/creating guild user {discord_member.name} in guild {guild_id}: {e}")
+            return None
+
+    def ensure_guild_user_exists(self, discord_member, guild_id: int) -> bool:
+        """
+        Ensure a guild user exists in the database, create if not.
+
+        Args:
+            discord_member: Discord member object
+            guild_id (int): Guild ID
+
+        Returns:
+            bool: True if guild user exists/was created, False on error
+        """
+        try:
+            guild_user = self.get_or_create_guild_user_from_discord(discord_member, guild_id)
+            return guild_user is not None
+        except Exception as e:
+            self.logger.error(f"Error ensuring guild user exists for {discord_member.name}: {e}")
+            return False
+
+    def reactivate_guild_user(self, user_id: int, guild_id: int) -> bool:
+        """
+        Reactivate a guild user (useful when they rejoin a guild).
+
+        Args:
+            user_id (int): User ID
+            guild_id (int): Guild ID
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            guild_user = self.get_guild_user(user_id, guild_id)
+            if guild_user:
+                guild_user.is_active = True
+                guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                return self.update_guild_user(guild_user)
+            return False
+        except Exception as e:
+            self.logger.error(f"Error reactivating guild user {user_id} in guild {guild_id}: {e}")
+            return False
+
     def save(self, guild_user: GuildUser) -> Optional[GuildUser]:
         """
         Save a guild user to the database (insert if new, update if exists).

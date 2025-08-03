@@ -634,6 +634,84 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error incrementing user stats: {e}")
             return False
 
+    def get_or_create_user_from_discord(self, discord_user) -> Optional[User]:
+        """
+        Get existing user or create new one from Discord user object.
+
+        Args:
+            discord_user: Discord user object (discord.User or discord.Member)
+
+        Returns:
+            Optional[User]: User object or None on error
+        """
+        try:
+            # First try to get existing user
+            existing_user = self.get_user(discord_user.id)
+            if existing_user:
+                # Update basic info in case it changed
+                existing_user._discord_username = discord_user.name
+                existing_user._global_name = getattr(discord_user, 'global_name', discord_user.name)
+                existing_user._avatar_url = str(
+                    discord_user.avatar.url) if discord_user.avatar else existing_user.avatar_url
+                existing_user._last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.update_user(existing_user)
+                return existing_user
+
+            # Create new user
+            formatted_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            try:
+                account_created = discord_user.created_at.strftime(
+                    "%Y-%m-%d %H:%M:%S") if discord_user.created_at else formatted_date
+            except Exception:
+                account_created = formatted_date
+
+            new_user = User(
+                id=discord_user.id,
+                discord_username=discord_user.name,
+                global_name=getattr(discord_user, 'global_name', discord_user.name),
+                avatar_url=str(discord_user.avatar.url) if discord_user.avatar else None,
+                is_bot=discord_user.bot,
+                global_exp=0,
+                global_level=0,
+                total_currency=0,
+                total_messages=0,
+                total_reactions=0,
+                account_created=account_created,
+                first_seen=formatted_date,
+                last_seen=formatted_date,
+                privacy_settings=None,
+                global_settings=None
+            )
+
+            if self.add_user(new_user):
+                self.logger.info(f"Created new global user: {discord_user.name}")
+                return new_user
+            else:
+                self.logger.error(f"Failed to create global user: {discord_user.name}")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"Error getting/creating global user {discord_user.name}: {e}")
+            return None
+
+    def ensure_user_exists(self, discord_user) -> bool:
+        """
+        Ensure a user exists in the database, create if not.
+
+        Args:
+            discord_user: Discord user object
+
+        Returns:
+            bool: True if user exists/was created, False on error
+        """
+        try:
+            user = self.get_or_create_user_from_discord(discord_user)
+            return user is not None
+        except Exception as e:
+            self.logger.error(f"Error ensuring user exists for {discord_user.name}: {e}")
+            return False
+
     def save(self, user: User) -> Optional[User]:
         """
         Save a user to the database (insert if new, update if exists).

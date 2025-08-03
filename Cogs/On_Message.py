@@ -118,13 +118,11 @@ class On_Message(commands.Cog):
         current_user = user_dao.get_user(message.author.id)
 
         if current_guild_user is None:
-            # Create new guild user
             current_guild_user = await self.create_new_guild_user(message.author, message.guild, guild_user_dao)
             if not current_guild_user:
                 return
 
         if current_user is None:
-            # Create new global user
             current_user = await self.create_new_global_user(message.author, user_dao)
             if not current_user:
                 return
@@ -216,88 +214,6 @@ class On_Message(commands.Cog):
 
         except Exception as e:
             logger.error(f'Error processing message from {message.author} in {message.guild.name}: {e}')
-
-    async def create_new_guild_user(self, member: discord.Member, guild: discord.Guild,
-                                    guild_user_dao: GuildUserDao) -> Optional[GuildUser]:
-        """Create a new guild user"""
-        try:
-            formatted_join_date = member.joined_at.strftime(
-                "%Y-%m-%d %H:%M:%S") if member.joined_at else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            new_guild_user = GuildUser(
-                user_id=member.id,
-                guild_id=guild.id,
-                nickname=member.display_name,
-                level=0,
-                streak=0,
-                highest_streak=0,
-                exp=0,
-                exp_gained=0,
-                exp_lost=0,
-                currency=1000,  # Starting currency for new users
-                messages_sent=0,
-                reactions_sent=0,
-                joined_at=formatted_join_date,
-                last_active=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                daily=0,
-                last_daily=None,
-                is_active=True
-            )
-
-            if guild_user_dao.add_guild_user(new_guild_user):
-                logger.info(f'Created new guild user: {member.name} in {guild.name}')
-                return new_guild_user
-            else:
-                logger.error(f'Failed to create guild user: {member.name} in {guild.name}')
-                return None
-
-        except Exception as e:
-            logger.error(f'Error creating guild user {member.name} in {guild.name}: {e}')
-            return None
-
-    async def create_new_global_user(self, member: discord.Member, user_dao: UserDao) -> Optional[User]:
-        """Create a new global user"""
-        try:
-            formatted_creation_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # Handle account creation date safely
-            try:
-                if member.created_at:
-                    account_created = member.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                else:
-                    account_created = formatted_creation_date
-            except Exception as e:
-                logger.warning(f"Could not format member.created_at for {member.name}: {e}")
-                account_created = formatted_creation_date
-
-            new_user = User(
-                id=member.id,
-                discord_username=member.name,
-                global_name=member.global_name if hasattr(member, 'global_name') else member.name,
-                avatar_url=str(member.avatar.url) if member.avatar else None,
-                is_bot=member.bot,
-                global_exp=0,
-                global_level=0,
-                total_currency=0,
-                total_messages=0,
-                total_reactions=0,
-                account_created=account_created,
-                first_seen=formatted_creation_date,
-                last_seen=formatted_creation_date,
-                privacy_settings=None,
-                global_settings=None
-            )
-
-            if user_dao.add_user(new_user):
-                logger.info(f'Created new global user: {member.name}')
-                return new_user
-            else:
-                logger.error(f'Failed to create global user: {member.name}')
-                return None
-
-        except Exception as e:
-            logger.error(f'Error creating global user {member.name}: {e}')
-            return None
 
     async def process_daily_reward(self, guild_user: GuildUser, member: discord.Member,
                                    daily_channel: Optional[discord.TextChannel]):
