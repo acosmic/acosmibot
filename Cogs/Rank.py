@@ -80,12 +80,13 @@ class Rank(commands.Cog):
             img = Image.new('RGB', (img_width, img_height), color=(24, 25, 28))
 
             # Set font paths (try multiple common paths)
+            base_dir = os.path.dirname(os.path.dirname(__file__))
             font_paths = [
+                os.path.join(base_dir, 'Fonts', 'MartianMonoNerdFont-Regular.ttf'),
                 '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',
                 '/System/Library/Fonts/Arial.ttf',  # macOS
                 'C:/Windows/Fonts/arialbd.ttf',  # Windows
                 '/usr/share/fonts/TTF/arial.ttf',  # Some Linux distros
-                '/Users/acosmic/Library/Fonts/MartianMonoNerdFont-Regular.ttf',  # Keep the macOS path
             ]
 
             font_bold = None
