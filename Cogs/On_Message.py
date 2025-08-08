@@ -3,7 +3,6 @@ import os
 import json
 import math
 from typing import Optional
-
 import discord
 from discord import Message
 from discord.ext import commands
@@ -18,13 +17,13 @@ from logger import AppLogger
 # Load environment variables from .env file
 load_dotenv()
 
-role_level_1 = os.getenv('ROLE_LEVEL_1')
-role_level_2 = os.getenv('ROLE_LEVEL_2')
-role_level_3 = os.getenv('ROLE_LEVEL_3')
-role_level_4 = os.getenv('ROLE_LEVEL_4')
-role_level_5 = os.getenv('ROLE_LEVEL_5')
-role_level_6 = os.getenv('ROLE_LEVEL_6')
-role_level_7 = os.getenv('ROLE_LEVEL_7')
+# role_level_1 = os.getenv('ROLE_LEVEL_1')
+# role_level_2 = os.getenv('ROLE_LEVEL_2')
+# role_level_3 = os.getenv('ROLE_LEVEL_3')
+# role_level_4 = os.getenv('ROLE_LEVEL_4')
+# role_level_5 = os.getenv('ROLE_LEVEL_5')
+# role_level_6 = os.getenv('ROLE_LEVEL_6')
+# role_level_7 = os.getenv('ROLE_LEVEL_7')
 
 logger = AppLogger(__name__).get_logger()
 
@@ -198,7 +197,7 @@ class On_Message(commands.Cog):
                 current_user.global_level = new_global_level
 
                 # UPDATE ROLES (based on global level now)
-                await self.update_user_roles(current_user, message.author, message.guild)
+                # await self.update_user_roles(current_user, message.author, message.guild)
 
             # SAVE TO DATABASE
             guild_user_dao.update_guild_user(current_guild_user)
