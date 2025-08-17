@@ -33,7 +33,7 @@ class Admin_Start_Lotto(commands.Cog):
             await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
             return
 
-        # Check for admin permissions (more flexible than hardcoded role)
+        # Check for admin permissions
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("Only administrators can start lotteries.", ephemeral=True)
             return
@@ -48,12 +48,12 @@ class Admin_Start_Lotto(commands.Cog):
 
         try:
             le_dao = LotteryEventDao()
-            guild_dao = GuildDao()  # Use GuildDao instead of VaultDao
 
             # Check if there's already an active lottery in this guild
             current_lottery = le_dao.get_current_event(interaction.guild_id)
             if current_lottery:
-                await interaction.response.send_message("There is already an active lottery in this server!", ephemeral=True)
+                await interaction.response.send_message("There is already an active lottery in this server!",
+                                                        ephemeral=True)
                 return
 
             # Respond to interaction first
@@ -63,7 +63,10 @@ class Admin_Start_Lotto(commands.Cog):
                 ephemeral=True
             )
 
-            # Get guild-specific vault credits
+            # Get guild-specific vault credits (you'll need to implement this)
+            # For now, using the old VaultDao - update this based on your vault system
+            from Dao.GuildDao import GuildDao
+            guild_dao = GuildDao()
             vault_credits = guild_dao.get_vault_currency(interaction.guild_id)
 
             # Send lottery announcement to the target channel
@@ -73,8 +76,6 @@ class Admin_Start_Lotto(commands.Cog):
                 f'The winner will be announced in {duration} hour(s)! 🎰'
             )
 
-            # You might want to make this image configurable per server or remove it
-            # For now, keeping it but you could add it as an optional parameter
             message = await target_channel.send(
                 "https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png"
             )
@@ -82,7 +83,7 @@ class Admin_Start_Lotto(commands.Cog):
             await message.add_reaction('🎟️')
             end_time = datetime.now() + timedelta(hours=duration)
 
-            # Create new lottery event
+            # Create new lottery event WITH channel_id
             new_le = LotteryEvent(
                 id=0,
                 message_id=message.id,
@@ -90,7 +91,8 @@ class Admin_Start_Lotto(commands.Cog):
                 end_time=end_time,
                 credits=0,
                 winner_id=0,
-                guild_id=interaction.guild_id
+                guild_id=interaction.guild_id,
+                channel_id=target_channel.id  # Add channel_id here!
             )
 
             await message.pin()
@@ -104,7 +106,7 @@ class Admin_Start_Lotto(commands.Cog):
 
         except Exception as e:
             logger.error(f'/admin-start-lotto command error: {e}')
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "An error occurred while starting the lottery. Please try again.",
                 ephemeral=True
             )

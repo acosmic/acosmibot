@@ -128,6 +128,11 @@ class User(BaseEntity):
         """Total reactions sent across all guilds"""
         return self._total_reactions
 
+    @total_reactions.setter
+    def total_reactions(self, value):
+        """Set total reactions, ensuring it's an int"""
+        self._total_reactions = self._convert_to_int(value)
+
     @property
     def account_created(self) -> Optional[str]:
         """When Discord account was created"""

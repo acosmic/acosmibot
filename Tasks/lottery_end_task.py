@@ -47,9 +47,10 @@ async def _process_all_guild_lotteries(bot):
                 logger.warning(f'Guild {lottery_event.guild_id} not found, skipping lottery {lottery_event.id}')
                 continue
 
-            channel = guild.get_channel()
+            # Now we can simply get the channel by ID
+            channel = guild.get_channel(lottery_event.channel_id)
             if not channel:
-                logger.warning(f'Channel {bot.get_message(lottery_event.message_id)} not found in guild {guild.name}, skipping lottery')
+                logger.warning(f'Channel {lottery_event.channel_id} not found in guild {guild.name}, skipping lottery')
                 continue
 
             await _process_lottery_event(lottery_event, guild, channel)

@@ -22,38 +22,67 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
         
         # Create the table if it doesn't exist
         self._create_table_if_not_exists()
-    
+
     def _create_table_if_not_exists(self) -> None:
         """
         Create the LotteryEvents table if it doesn't exist.
         """
         create_table_sql = '''
-        CREATE TABLE IF NOT EXISTS LotteryEvents (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            message_id BIGINT NOT NULL,
-            start_time DATETIME NOT NULL,
-            end_time DATETIME NOT NULL,
-            credits BIGINT DEFAULT 0,
-            winner_id BIGINT DEFAULT 0,
-            guild_id BIGINT NOT NULL
-        )
-        '''
+                           CREATE TABLE IF NOT EXISTS LotteryEvents \
+                           ( \
+                               id \
+                               INT \
+                               AUTO_INCREMENT \
+                               PRIMARY \
+                               KEY, \
+                               message_id \
+                               BIGINT \
+                               NOT \
+                               NULL, \
+                               start_time \
+                               DATETIME \
+                               NOT \
+                               NULL, \
+                               end_time \
+                               DATETIME \
+                               NOT \
+                               NULL, \
+                               credits \
+                               BIGINT \
+                               DEFAULT \
+                               0, \
+                               winner_id \
+                               BIGINT \
+                               DEFAULT \
+                               0, \
+                               guild_id \
+                               BIGINT \
+                               NOT \
+                               NULL, \
+                               channel_id \
+                               BIGINT \
+                               NOT \
+                               NULL \
+                               DEFAULT \
+                               0
+                           ) \
+                           '''
         self.create_table_if_not_exists(create_table_sql)
-    
+
     def add_new_event(self, lottery_event: LotteryEvent) -> bool:
         """
         Add a new lottery event to the database.
-        
+
         Args:
             lottery_event (LotteryEvent): Lottery event to add
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
         sql = """
-            INSERT INTO LotteryEvents (id, message_id, start_time, end_time, credits, winner_id, guild_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
+              INSERT INTO LotteryEvents (id, message_id, start_time, end_time, credits, winner_id, guild_id, channel_id)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s) \
+              """
         values = (
             lottery_event.id,
             lottery_event.message_id,
@@ -61,9 +90,10 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
             lottery_event.end_time,
             lottery_event.credits,
             lottery_event.winner_id,
-            lottery_event.guild_id
+            lottery_event.guild_id,
+            lottery_event.channel_id  # Add this
         )
-        
+
         try:
             self.execute_query(sql, values, commit=True)
             return True
@@ -74,183 +104,82 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
     def get_current_event(self, guild_id: Optional[int] = None) -> Optional[LotteryEvent]:
         """
         Get the current active lottery event.
-        
+
         Args:
             guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
-            
+
         Returns:
             Optional[LotteryEvent]: Current event if found, None otherwise
         """
         if guild_id:
             sql = """
-                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-                FROM LotteryEvents
-                WHERE end_time > NOW() AND guild_id = %s
-                ORDER BY start_time DESC
-                LIMIT 1
-            """
+                  SELECT id, \
+                         message_id, \
+                         start_time, \
+                         end_time, \
+                         credits, \
+                         winner_id, \
+                         guild_id, \
+                         channel_id
+                  FROM LotteryEvents
+                  WHERE end_time > NOW() \
+                    AND guild_id = %s
+                  ORDER BY start_time DESC LIMIT 1 \
+                  """
             params = (guild_id,)
         else:
             sql = """
-                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-                FROM LotteryEvents
-                WHERE end_time > NOW()
-                ORDER BY start_time DESC
-                LIMIT 1
-            """
+                  SELECT id, \
+                         message_id, \
+                         start_time, \
+                         end_time, \
+                         credits, \
+                         winner_id, \
+                         guild_id, \
+                         channel_id
+                  FROM LotteryEvents
+                  WHERE end_time > NOW()
+                  ORDER BY start_time DESC LIMIT 1 \
+                  """
             params = None
-        
+
         try:
             result = self.execute_query(sql, params)
-            
+
             if result and len(result) > 0:
                 event_data = result[0]
                 return LotteryEvent(
-                    event_data[0], event_data[1], event_data[2], 
-                    event_data[3], event_data[4], event_data[5], event_data[6]
+                    event_data[0], event_data[1], event_data[2],
+                    event_data[3], event_data[4], event_data[5],
+                    event_data[6], event_data[7]  # Add channel_id
                 )
             return None
-            
+
         except Exception as e:
             self.logger.error(f"Error getting current event: {e}")
             return None
-    
-    def get_past_events(self, limit: int = 5, guild_id: Optional[int] = None) -> List[LotteryEvent]:
-        """
-        Get past lottery events.
-        
-        Args:
-            limit (int, optional): Maximum number of events to return. Defaults to 5.
-            guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
-            
-        Returns:
-            List[LotteryEvent]: List of past events
-        """
-        if guild_id:
-            sql = """
-                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-                FROM LotteryEvents
-                WHERE end_time < NOW() AND guild_id = %s
-                ORDER BY start_time DESC
-                LIMIT %s
-            """
-            params = (guild_id, limit)
-        else:
-            sql = """
-                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-                FROM LotteryEvents
-                WHERE end_time < NOW()
-                ORDER BY start_time DESC
-                LIMIT %s
-            """
-            params = (limit,)
-        
-        try:
-            results = self.execute_query(sql, params)
-            
-            events = []
-            if results:
-                for event_data in results:
-                    events.append(LotteryEvent(
-                        event_data[0], event_data[1], event_data[2], 
-                        event_data[3], event_data[4], event_data[5], event_data[6]
-                    ))
-            
-            return events
-            
-        except Exception as e:
-            self.logger.error(f"Error getting past events: {e}")
-            return []
-    
-    def get_all_events(self, guild_id: Optional[int] = None) -> List[LotteryEvent]:
-        """
-        Get all lottery events.
-        
-        Args:
-            guild_id (Optional[int], optional): Discord guild ID to filter by. Defaults to None.
-            
-        Returns:
-            List[LotteryEvent]: List of all events
-        """
-        if guild_id:
-            sql = """
-                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-                FROM LotteryEvents
-                WHERE guild_id = %s
-                ORDER BY start_time DESC
-            """
-            params = (guild_id,)
-        else:
-            sql = """
-                SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-                FROM LotteryEvents
-                ORDER BY start_time DESC
-            """
-            params = None
-        
-        try:
-            results = self.execute_query(sql, params)
-            
-            events = []
-            if results:
-                for event_data in results:
-                    events.append(LotteryEvent(
-                        event_data[0], event_data[1], event_data[2], 
-                        event_data[3], event_data[4], event_data[5], event_data[6]
-                    ))
-            
-            return events
-            
-        except Exception as e:
-            self.logger.error(f"Error getting all events: {e}")
-            return []
-    
-    def get_event_by_id(self, id: int) -> Optional[LotteryEvent]:
-        """
-        Get a lottery event by its ID.
-        
-        Args:
-            id (int): Event ID
-            
-        Returns:
-            Optional[LotteryEvent]: Event if found, None otherwise
-        """
-        sql = """
-            SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
-            FROM LotteryEvents
-            WHERE id = %s
-        """
-        
-        try:
-            result = self.execute_query(sql, (id,))
-            
-            if result and len(result) > 0:
-                event_data = result[0]
-                return LotteryEvent(
-                    event_data[0], event_data[1], event_data[2], 
-                    event_data[3], event_data[4], event_data[5], event_data[6]
-                )
-            return None
-            
-        except Exception as e:
-            self.logger.error(f"Error getting event by ID: {e}")
-            return None
-    
+
     def update_event(self, lottery_event: LotteryEvent) -> bool:
         """
         Update an existing lottery event.
-        
+
         Args:
             lottery_event (LotteryEvent): Event to update
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
         sql = """
-            UPDATE LotteryEvents
-            SET message_id = %s, start_time = %s, end_time = %s, credits = %s, winner_id = %s, guild_id = %s
-            WHERE id = %s
-        """
+              UPDATE LotteryEvents
+              SET message_id = %s, \
+                  start_time = %s, \
+                  end_time   = %s, \
+                  credits    = %s,
+                  winner_id  = %s, \
+                  guild_id   = %s, \
+                  channel_id = %s
+              WHERE id = %s \
+              """
         values = (
             lottery_event.message_id,
             lottery_event.start_time,
@@ -258,9 +187,10 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
             lottery_event.credits,
             lottery_event.winner_id,
             lottery_event.guild_id,
+            lottery_event.channel_id,  # Add this
             lottery_event.id
         )
-        
+
         try:
             self.execute_query(sql, values, commit=True)
             return True
@@ -329,7 +259,7 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
             List[LotteryEvent]: List of all current active events
         """
         sql = """
-              SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+              SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id, channel_id
               FROM LotteryEvents
               WHERE end_time > NOW()
               ORDER BY start_time DESC \
@@ -343,7 +273,7 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
                 for event_data in results:
                     events.append(LotteryEvent(
                         event_data[0], event_data[1], event_data[2],
-                        event_data[3], event_data[4], event_data[5], event_data[6]
+                        event_data[3], event_data[4], event_data[5], event_data[6], event_data[7]
                     ))
 
             return events
