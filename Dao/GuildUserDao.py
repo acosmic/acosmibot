@@ -499,7 +499,7 @@ class GuildUserDao(BaseDao[GuildUser]):
                 existing_guild_user.name = discord_member.name
                 existing_guild_user.nickname = discord_member.display_name
                 existing_guild_user.is_active = True
-                existing_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # existing_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.update_guild_user(existing_guild_user)
                 return existing_guild_user
 
@@ -584,6 +584,30 @@ class GuildUserDao(BaseDao[GuildUser]):
         except Exception as e:
             self.logger.error(f"Error reactivating guild user {user_id} in guild {guild_id}: {e}")
             return False
+
+    def get_user_total_exp_across_guilds(self, user_id: int) -> int:
+        """
+        Get the total experience points for a user across all guilds.
+
+        Args:
+            user_id (int): User ID
+
+        Returns:
+            int: Total experience points across all guilds
+        """
+        sql = """
+              SELECT COALESCE(SUM(exp), 0) as total_exp
+              FROM GuildUsers
+              WHERE user_id = %s \
+                AND is_active = TRUE \
+              """
+
+        try:
+            result = self.execute_query(sql, (user_id,))
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting user total exp across guilds: {e}")
+            return 0
 
     def save(self, guild_user: GuildUser) -> Optional[GuildUser]:
         """

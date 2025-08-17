@@ -320,7 +320,38 @@ class LotteryEventDao(BaseDao[LotteryEvent]):
         except Exception as e:
             self.logger.error(f"Error getting total credits: {e}")
             return 0
-    
+
+    def get_all_current_events(self) -> List[LotteryEvent]:
+        """
+        Get all current active lottery events across all guilds.
+
+        Returns:
+            List[LotteryEvent]: List of all current active events
+        """
+        sql = """
+              SELECT id, message_id, start_time, end_time, credits, winner_id, guild_id
+              FROM LotteryEvents
+              WHERE end_time > NOW()
+              ORDER BY start_time DESC \
+              """
+
+        try:
+            results = self.execute_query(sql)
+
+            events = []
+            if results:
+                for event_data in results:
+                    events.append(LotteryEvent(
+                        event_data[0], event_data[1], event_data[2],
+                        event_data[3], event_data[4], event_data[5], event_data[6]
+                    ))
+
+            return events
+
+        except Exception as e:
+            self.logger.error(f"Error getting all current events: {e}")
+            return []
+
     def save(self, lottery_event: LotteryEvent) -> Optional[LotteryEvent]:
         """
         Save a lottery event to the database (insert if new, update if exists).

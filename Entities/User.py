@@ -1,5 +1,6 @@
 from typing import Optional, Union, Any
 from datetime import datetime
+from decimal import Decimal
 from Entities.BaseEntity import BaseEntity
 
 
@@ -35,16 +36,27 @@ class User(BaseEntity):
         self._global_name = global_name
         self._avatar_url = avatar_url
         self._is_bot = bool(is_bot) if is_bot is not None else False
-        self._global_exp = int(global_exp) if global_exp is not None else 0
-        self._global_level = int(global_level) if global_level is not None else 0
-        self._total_currency = int(total_currency) if total_currency is not None else 0
-        self._total_messages = int(total_messages) if total_messages is not None else 0
-        self._total_reactions = int(total_reactions) if total_reactions is not None else 0
+
+        # Convert Decimal to int for numeric fields
+        self._global_exp = self._convert_to_int(global_exp)
+        self._global_level = self._convert_to_int(global_level)
+        self._total_currency = self._convert_to_int(total_currency)
+        self._total_messages = self._convert_to_int(total_messages)
+        self._total_reactions = self._convert_to_int(total_reactions)
+
         self._account_created = account_created
         self._first_seen = first_seen
         self._last_seen = last_seen
         self._privacy_settings = privacy_settings
         self._global_settings = global_settings
+
+    def _convert_to_int(self, value) -> int:
+        """Convert Decimal or other numeric types to int safely"""
+        if value is None:
+            return 0
+        if isinstance(value, Decimal):
+            return int(value)
+        return int(value) if value is not None else 0
 
     @property
     def id(self) -> int:
@@ -76,20 +88,40 @@ class User(BaseEntity):
         """Global experience points"""
         return self._global_exp
 
+    @global_exp.setter
+    def global_exp(self, value):
+        """Set global experience points, ensuring it's an int"""
+        self._global_exp = self._convert_to_int(value)
+
     @property
     def global_level(self) -> int:
         """Global level"""
         return self._global_level
+
+    @global_level.setter
+    def global_level(self, value):
+        """Set global level, ensuring it's an int"""
+        self._global_level = self._convert_to_int(value)
 
     @property
     def total_currency(self) -> int:
         """Total currency across all guilds"""
         return self._total_currency
 
+    @total_currency.setter
+    def total_currency(self, value):
+        """Set total currency, ensuring it's an int"""
+        self._total_currency = self._convert_to_int(value)
+
     @property
     def total_messages(self) -> int:
         """Total messages sent across all guilds"""
         return self._total_messages
+
+    @total_messages.setter
+    def total_messages(self, value):
+        """Set total messages, ensuring it's an int"""
+        self._total_messages = self._convert_to_int(value)
 
     @property
     def total_reactions(self) -> int:
@@ -132,6 +164,11 @@ class User(BaseEntity):
         else:
             return str(self._last_seen)
 
+    @last_seen.setter
+    def last_seen(self, value):
+        """Set last seen timestamp"""
+        self._last_seen = value
+
     @property
     def privacy_settings(self) -> Optional[str]:
         """User's privacy settings as JSON string"""
@@ -145,23 +182,3 @@ class User(BaseEntity):
     def __str__(self) -> str:
         """String representation of the user"""
         return f"User(id={self.id}, username={self.discord_username}, global_name={self.global_name})"
-
-    @global_exp.setter
-    def global_exp(self, value):
-        self._global_exp = value
-
-    @total_messages.setter
-    def total_messages(self, value):
-        self._total_messages = value
-
-    @last_seen.setter
-    def last_seen(self, value):
-        self._last_seen = value
-
-    @global_level.setter
-    def global_level(self, value):
-        self._global_level = value
-
-    @total_currency.setter
-    def total_currency(self, value):
-        self._total_currency = value

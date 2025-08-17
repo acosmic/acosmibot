@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import json
 import math
@@ -17,13 +17,13 @@ from logger import AppLogger
 # Load environment variables from .env file
 load_dotenv()
 
-# role_level_1 = os.getenv('ROLE_LEVEL_1')
-# role_level_2 = os.getenv('ROLE_LEVEL_2')
-# role_level_3 = os.getenv('ROLE_LEVEL_3')
-# role_level_4 = os.getenv('ROLE_LEVEL_4')
-# role_level_5 = os.getenv('ROLE_LEVEL_5')
-# role_level_6 = os.getenv('ROLE_LEVEL_6')
-# role_level_7 = os.getenv('ROLE_LEVEL_7')
+role_level_1 = os.getenv('ROLE_LEVEL_1')
+role_level_2 = os.getenv('ROLE_LEVEL_2')
+role_level_3 = os.getenv('ROLE_LEVEL_3')
+role_level_4 = os.getenv('ROLE_LEVEL_4')
+role_level_5 = os.getenv('ROLE_LEVEL_5')
+role_level_6 = os.getenv('ROLE_LEVEL_6')
+role_level_7 = os.getenv('ROLE_LEVEL_7')
 
 logger = AppLogger(__name__).get_logger()
 
@@ -32,6 +32,8 @@ class On_Message(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
+        self.guildUserDao = GuildUserDao()
+        self.userDao = UserDao()
         load_dotenv()
         inappropriate_words_str = os.getenv('INAPPROPRIATE_WORDS')
         if inappropriate_words_str:
@@ -113,33 +115,39 @@ class On_Message(commands.Cog):
         guild_user_dao = GuildUserDao()
         user_dao = UserDao()
 
-        current_guild_user = guild_user_dao.get_guild_user(message.author.id, message.guild.id)
-        current_user = user_dao.get_user(message.author.id)
+        current_guild_user = guild_user_dao.get_or_create_guild_user_from_discord(message.author, message.guild.id)
+        current_user = user_dao.get_or_create_user_from_discord(message.author)
 
         if current_guild_user is None:
-            current_guild_user = await self.create_new_guild_user(message.author, message.guild, guild_user_dao)
-            if not current_guild_user:
-                return
+            # Failed to get/create guild user - log error and return
+            print(f"Failed to get/create guild user for {message.author.name}")
+            return
 
         if current_user is None:
-            current_user = await self.create_new_global_user(message.author, user_dao)
-            if not current_user:
-                return
+            # Failed to get/create global user - log error and return
+            print(f"Failed to get/create global user for {message.author.name}")
+            return
 
         logger.info(f'Processing message from {message.author} in {message.guild.name}')
 
         try:
-            # SPAM PROTECTION
+            # SPAM PROTECTION - Check BEFORE updating last_active
             last_active = current_guild_user.last_active
-            now = datetime.now()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+            # Convert last_active to datetime if it's a string
             if isinstance(last_active, str):
                 last_active = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S")
 
-            if now - last_active > timedelta(seconds=4):
+            # Check spam protection using the OLD last_active time
+            time_diff = now - last_active
+
+            if time_diff > timedelta(seconds=4):
                 base_exp = 10
+                logger.info(f'{message.author.name} - EXP GAINED - waited {time_diff.total_seconds():.1f} seconds')
             else:
                 base_exp = 0
-                logger.info(f'{message.author.name} - MESSAGE SENT TOO SOON - NO EXP GAINED')
+                logger.info(f'{message.author.name} - MESSAGE SENT TOO SOON - only waited {time_diff.total_seconds():.1f} seconds (need 4+)')
 
             # CHECK FOR INAPPROPRIATE WORDS
             message_content_lower = message.content.lower()
@@ -153,21 +161,20 @@ class On_Message(commands.Cog):
             bonus_exp = current_guild_user.streak * 0.05
             exp_gain = math.ceil((base_exp * bonus_exp) + base_exp)
 
-            # Update guild-specific exp
+            # Update guild-specific exp ONLY
             current_guild_user.exp += exp_gain
             current_guild_user.exp_gained += exp_gain
             current_guild_user.messages_sent += 1
-            current_guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # UPDATE last_active AFTER spam check using the same 'now' variable
+            current_guild_user.last_active = now.strftime("%Y-%m-%d %H:%M:%S")
 
-            # Update global exp and stats (with safe attribute access)
-            if hasattr(current_user, 'global_exp'):
-                current_user.global_exp += exp_gain
+            # Update global stats (but NOT global_exp - that will be calculated)
             if hasattr(current_user, 'total_messages'):
                 current_user.total_messages += 1
             if hasattr(current_user, 'last_seen'):
-                current_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                current_user.last_seen = now.strftime("%Y-%m-%d %H:%M:%S")
 
-            logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gain} (Guild + Global)')
+            logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gain} (Guild only)')
 
             # CHECK IF - DAILY REWARD
             if current_guild_user.daily == 0:
@@ -178,26 +185,16 @@ class On_Message(commands.Cog):
             lvl = Leveling()
             new_guild_level = lvl.calc_level(current_guild_user.exp)
 
-            # GUILD LEVEL UP
+            # GUILD LEVEL UP (only guild level ups get announced and rewarded)
             if new_guild_level > current_guild_user.level:
                 await self.process_level_up(current_guild_user, message.author, new_guild_level, level_up_channel,
                                             level_type="GUILD")
 
             current_guild_user.level = new_guild_level
 
-            # CHECK IF - GLOBAL LEVELING UP (with safe attribute access)
-            if hasattr(current_user, 'global_exp') and hasattr(current_user, 'global_level'):
-                new_global_level = lvl.calc_level(current_user.global_exp)
-
-                # GLOBAL LEVEL UP
-                if new_global_level > current_user.global_level:
-                    await self.process_level_up(current_guild_user, message.author, new_global_level, level_up_channel,
-                                                level_type="ACOSMIBOT", user_obj=current_user)
-
-                current_user.global_level = new_global_level
-
-                # UPDATE ROLES (based on global level now)
-                # await self.update_user_roles(current_user, message.author, message.guild)
+            # UPDATE GLOBAL EXP AND LEVEL (calculated from sum of all guilds)
+            # This should be done after updating the guild user
+            await self.update_global_stats(current_user, user_dao)
 
             # SAVE TO DATABASE
             guild_user_dao.update_guild_user(current_guild_user)
@@ -218,7 +215,7 @@ class On_Message(commands.Cog):
                                    daily_channel: Optional[discord.TextChannel]):
         """Process daily reward for guild user"""
         try:
-            today = datetime.now().date()
+            today = datetime.now(timezone.utc).replace(tzinfo=None).date()
 
             if guild_user.last_daily is None:
                 guild_user.streak = 1
@@ -252,7 +249,7 @@ class On_Message(commands.Cog):
 
             # Set daily and last_daily
             guild_user.daily = 1
-            guild_user.last_daily = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            guild_user.last_daily = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
             # Send daily reward message
             if daily_channel:
@@ -269,34 +266,62 @@ class On_Message(commands.Cog):
     async def process_level_up(self, guild_user: GuildUser, member: discord.Member, new_level: int,
                                level_channel: Optional[discord.TextChannel], level_type: str = "GUILD",
                                user_obj: Optional[User] = None):
-        """Process level up for guild user or global user"""
+        """Process level up for guild user only. Global level ups are not announced or rewarded."""
         try:
-            # CALCULATE LEVEL UP REWARD
-            if level_type == "ACOSMIBOT":
-                base_reward = 5000
-                emoji = "🤖"
-            else:
+            # Only process rewards and announcements for GUILD level ups
+            if level_type == "GUILD":
+                # CALCULATE LEVEL UP REWARD
                 base_reward = 1000
                 emoji = "🎉"
 
-            streak = guild_user.streak if guild_user.streak < 20 else 20
-            base_bonus_multiplier = 0.05
-            streak_bonus_percentage = streak * base_bonus_multiplier
-            streak_bonus = math.floor(base_reward * streak_bonus_percentage)
-            calculated_reward = base_reward + streak_bonus
-            guild_user.currency += calculated_reward
+                streak = guild_user.streak if guild_user.streak < 20 else 20
+                base_bonus_multiplier = 0.05
+                streak_bonus_percentage = streak * base_bonus_multiplier
+                streak_bonus = math.floor(base_reward * streak_bonus_percentage)
+                calculated_reward = base_reward + streak_bonus
+                guild_user.currency += calculated_reward
 
-            # Send level up message
-            if level_channel:
-                if streak > 0:
-                    await level_channel.send(
-                        f'## {emoji} {member.mention} {level_type} LEVEL UP! You have reached level {new_level}! Gained {calculated_reward} Credits! {base_reward:,} + {streak_bonus} from {streak}x Streak! {emoji}')
-                else:
-                    await level_channel.send(
-                        f'## {emoji} {member.mention} {level_type} LEVEL UP! You have reached level {new_level}! Gained {calculated_reward} Credits! {emoji}')
+                # Send level up message
+                if level_channel:
+                    if streak > 0:
+                        await level_channel.send(
+                            f'## {emoji} {member.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward} Credits! {base_reward:,} + {streak_bonus} from {streak}x Streak! {emoji}')
+                    else:
+                        await level_channel.send(
+                            f'## {emoji} {member.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward} Credits! {emoji}')
+            else:
+                # For global level ups, just log them - no announcements or rewards
+                logger.info(
+                    f'{member.name} reached global level {new_level} (total exp: {user_obj.global_exp if user_obj else "unknown"})')
 
         except Exception as e:
             logger.error(f'Error processing level up for {member.name}: {e}')
+
+    async def update_global_stats(self, current_user: User, user_dao: UserDao):
+        """
+        Update global stats by calculating sum from all guild users.
+        This ensures global_exp is always the sum of all guild exp.
+        """
+        try:
+            # Get sum of all guild exp for this user
+            guild_user_dao = GuildUserDao()
+            total_guild_exp = guild_user_dao.get_user_total_exp_across_guilds(current_user.id)
+
+            # Update global exp to be the sum
+            if hasattr(current_user, 'global_exp'):
+                current_user.global_exp = total_guild_exp
+
+            # Calculate global level based on total exp
+            if hasattr(current_user, 'global_level'):
+                lvl = Leveling()
+                new_global_level = lvl.calc_level(current_user.global_exp)
+                current_user.global_level = new_global_level
+
+            logger.info(
+                f'Updated global stats for {current_user.discord_username}: {current_user.global_exp} total exp, level {current_user.global_level}')
+
+        except Exception as e:
+            logger.error(f'Error updating global stats for user {current_user.id}: {e}')
 
     async def update_user_roles(self, user: User, member: discord.Member, guild: discord.Guild):
         """Update user roles based on global level"""

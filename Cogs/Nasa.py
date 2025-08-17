@@ -50,6 +50,9 @@ class Nasa(commands.Cog):
     async def apod(self, interaction: discord.Interaction):
         logger.info(f"{interaction.user.name} used /apod - before try block.")
 
+        # DEFER THE INTERACTION IMMEDIATELY
+        await interaction.response.defer()
+
         # Debug logging
         logger.info(f"Cache date: {self.apod_cache['date']}, Today: {self.get_today_date()}")
         logger.info(f"Cache valid: {self.is_cache_valid()}")
@@ -67,7 +70,7 @@ class Nasa(commands.Cog):
             response = requests.get(self.URL)
             if response.status_code != 200:
                 logger.error(f"Failed to fetch APOD: HTTP {response.status_code}")
-                await interaction.response.send_message("Failed to fetch APOD, please try again later.", ephemeral=True)
+                await interaction.followup.send("Failed to fetch APOD, please try again later.", ephemeral=True)
                 return
 
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -83,7 +86,7 @@ class Nasa(commands.Cog):
             media_tag = soup.find('iframe') or soup.find('img')
             if not media_tag:
                 logger.error("No media found on APOD page.")
-                await interaction.response.send_message("No APOD media found today.")
+                await interaction.followup.send("No APOD media found today.")
                 return
 
             # Update cache with basic info
@@ -106,7 +109,7 @@ class Nasa(commands.Cog):
                                 inline=False)
                 embed.set_footer(text="Source: NASA APOD")
 
-                await interaction.response.send_message(embed=embed)
+                await interaction.followup.send(embed=embed)
                 logger.info(f"{interaction.user.name} successfully received APOD video data.")
 
             else:  # It's an image
@@ -114,7 +117,7 @@ class Nasa(commands.Cog):
 
         except Exception as e:
             logger.error(f"An error occurred while fetching the Astronomy Picture of the Day: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "An error occurred while fetching the APOD. Please try again later.", ephemeral=True)
 
     async def handle_image_apod(self, interaction, media_tag, title):
@@ -122,7 +125,7 @@ class Nasa(commands.Cog):
         img_src = media_tag.get('src')
         if not img_src:
             logger.error("Image source not found")
-            await interaction.response.send_message("Image source not found for today's APOD.")
+            await interaction.followup.send("Image source not found for today's APOD.")
             return
 
         # Handle relative URLs
@@ -186,7 +189,7 @@ class Nasa(commands.Cog):
             embed = discord.Embed(title=title, description=description, color=interaction.user.color)
             embed.add_field(name="🎥 Watch Video", value=f"[Click here to watch the video]({media_link})", inline=False)
             embed.set_footer(text="Source: NASA APOD")
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
         else:
             # Send cached image
             filename = self.apod_cache['filename']
@@ -213,7 +216,7 @@ class Nasa(commands.Cog):
         embed.set_image(url=f"attachment://{filename}")
         embed.set_footer(text="Source: NASA APOD")
 
-        await interaction.response.send_message(embed=embed, file=file)
+        await interaction.followup.send(embed=embed, file=file)
 
     async def send_fallback_embed(self, interaction, title, media_link):
         """Send fallback embed with links only"""
@@ -221,7 +224,7 @@ class Nasa(commands.Cog):
         embed = discord.Embed(title=title, description=description, color=interaction.user.color)
         embed.add_field(name="🖼️ Today's Image", value=f"[View Image]({media_link})", inline=False)
         embed.set_footer(text="Source: NASA APOD")
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):

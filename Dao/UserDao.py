@@ -653,7 +653,7 @@ class UserDao(BaseDao[User]):
                 existing_user._global_name = getattr(discord_user, 'global_name', discord_user.name)
                 existing_user._avatar_url = str(
                     discord_user.avatar.url) if discord_user.avatar else existing_user.avatar_url
-                existing_user._last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # existing_user._last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.update_user(existing_user)
                 return existing_user
 
