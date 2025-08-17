@@ -1,12 +1,13 @@
 import asyncio
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import discord
+
+from Dao.GuildDao import GuildDao
+from Dao.GuildUserDao import GuildUserDao
 from Dao.LotteryEventDao import LotteryEventDao
 from Dao.LotteryParticipantDao import LotteryParticipantDao
-from Dao.VaultDao import VaultDao
-from Dao.UserDao import UserDao
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +78,15 @@ async def _end_lottery(lottery_event, guild, channel):
     try:
         # Get all required DAOs
         le_dao = LotteryEventDao()
-        vdao = VaultDao()
+        guild_dao = GuildDao()  # Use GuildDao instead of VaultDao
+        guild_user_dao = GuildUserDao()  # Need this for winner's currency
         lp_dao = LotteryParticipantDao()
-        user_dao = UserDao()
 
-        # Get lottery credits for this guild
-        lottery_credits = vdao.get_currency(guild.id) if hasattr(vdao, 'get_currency') else vdao.get_currency()
+        # Get lottery credits from guild vault
+        lottery_credits = guild_dao.get_vault_currency(guild.id)
 
-        # Get participants
-        participants = lp_dao.get_participants(lottery_event.message_id)
+        # Get participants using lottery_event.id (not message_id)
+        participants = lp_dao.get_participants(lottery_event.id)
 
         if not participants:
             logger.warning(f'Guild {guild.name}: No participants in lottery {lottery_event.id}')
@@ -94,12 +95,18 @@ async def _end_lottery(lottery_event, guild, channel):
 
         # Select winner
         winner = random.choice(participants)
-        winner_user = user_dao.get_user(winner.participant_id)
         discord_winner = guild.get_member(winner.participant_id)
 
         if not discord_winner:
             logger.warning(f'Guild {guild.name}: Winner {winner.participant_id} not found in guild')
             # Could implement fallback logic here
+            return
+
+        # Get winner's guild user record (currency is guild-specific)
+        winner_guild_user = guild_user_dao.get_or_create_guild_user_from_discord(discord_winner, guild.id)
+
+        if not winner_guild_user:
+            logger.error(f'Guild {guild.name}: Failed to get guild user for winner {discord_winner.name}')
             return
 
         # Send winner announcement
@@ -109,21 +116,45 @@ async def _end_lottery(lottery_event, guild, channel):
         await channel.send(
             f'# {role_mention} Congratulations to {discord_winner.mention} '
             f'for winning {lottery_credits:,.0f} Credits in the lottery! '
-            f'<a:pepesith:1165101386921418792>'
+            f'🎰✨'
         )
 
         # Update database records
-        await _update_lottery_records(lottery_event, winner, winner_user, lottery_credits, le_dao, user_dao, vdao,
-                                      guild)
+        await _update_lottery_records(lottery_event, winner_guild_user, lottery_credits, le_dao, guild_user_dao,
+                                      guild_dao, guild)
 
         # Cleanup
         await _cleanup_lottery(lottery_event, guild, channel)
 
-        logger.info(
-            f'Guild {guild.name}: Winner {winner_user.discord_username if winner_user else "Unknown"} won {lottery_credits} credits')
+        logger.info(f'Guild {guild.name}: Winner {discord_winner.name} won {lottery_credits} credits')
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error ending lottery {lottery_event.id}: {e}')
+
+
+async def _update_lottery_records(lottery_event, winner_guild_user, lottery_credits, le_dao, guild_user_dao, guild_dao,
+                                  guild):
+    """Update all database records for the lottery end."""
+    try:
+        # Update lottery event
+        lottery_event.winner_id = winner_guild_user.user_id
+        lottery_event.end_time = datetime.now(timezone.utc).replace(tzinfo=None)
+        lottery_event.credits = lottery_credits
+        le_dao.update_event(lottery_event)
+
+        # Update winner's guild currency
+        winner_guild_user.currency += lottery_credits
+        guild_user_dao.update_guild_user(winner_guild_user)
+
+        # Reset guild vault currency to 0
+        guild_dao.update_vault_currency(guild.id, 0)
+
+        logger.info(
+            f'Guild {guild.name}: Updated lottery records - winner got {lottery_credits} credits, vault reset to 0')
+
+    except Exception as e:
+        logger.error(f'Guild {guild.name}: Error updating lottery records: {e}')
+        raise
 
 
 async def _send_lottery_reminder(lottery_event, guild, channel, remaining_time):
@@ -151,33 +182,6 @@ async def _send_lottery_reminder(lottery_event, guild, channel, remaining_time):
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error sending lottery reminder: {e}')
-
-
-async def _update_lottery_records(lottery_event, winner, winner_user, lottery_credits, le_dao, user_dao, vdao, guild):
-    """Update all database records for the lottery end."""
-    try:
-        # Update lottery event
-        lottery_event.winner_id = winner.participant_id
-        lottery_event.end_time = datetime.utcnow()
-        lottery_event.credits = lottery_credits
-        le_dao.update_event(lottery_event)
-
-        # Update winner's currency
-        if winner_user:
-            winner_user.currency += lottery_credits
-            user_dao.update_user(winner_user)
-
-        # Reset vault currency (adjust based on your VaultDao implementation)
-        if hasattr(vdao, 'update_currency'):
-            if hasattr(vdao.update_currency, '__code__') and vdao.update_currency.__code__.co_argcount > 2:
-                vdao.update_currency(0, guild.id)  # Multi-guild vault
-            else:
-                vdao.update_currency(0)  # Single vault
-
-    except Exception as e:
-        logger.error(f'Guild {guild.name}: Error updating lottery records: {e}')
-        raise
-
 
 async def _cleanup_lottery(lottery_event, guild, channel):
     """Clean up lottery message and roles."""
@@ -209,8 +213,8 @@ async def _cleanup_empty_lottery(lottery_event, guild, channel, le_dao):
     """Clean up a lottery that had no participants."""
     try:
         # Mark lottery as ended with no winner
-        lottery_event.end_time = datetime.utcnow()
-        lottery_event.winner_id = None
+        lottery_event.end_time = datetime.now(timezone.utc).replace(tzinfo=None)
+        lottery_event.winner_id = 0  # or None
         lottery_event.credits = 0
         le_dao.update_event(lottery_event)
 
@@ -219,6 +223,9 @@ async def _cleanup_empty_lottery(lottery_event, guild, channel, le_dao):
 
         # Clean up message and roles
         await _cleanup_lottery(lottery_event, guild, channel)
+
+    except Exception as e:
+        logger.error(f'Guild {guild.name}: Error cleaning up empty lottery: {e}')
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error cleaning up empty lottery: {e}')

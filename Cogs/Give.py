@@ -1,52 +1,87 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from Dao.UserDao import UserDao
+from Dao.GuildUserDao import GuildUserDao
 from logger import AppLogger
 
-logger  = AppLogger(__name__).get_logger()
+logger = AppLogger(__name__).get_logger()
+
 
 class Give(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "give", description = "Give Credits to your target user.") 
+    @app_commands.command(name="give", description="Give Credits to your target user.")
     async def give(self, interaction: discord.Interaction, target: discord.Member, amount: int):
-        
-        # role = discord.utils.get(interaction.guild.roles, name="Acosmic")
-        dao = UserDao()
-        # if role in interaction.user.roles:
-        #     target_user = dao.get_user(target.id)
-        #     target_user.currency += amount
-        #     try:
-        #         dao.update_user(target_user)
-        #         await interaction.response.send_message(f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <a:pepesith:1165101386921418792>')
-        #     except Exception as e:
-        #         logging.info(f'/give command - target = {target.name} - {e}.')
-        # else:
-            # await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>')
-        giving_user = dao.get_user(interaction.user.id)
-        target_user = dao.get_user(target.id)
 
-        if amount > giving_user.currency:
-            await interaction.response.send_message(f"{interaction.user.name}, your heart is bigger than your wallet. You don't have {amount:,.0f} Credits to give. <:FeelsBigSad:1199734765230768139>")
-            logger.info(f"{interaction.user.name} tried to give {amount:,.0f} Credits to {target.name} but didn't have enough Credits.")
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
 
-        elif interaction.user.id == target.id:
-            await interaction.response.send_message(f"{interaction.user.name}, you can't give yourself Credits. <:FeelsNaughty:1199732493792858214>")
+        # Validate amount
+        if amount <= 0:
+            await interaction.response.send_message("Amount must be greater than 0.", ephemeral=True)
+            return
+
+        # Check if user is trying to give to themselves
+        if interaction.user.id == target.id:
+            await interaction.response.send_message(
+                f"{interaction.user.name}, you can't give yourself Credits. <:FeelsNaughty:1199732493792858214>",
+                ephemeral=True
+            )
             logger.info(f"{interaction.user.name} tried to give themselves Credits.")
-        else:
+            return
+
+        # Check if target is a bot
+        if target.bot:
+            await interaction.response.send_message("You can't give credits to bots!", ephemeral=True)
+            return
+
+        try:
+            guild_user_dao = GuildUserDao()
+
+            # Get or create guild users (currency is guild-specific)
+            giving_user = guild_user_dao.get_or_create_guild_user_from_discord(interaction.user, interaction.guild.id)
+            target_user = guild_user_dao.get_or_create_guild_user_from_discord(target, interaction.guild.id)
+
+            if not giving_user or not target_user:
+                await interaction.response.send_message("Failed to get user data.", ephemeral=True)
+                return
+
+            # Check if giver has enough credits
+            if amount > giving_user.currency:
+                await interaction.response.send_message(
+                    f"{interaction.user.name}, your heart is bigger than your wallet. "
+                    f"You don't have {amount:,.0f} Credits to give. "
+                    f"(You have {giving_user.currency:,.0f}) "
+                    f"<:FeelsBigSad:1199734765230768139>"
+                )
+                logger.info(
+                    f"{interaction.user.name} tried to give {amount:,.0f} Credits to {target.name} but didn't have enough Credits.")
+                return
+
+            # Perform the transfer
             giving_user.currency -= amount
             target_user.currency += amount
-            dao.update_user(giving_user)
-            dao2 = UserDao()
-            dao2.update_user(target_user)
-            await interaction.response.send_message(f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>')
-            logger.info(f"{interaction.user.name} gave {target.name} {amount:,.0f} Credits.")
 
+            # Update both users in database
+            guild_user_dao.update_guild_user(giving_user)
+            guild_user_dao.update_guild_user(target_user)
+
+            await interaction.response.send_message(
+                f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>\n'
+                f'*{interaction.user.name} now has {giving_user.currency:,.0f} credits.*'
+            )
+
+            logger.info(
+                f"{interaction.user.name} gave {target.name} {amount:,.0f} Credits in {interaction.guild.name}.")
+
+        except Exception as e:
+            logger.error(f'/give command error - giver: {interaction.user.name}, target: {target.name} - {e}')
+            await interaction.response.send_message("An error occurred while processing the transfer.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Give(bot))
-        
