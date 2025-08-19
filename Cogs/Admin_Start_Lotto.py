@@ -72,7 +72,7 @@ class Admin_Start_Lotto(commands.Cog):
             # Send lottery announcement to the target channel
             await target_channel.send(
                 f'# React with 🎟️ to enter the lottery! '
-                f'There is currently {vault_credits:,.0f} Credits in the Vault.\n'
+                f'There is currently {vault_credits:,.0f} Credits in the Bank.\n'
                 f'The winner will be announced in {duration} hour(s)! 🎰'
             )
 
@@ -98,9 +98,13 @@ class Admin_Start_Lotto(commands.Cog):
             await message.pin()
             le_dao.add_new_event(new_le)
 
-            # Send follow-up confirmation
+            # Convert to Discord timestamp format (shows in each user's local time automatically)
+            unix_timestamp = int(end_time.timestamp())
+            discord_timestamp = f"<t:{unix_timestamp}:F>"  # Full date and time format
+
+            # Send follow-up confirmation with Discord timestamp
             await interaction.followup.send(
-                f'✅ Lottery successfully started! The winner will be announced at {end_time.strftime("%I:%M %p")}.',
+                f'✅ Lottery successfully started! The winner will be announced at {discord_timestamp}.',
                 ephemeral=True
             )
 

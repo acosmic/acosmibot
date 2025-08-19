@@ -20,7 +20,7 @@ async def lottery_end_task(bot):
     await bot.wait_until_ready()
 
     while not bot.is_closed():
-        logger.debug('Running lottery_end_task')
+        logger.info('Running lottery_end_task')
 
         try:
             await _process_all_guild_lotteries(bot)
@@ -38,7 +38,7 @@ async def _process_all_guild_lotteries(bot):
     current_lotteries = le_dao.get_all_current_events()
 
     if not current_lotteries:
-        logger.debug('No active lottery events found')
+        logger.info('No active lottery events found')
         return
 
     for lottery_event in current_lotteries:

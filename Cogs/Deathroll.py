@@ -1,17 +1,12 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from Dao.UserDao import UserDao
-from Dao.GamesDao import GamesDao
-from Dao.DeathrollDao import DeathrollDao
-from Entities import DeathrollEvent
+from Dao.GuildUserDao import GuildUserDao
+from Views.Deathroll_View import Deathroll_View
 from logger import AppLogger
 
-from datetime import datetime
-
-from Views.Deathroll_View import Deathroll_View
-
 logger = AppLogger(__name__).get_logger()
+
 
 class Deathroll(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -21,34 +16,57 @@ class Deathroll(commands.Cog):
     @app_commands.command(name="deathroll", description="Start a game of Deathroll. First person to roll a 1 loses!")
     async def deathroll(self, interaction: discord.Interaction, target: discord.Member, bet: int):
 
-        drDao = DeathrollDao()
-        current_events = drDao.check_if_user_ingame(interaction.user.id, target.id)
-        if current_events:
-            await interaction.response.send_message(f"Either you or your target is currently in a match. Please wait for that game to finish before starting another one.", ephemeral=True)
-
-        elif bet < 100:
+        if bet < 100:
             await interaction.response.send_message(f"Please enter a bet of at least 100.", ephemeral=True)
+            return
 
-        else:
-            dao = UserDao()
-            current_user = dao.get_user(interaction.user.id)
-            if bet > current_user.currency:
-                await interaction.response.send_message(f"You don't have enough to make this bet!", ephemeral=True)
+        if bet < 0:
+            await interaction.response.send_message(f"Bet amount must be positive!", ephemeral=True)
+            return
 
-            target_user = dao.get_user(target.id)
-            if bet > target_user.currency:
-                await interaction.response.send_message(f"{target.display_name} doesn't have enough to accept this bet! They have {target_user.currency:,.0f} Credits", ephemeral=True)
+        if target.id == interaction.user.id:
+            await interaction.response.send_message(f"You cannot challenge yourself!", ephemeral=True)
+            return
 
-            else:
-                # if role in interaction.user.roles:
-                players = 2
-                view = Deathroll_View(timeout=120)
-                view.initiator = interaction.user
-                view.target = target
-                view.players = players
-                view.bet = bet
-                await view.send(interaction)
-                
+        # Use GuildUserDao for multi-guild support
+        guild_user_dao = GuildUserDao()
+        current_user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild.id)
+
+        if not current_user:
+            await interaction.response.send_message(
+                f"You need to be registered in this server first. Send a message to get started!", ephemeral=True)
+            return
+
+        if bet > current_user.currency:
+            await interaction.response.send_message(
+                f"You don't have enough to make this bet! You have {current_user.currency:,.0f} Credits.",
+                ephemeral=True)
+            return
+
+        target_user = guild_user_dao.get_guild_user(target.id, interaction.guild.id)
+
+        if not target_user:
+            await interaction.response.send_message(
+                f"{target.display_name} needs to be registered in this server first. They should send a message to get started!",
+                ephemeral=True)
+            return
+
+        if bet > target_user.currency:
+            await interaction.response.send_message(
+                f"{target.display_name} doesn't have enough to accept this bet! They have {target_user.currency:,.0f} Credits",
+                ephemeral=True)
+            return
+
+        # Create the Deathroll view - no need to check for existing games
+        view = Deathroll_View(timeout=120, is_matchmaking=True)
+        view.initiator = interaction.user
+        view.target = target
+        view.guild_id = interaction.guild.id
+        view.bet = bet
+        await view.send(interaction)
+        logger.info(
+            f"{interaction.user.name} has challenged {target.name} to Deathroll in guild {interaction.guild.name}.")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Deathroll(bot))
