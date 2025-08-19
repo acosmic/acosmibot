@@ -22,7 +22,7 @@ class Bot(commands.Bot):
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
             "Cogs.Admin_Start_Lotto",
-            "Cogs.Video_To_MP3",
+            "Cogs.RipAudio",
             # "Cogs.Admin_Jail",
             # "Cogs.Admin_Jail_Release",
             "Cogs.Admin_Stats",
