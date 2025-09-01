@@ -12,7 +12,8 @@ class Admin_Stats(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "admin-stats", description = "Get server stats.") 
+    @app_commands.command(name = "admin-stats", description = "Get server stats.")
+    @discord.app_commands.default_permissions(manage_guild=True)
     async def admin_stats(self, interaction: discord.Interaction):
         uDao = UserDao()
         try:

@@ -17,6 +17,7 @@ class Admin_Give(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="admin-give", description="Give Credits or EXP to your target user.")
+    @discord.app_commands.default_permissions(manage_guild=True)
     async def admin_give(self, interaction: discord.Interaction, target: discord.Member,
                          stat: typing.Literal['Currency', 'EXP'], amount: int):
 

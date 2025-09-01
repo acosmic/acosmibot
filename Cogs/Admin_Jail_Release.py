@@ -23,6 +23,7 @@ class Admin_Jail_Release(commands.Cog):
 
     # Command-Based Jailing
     @app_commands.command(name="admin-jail-release", description="Release a user from jail.")
+    @discord.app_commands.default_permissions(manage_guild=True)
     async def jail(self, interaction: discord.Interaction, member: discord.Member):
         # Identify all removable roles that the user has
         # removable_roles = [role for role in member.roles if role.name in level_roles]  # Update with actual role names

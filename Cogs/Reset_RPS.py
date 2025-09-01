@@ -11,7 +11,8 @@ class Reset_RPS(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name = "admin-resetrps", description = "Set RPS match inprogress to False") 
+    @app_commands.command(name = "admin-resetrps", description = "Set RPS match inprogress to False")
+    @discord.app_commands.default_permissions(manage_guild=True)
     async def resetrps(self, interaction: discord.Interaction):
         
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")

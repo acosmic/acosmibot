@@ -22,6 +22,7 @@ class Admin_Start_Lotto(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="admin-start-lotto", description="Start a lottery.")
+    @discord.app_commands.default_permissions(manage_guild=True)
     async def admin_start_lotto(
             self,
             interaction: discord.Interaction,

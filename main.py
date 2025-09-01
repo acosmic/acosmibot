@@ -23,6 +23,7 @@ class Bot(commands.Bot):
         self.cogslist = [
             "Cogs.Admin_Start_Lotto",
             "Cogs.RipAudio",
+            # "Cogs.RPG",
             # "Cogs.Admin_Jail",
             # "Cogs.Admin_Jail_Release",
             "Cogs.Admin_Stats",
@@ -33,7 +34,7 @@ class Bot(commands.Bot):
             # "Cogs.Reset_Daily",
             # "Cogs.Roll_Dice",
             # "Cogs.Bailout",
-            "Cogs.Jail_Message",
+            # "Cogs.Jail_Message",
             "Cogs.Admin_Give",
             # "Cogs.Color", # fix this soon
             "Cogs.Giphy",

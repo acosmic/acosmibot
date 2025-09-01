@@ -47,6 +47,7 @@ class Reset_Season(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="admin-resetseason", description="Reset All Users seasonal values and update to Easter-themed roles")
+    @discord.app_commands.default_permissions(manage_guild=True)
     async def resetseason(self, interaction: discord.Interaction):
         await interaction.response.defer()
         start_time = time.time()
