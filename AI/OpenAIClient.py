@@ -47,12 +47,12 @@ class OpenAIClient:
         guild_dao = GuildDao()
 
         try:
-            # Get guild and its AI settings
+            # Get guild and its AI models
             guild = guild_dao.get_guild(guild_id)
 
             if not guild:
                 logger.error(f"Guild {guild_id} not found")
-                return "Sorry, I couldn't access the server settings."
+                return "Sorry, I couldn't access the server models."
 
             # Check if AI is enabled for this guild
             if not guild.ai_enabled:
@@ -114,7 +114,7 @@ class OpenAIClient:
         Args:
             prompt (str): Current user message
             user_name (str): Discord username
-            guild: Guild object with AI settings
+            guild: Guild object with AI models
             conversation_history (List[Dict]): Previous messages
 
         Returns:
@@ -143,7 +143,7 @@ class OpenAIClient:
         Build the system message based on guild's AI personality traits.
 
         Args:
-            personality_traits (Dict): Guild's personality settings
+            personality_traits (Dict): Guild's personality models
             user_name (str): Discord username
 
         Returns:
@@ -221,11 +221,11 @@ Important guidelines:
 
     def update_guild_ai_settings(self, guild_id: int, **kwargs) -> bool:
         """
-        Update AI settings for a guild.
+        Update AI models for a guild.
 
         Args:
             guild_id (int): Guild ID
-            **kwargs: AI settings to update
+            **kwargs: AI models to update
 
         Returns:
             bool: Success status
@@ -234,24 +234,24 @@ Important guidelines:
         try:
             return guild_dao.update_ai_settings(guild_id, **kwargs)
         except Exception as e:
-            logger.error(f"Error updating AI settings for guild {guild_id}: {e}")
+            logger.error(f"Error updating AI models for guild {guild_id}: {e}")
             return False
 
     def get_guild_ai_settings(self, guild_id: int) -> Optional[Dict]:
         """
-        Get AI settings for a guild.
+        Get AI models for a guild.
 
         Args:
             guild_id (int): Guild ID
 
         Returns:
-            dict: AI settings or None
+            dict: AI models or None
         """
         guild_dao = GuildDao()
         try:
             return guild_dao.get_ai_settings(guild_id)
         except Exception as e:
-            logger.error(f"Error getting AI settings for guild {guild_id}: {e}")
+            logger.error(f"Error getting AI models for guild {guild_id}: {e}")
             return None
 
     def validate_message(self, message: str) -> bool:

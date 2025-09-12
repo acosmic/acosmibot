@@ -77,7 +77,7 @@ class On_Guild_Join(commands.Cog):
                     owner_id=guild.owner_id,
                     member_count=guild.member_count,
                     active=True,
-                    settings=None,  # Can be expanded later for guild-specific settings
+                    settings=None,  # Can be expanded later for guild-specific models
                     created=formatted_join_date,
                     last_active=formatted_join_date,
                     vault_currency=0,  # Default vault currency

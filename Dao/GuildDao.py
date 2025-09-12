@@ -435,6 +435,387 @@ class GuildDao(BaseDao[Guild]):
             self.logger.error(f"Error updating AI settings for guild {guild_id}: {e}")
             return False
 
+    # Add these methods to your GuildUserDao.py class
+
+    def get_active_member_count(self, guild_id: int) -> int:
+        """
+        Get count of active members in a guild.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            int: Number of active members
+        """
+        sql = 'SELECT COUNT(*) FROM GuildUsers WHERE guild_id = %s AND is_active = TRUE'
+
+        try:
+            result = self.execute_query(sql, (guild_id,))
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting active member count: {e}")
+            return 0
+
+    def get_total_messages_in_guild(self, guild_id: int) -> int:
+        """
+        Get total messages sent in a guild.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            int: Total messages sent
+        """
+        sql = 'SELECT SUM(messages_sent) FROM GuildUsers WHERE guild_id = %s AND is_active = TRUE'
+
+        try:
+            result = self.execute_query(sql, (guild_id,))
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting total messages in guild: {e}")
+            return 0
+
+    def get_total_exp_in_guild(self, guild_id: int) -> int:
+        """
+        Get total experience distributed in a guild.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            int: Total experience points
+        """
+        sql = 'SELECT SUM(exp) FROM GuildUsers WHERE guild_id = %s AND is_active = TRUE'
+
+        try:
+            result = self.execute_query(sql, (guild_id,))
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting total exp in guild: {e}")
+            return 0
+
+    def get_highest_level_in_guild(self, guild_id: int) -> int:
+        """
+        Get the highest level achieved in a guild.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            int: Highest level
+        """
+        sql = 'SELECT MAX(level) FROM GuildUsers WHERE guild_id = %s AND is_active = TRUE'
+
+        try:
+            result = self.execute_query(sql, (guild_id,))
+            return result[0][0] if result and result[0][0] else 0
+        except Exception as e:
+            self.logger.error(f"Error getting highest level in guild: {e}")
+            return 0
+
+    def get_average_level_in_guild(self, guild_id: int) -> float:
+        """
+        Get the average level in a guild.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            float: Average level
+        """
+        sql = 'SELECT AVG(level) FROM GuildUsers WHERE guild_id = %s AND is_active = TRUE'
+
+        try:
+            result = self.execute_query(sql, (guild_id,))
+            return float(result[0][0]) if result and result[0][0] else 0.0
+        except Exception as e:
+            self.logger.error(f"Error getting average level in guild: {e}")
+            return 0.0
+
+    def get_top_users_by_level_in_guild(self, guild_id: int, limit: int = 10) -> List[Dict]:
+        """
+        Get top users by level in a specific guild.
+
+        Args:
+            guild_id (int): Guild ID
+            limit (int): Number of users to return
+
+        Returns:
+            List[Dict]: List of user data with rankings
+        """
+        sql = """
+              SELECT gu.user_id, \
+                     gu.name, \
+                     gu.nickname, \
+                     gu.level, \
+                     gu.exp, \
+                     gu.messages_sent, \
+                     u.avatar_url, \
+                     u.global_name, \
+                     ROW_NUMBER() OVER (ORDER BY gu.level DESC, gu.exp DESC) as rank
+              FROM GuildUsers gu
+                       LEFT JOIN Users u ON gu.user_id = u.id
+              WHERE gu.guild_id = %s \
+                AND gu.is_active = TRUE
+              ORDER BY gu.level DESC, gu.exp DESC
+                  LIMIT %s \
+              """
+
+        try:
+            results = self.execute_query(sql, (guild_id, limit))
+
+            users = []
+            if results:
+                for row in results:
+                    users.append({
+                        'user_id': row[0],
+                        'name': row[1],
+                        'nickname': row[2],
+                        'level': row[3],
+                        'exp': row[4],
+                        'messages_sent': row[5],
+                        'avatar_url': row[6],
+                        'global_name': row[7],
+                        'rank': row[8]
+                    })
+
+            return users
+        except Exception as e:
+            self.logger.error(f"Error getting top users by level in guild: {e}")
+            return []
+
+    def get_top_users_by_messages_in_guild(self, guild_id: int, limit: int = 10) -> List[Dict]:
+        """
+        Get top users by messages sent in a specific guild.
+
+        Args:
+            guild_id (int): Guild ID
+            limit (int): Number of users to return
+
+        Returns:
+            List[Dict]: List of user data with rankings
+        """
+        sql = """
+              SELECT gu.user_id, \
+                     gu.name, \
+                     gu.nickname, \
+                     gu.level, \
+                     gu.exp, \
+                     gu.messages_sent, \
+                     u.avatar_url, \
+                     u.global_name, \
+                     ROW_NUMBER() OVER (ORDER BY gu.messages_sent DESC) as rank
+              FROM GuildUsers gu
+                       LEFT JOIN Users u ON gu.user_id = u.id
+              WHERE gu.guild_id = %s \
+                AND gu.is_active = TRUE
+              ORDER BY gu.messages_sent DESC
+                  LIMIT %s \
+              """
+
+        try:
+            results = self.execute_query(sql, (guild_id, limit))
+
+            users = []
+            if results:
+                for row in results:
+                    users.append({
+                        'user_id': row[0],
+                        'name': row[1],
+                        'nickname': row[2],
+                        'level': row[3],
+                        'exp': row[4],
+                        'messages_sent': row[5],
+                        'avatar_url': row[6],
+                        'global_name': row[7],
+                        'rank': row[8]
+                    })
+
+            return users
+        except Exception as e:
+            self.logger.error(f"Error getting top users by messages in guild: {e}")
+            return []
+
+    def get_user_rank_in_guild(self, user_id: int, guild_id: int) -> Optional[int]:
+        """
+        Get a user's rank based on experience in a specific guild.
+
+        Args:
+            user_id (int): User ID
+            guild_id (int): Guild ID
+
+        Returns:
+            Optional[int]: User's rank or None if not found
+        """
+        sql = """
+              SELECT COUNT(*) + 1 as rank
+              FROM GuildUsers gu1
+              WHERE gu1.guild_id = %s
+                AND gu1.is_active = TRUE
+                AND (gu1.exp > (SELECT gu2.exp \
+                                FROM GuildUsers gu2 \
+                                WHERE gu2.user_id = %s \
+                                  AND gu2.guild_id = %s)) \
+              """
+
+        try:
+            result = self.execute_query(sql, (guild_id, user_id, guild_id))
+            return result[0][0] if result and result[0][0] else None
+        except Exception as e:
+            self.logger.error(f"Error getting user rank in guild: {e}")
+            return None
+
+    def get_guild_level_distribution(self, guild_id: int) -> List[Dict]:
+        """
+        Get level distribution for a guild (useful for charts).
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            List[Dict]: Level distribution data
+        """
+        sql = """
+              SELECT CASE \
+                         WHEN level = 0 THEN '0' \
+                         WHEN level BETWEEN 1 AND 5 THEN '1-5' \
+                         WHEN level BETWEEN 6 AND 10 THEN '6-10' \
+                         WHEN level BETWEEN 11 AND 15 THEN '11-15' \
+                         WHEN level BETWEEN 16 AND 20 THEN '16-20' \
+                         WHEN level BETWEEN 21 AND 25 THEN '21-25' \
+                         WHEN level BETWEEN 26 AND 30 THEN '26-30' \
+                         ELSE '30+' \
+                         END  as level_range, \
+                     COUNT(*) as user_count
+              FROM GuildUsers
+              WHERE guild_id = %s \
+                AND is_active = TRUE
+              GROUP BY level_range
+              ORDER BY CASE level_range \
+                           WHEN '0' THEN 0 \
+                           WHEN '1-5' THEN 1 \
+                           WHEN '6-10' THEN 2 \
+                           WHEN '11-15' THEN 3 \
+                           WHEN '16-20' THEN 4 \
+                           WHEN '21-25' THEN 5 \
+                           WHEN '26-30' THEN 6 \
+                           ELSE 7 \
+                           END \
+              """
+
+        try:
+            results = self.execute_query(sql, (guild_id,))
+
+            distribution = []
+            if results:
+                for row in results:
+                    distribution.append({
+                        'level_range': row[0],
+                        'user_count': row[1]
+                    })
+
+            return distribution
+        except Exception as e:
+            self.logger.error(f"Error getting guild level distribution: {e}")
+            return []
+
+    def get_recent_activity_in_guild(self, guild_id: int, days: int = 7) -> List[Dict]:
+        """
+        Get recent activity statistics for a guild.
+
+        Args:
+            guild_id (int): Guild ID
+            days (int): Number of days to look back
+
+        Returns:
+            List[Dict]: Recent activity data
+        """
+        sql = """
+              SELECT
+                  DATE (last_active) as activity_date, COUNT (DISTINCT user_id) as active_users
+              FROM GuildUsers
+              WHERE guild_id = %s
+                AND is_active = TRUE
+                AND last_active >= DATE_SUB(NOW() \
+                  , INTERVAL %s DAY)
+              GROUP BY DATE (last_active)
+              ORDER BY activity_date DESC \
+              """
+
+        try:
+            results = self.execute_query(sql, (guild_id, days))
+
+            activity = []
+            if results:
+                for row in results:
+                    activity.append({
+                        'date': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                        'active_users': row[1]
+                    })
+
+            return activity
+        except Exception as e:
+            self.logger.error(f"Error getting recent activity in guild: {e}")
+            return []
+
+    def search_guild_users(self, guild_id: int, search_term: str, limit: int = 20) -> List[Dict]:
+        """
+        Search for users in a guild by name or nickname.
+
+        Args:
+            guild_id (int): Guild ID
+            search_term (str): Search term
+            limit (int): Maximum results to return
+
+        Returns:
+            List[Dict]: Matching users
+        """
+        sql = """
+              SELECT gu.user_id, \
+                     gu.name, \
+                     gu.nickname, \
+                     gu.level, \
+                     gu.exp, \
+                     gu.messages_sent, \
+                     u.avatar_url, \
+                     u.global_name
+              FROM GuildUsers gu
+                       LEFT JOIN Users u ON gu.user_id = u.id
+              WHERE gu.guild_id = %s
+                AND gu.is_active = TRUE
+                AND (
+                  LOWER(gu.name) LIKE LOWER(%s) OR
+                  LOWER(gu.nickname) LIKE LOWER(%s) OR
+                  LOWER(u.global_name) LIKE LOWER(%s)
+                  )
+              ORDER BY gu.level DESC, gu.exp DESC
+                  LIMIT %s \
+              """
+
+        search_pattern = f"%{search_term}%"
+
+        try:
+            results = self.execute_query(sql, (guild_id, search_pattern, search_pattern, search_pattern, limit))
+
+            users = []
+            if results:
+                for row in results:
+                    users.append({
+                        'user_id': row[0],
+                        'name': row[1],
+                        'nickname': row[2],
+                        'level': row[3],
+                        'exp': row[4],
+                        'messages_sent': row[5],
+                        'avatar_url': row[6],
+                        'global_name': row[7]
+                    })
+
+            return users
+        except Exception as e:
+            self.logger.error(f"Error searching guild users: {e}")
+            return []
+
     def save(self, guild: Guild) -> Optional[Guild]:
         """
         Save a guild to the database (insert if new, update if exists).

@@ -176,12 +176,12 @@ class User(BaseEntity):
 
     @property
     def privacy_settings(self) -> Optional[str]:
-        """User's privacy settings as JSON string"""
+        """User's privacy models as JSON string"""
         return self._privacy_settings
 
     @property
     def global_settings(self) -> Optional[str]:
-        """User's global settings as JSON string"""
+        """User's global models as JSON string"""
         return self._global_settings
 
     def __str__(self) -> str:

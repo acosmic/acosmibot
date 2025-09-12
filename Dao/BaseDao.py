@@ -4,7 +4,7 @@ from Entities.BaseEntity import BaseEntity
 from dotenv import load_dotenv
 import os
 import logging
-from mysql.connector import Error as MySQLError
+from mysql.connector import Error as MySQLError, OperationalError, InterfaceError
 
 # Type variable for entity classes
 T = TypeVar('T', bound=BaseEntity)
@@ -41,10 +41,12 @@ class BaseDao(Generic[T]):
         # Set up logging
         self.logger = logging.getLogger(__name__)
 
+    from mysql.connector.errors import OperationalError, InterfaceError
+
     def execute_query(self, query: str, params: Optional[tuple] = None, commit: bool = False) -> Union[
         Optional[List[tuple]], bool]:
         """
-        Execute a SQL query with error handling.
+        Execute a SQL query with error handling and connection recovery.
 
         Args:
             query (str): SQL query with placeholders
@@ -54,30 +56,77 @@ class BaseDao(Generic[T]):
         Returns:
             Union[Optional[List[tuple]], bool]: Query results for SELECT queries, True for successful commits, None/False on error
         """
+        max_retries = 2
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Check if connection is still alive
+                if not self.db.mydb.is_connected():
+                    self.logger.info("Database connection lost, attempting to reconnect...")
+                    self._reconnect()
+
+                cursor = self.db.mycursor
+
+                # Log the query for debugging
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+
+                if commit:
+                    self.db.mydb.commit()
+                    return True  # Return True for successful commit
+                else:
+                    return cursor.fetchall()
+
+            except MySQLError as err:
+                self.logger.error(f"Database error (attempt {attempt + 1}): {err}")
+                self.logger.error(f"Query: {query}")
+                self.logger.error(f"Params: {params}")
+
+                # Check if it's a connection error that we can retry
+                if err.errno in (2006, 2013, 2014) and attempt < max_retries:  # Connection lost errors
+                    self.logger.info(f"Connection error detected, retrying... (attempt {attempt + 1})")
+                    try:
+                        self._reconnect()
+                        continue
+                    except Exception as reconnect_err:
+                        self.logger.error(f"Failed to reconnect: {reconnect_err}")
+
+                if commit:
+                    try:
+                        self.db.mydb.rollback()
+                    except:
+                        pass
+                return False if commit else None
+
+        # If we get here, all retries failed
+        return False if commit else None
+
+    def _reconnect(self):
+        """Reconnect to the database"""
         try:
-            cursor = self.db.mycursor
+            if hasattr(self.db, 'mydb') and self.db.mydb.is_connected():
+                self.db.mydb.close()
 
-            # Log the query for debugging
-            # self.logger.debug(f"Executing query: {query}")
-            if params:
-                # self.logger.debug(f"With params: {params}")
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
+            # Recreate the connection
+            import mysql.connector
+            self.db.mydb = mysql.connector.connect(
+                host=self.db.db_host,
+                user=self.db.db_user,
+                password=self.db.db_password,
+                database=self.db.db_name,
+                autocommit=False,
+                connect_timeout=10,
+                use_unicode=True,
+                charset='utf8mb4'
+            )
+            self.db.mycursor = self.db.mydb.cursor()
+            self.logger.info("Database reconnection successful")
 
-            if commit:
-                self.db.mydb.commit()
-                return True  # Return True for successful commit
-            else:
-                return cursor.fetchall()
-
-        except MySQLError as err:
-            self.logger.error(f"Database error: {err}")
-            self.logger.error(f"Query: {query}")
-            self.logger.error(f"Params: {params}")
-            if commit:
-                self.db.mydb.rollback()
-            return False if commit else None
+        except Exception as e:
+            self.logger.error(f"Failed to reconnect to database: {e}")
+            raise
 
     def get_last_insert_id(self) -> Optional[int]:
         """Get the last inserted ID"""
