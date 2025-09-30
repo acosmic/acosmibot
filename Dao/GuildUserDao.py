@@ -298,6 +298,21 @@ class GuildUserDao(BaseDao[GuildUser]):
             self.logger.error(f"Error getting top guild users: {e}")
             return []
 
+    def get_top_users_by_guild_level(self, guild_id: int, limit: int = 5) -> List[Tuple]:
+        sql = '''
+              SELECT user_id, nickname, name, level, exp
+              FROM GuildUsers
+              WHERE guild_id = %s AND is_active = TRUE
+              ORDER BY level DESC, exp DESC
+                  LIMIT %s
+              '''
+
+        try:
+            return self.execute_query(sql, (guild_id, limit)) or []
+        except Exception as e:
+            self.logger.error(f"Error getting top guild users: {e}")
+            return []
+
     def get_guild_users(self, guild_id: int, active_only: bool = True) -> List[GuildUser]:
         """
         Get all users in a guild.

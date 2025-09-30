@@ -146,7 +146,7 @@ class Deathroll_View(discord.ui.View):
 
             if self.message2:
                 await self.message2.delete()
-            timeout_message = "The Deathroll match has timed out because no one accepted. <:FeelsBigSad:1199734765230768139>"
+            timeout_message = "The Deathroll match has timed out because no one accepted. <:UglyCry:1200263947274698892>"
             await self.message.edit(content=timeout_message, view=None, embed=None)
 
         elif not self.is_matchmaking and not self.game_complete:

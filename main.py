@@ -56,6 +56,7 @@ class Bot(commands.Bot):
             "Cogs.Leaderboard",
             "Cogs.Reset_RPS",
             # "Cogs.Burn",
+            "Cogs.LevelingListener",
             "Cogs.On_Message",
             "Cogs.On_Reaction",
             "Cogs.On_Member_Join",
@@ -64,8 +65,17 @@ class Bot(commands.Bot):
             "Cogs.AIControls"
         ]
         self.posted = False
-        
-    
+
+    async def on_command_error(self, ctx, error):
+        """Handle command errors globally"""
+        # Suppress CommandNotFound errors (these happen when someone mentions the bot with non-commands)
+        if isinstance(error, commands.CommandNotFound):
+            # Don't log these errors since they're expected when using AI chat
+            return
+
+        # Log other errors normally
+        logger.error(f"Command error in {ctx.guild.name if ctx.guild else 'DM'}: {error}")
+
     async def setup_hook(self):
         register_tasks(self)
         for ext in self.cogslist:

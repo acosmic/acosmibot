@@ -1,8 +1,43 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from models.base_models import RoleAssignmentMode, ExpFormula, GuildLevelingRoleSettings
 from models.discord_models import DiscordRole, GuildChannelInfo
 
+
+class UpdateEconomySettingsRequest(BaseModel):
+    """Request model for updating economy settings"""
+    enabled: bool
+    daily_bonus: int = Field(ge=1, le=10000, description="Daily bonus amount")
+    gambling_enabled: bool
+    announcement_channel_id: Optional[str] = Field(None, description="Channel ID for economy announcements")
+
+class UpdateAISettingsRequest(BaseModel):
+    """Request model for updating AI settings"""
+    enabled: bool
+    instructions: Optional[str] = Field(None, description="Custom AI instructions")
+    model: str = Field(pattern="^(gpt-4-mini|gpt-4|gpt-3.5-turbo|gpt-5-nano)$", description="AI model to use")
+    daily_limit: int = Field(ge=1, le=100, description="Daily AI interaction limit")
+
+class BulkRoleMappingRequest(BaseModel):
+    """Request model for bulk role mapping updates"""
+    mappings: List[Dict[str, Any]] = Field(description="List of level-role mappings")
+
+class FullGuildSettingsRequest(BaseModel):
+    """Request model for full guild settings update"""
+    settings: Dict[str, Any] = Field(description="Complete settings dictionary")
+
+class GuildSettingsResponse(BaseModel):
+    """Response model for guild settings"""
+    guild_id: str
+    guild_name: str
+    settings: Dict[str, Any]
+    available_roles: List[Dict[str, Any]]
+    available_channels: List[Dict[str, Any]]
+    role_mappings: List[Dict[str, Any]]
+    permissions: Dict[str, Any]
+
+
+# OLD BELOW
 
 class UpdateLevelingSettingsRequest(BaseModel):
     """Request model for updating leveling settings"""

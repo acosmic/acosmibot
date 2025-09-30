@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.GuildUserDao import GuildUserDao
-from Leveling import Leveling
+from Leveling import LevelingSystem
 import typing
 
 from logger import AppLogger
@@ -73,7 +73,7 @@ class Admin_Give(commands.Cog):
                 target_guild_user.exp_gained += amount
 
                 # Calculate new level
-                lvl = Leveling()
+                lvl = LevelingSystem(self.bot)
                 new_level = lvl.calc_level(target_guild_user.exp)
                 old_level = target_guild_user.level
                 target_guild_user.level = new_level

@@ -148,7 +148,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             for child in self.children:
                 child.disabled = True
 
-            timeout_message = "The Rock, Paper, Scissors match has timed out because no one joined. <:FeelsBigSad:1199734765230768139>"
+            timeout_message = "The Rock, Paper, Scissors match has timed out because no one joined. <:UglyCry:1200263947274698892>"
             await self.message.edit(content=timeout_message, view=None, embed=None)
 
         elif not self.is_matchmaking and not self.match_complete:
@@ -229,13 +229,13 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             self.match_winner = self.player_one
             self.match_loser = self.player_two
             self.player_one_decision = "🏆 WINNER! 🏆"
-            self.player_two_decision = "<:FeelsBigSad:1199734765230768139>"
+            self.player_two_decision = "<:UglyCry:1200263947274698892>"
             self.match_complete = True
             return True
         elif self.player_two_wins >= 3:
             self.match_winner = self.player_two
             self.match_loser = self.player_one
-            self.player_one_decision = "<:FeelsBigSad:1199734765230768139>"
+            self.player_one_decision = "<:UglyCry:1200263947274698892>"
             self.player_two_decision = "🏆 WINNER! 🏆"
             self.match_complete = True
             return True

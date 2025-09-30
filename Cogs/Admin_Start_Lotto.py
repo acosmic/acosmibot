@@ -78,8 +78,7 @@ class Admin_Start_Lotto(commands.Cog):
             )
 
             message = await target_channel.send(
-                "https://cdn.discordapp.com/attachments/1207159417980588052/1207159812656472104/acosmibot-lottery.png"
-            )
+                "https://cdn.discordapp.com/attachments/1207159417980588052/1283246286442725376/ac_lottery-halloween.png?ex=68dbe2fc&is=68da917c&hm=fd7ce1d363340c4e44524ee065225e64568da68069b6e56fe656bd78510276cd&")
 
             await message.add_reaction('🎟️')
             end_time = datetime.now() + timedelta(hours=duration)

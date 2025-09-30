@@ -10,7 +10,7 @@ from Dao.UserDao import UserDao
 from Entities.GuildUser import GuildUser
 from Entities.User import User
 from logger import AppLogger
-from Leveling import Leveling
+from Leveling import LevelingSystem
 
 logger = AppLogger(__name__).get_logger()
 
@@ -19,7 +19,7 @@ class Rank(commands.Cog):
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        self.leveling = Leveling()
+        self.leveling_system = LevelingSystem(bot)
 
     @app_commands.command(name="rank",
                           description="Leave blank to see your own rank, or mention another user to see their rank.")
@@ -179,8 +179,8 @@ class Rank(commands.Cog):
 
             # Use guild exp for XP display (updated from season_exp)
             current_exp = current_guild_user.exp
-            current_level_exp = self.leveling.calc_exp_required(current_guild_user.level)
-            next_level_exp = self.leveling.calc_exp_required(current_guild_user.level + 1)
+            current_level_exp = self.leveling_system.calculate_exp_for_level(current_guild_user.level)
+            next_level_exp = self.leveling_system.calculate_exp_for_level(current_guild_user.level + 1)
             exp_progress = current_exp - current_level_exp
             exp_needed = next_level_exp - current_level_exp
 

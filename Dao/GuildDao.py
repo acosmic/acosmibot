@@ -197,6 +197,126 @@ class GuildDao(BaseDao[Guild]):
             self.logger.error(f"Error updating guild: {e}")
             return False
 
+    def update_guild_settings(self, guild_id: int, settings: dict) -> bool:
+        """
+        Update the settings column for a specific guild.
+
+        Args:
+            guild_id (int): Guild ID
+            settings (dict): Settings dictionary to store as JSON
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = "UPDATE Guilds SET settings = %s WHERE id = %s"
+
+        try:
+            # Convert settings dict to JSON string
+            settings_json = json.dumps(settings) if settings else None
+            self.execute_query(sql, (settings_json, guild_id), commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating settings for guild {guild_id}: {e}")
+            return False
+
+    def get_guild_settings(self, guild_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get the complete settings JSON for a guild.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            Optional[Dict[str, Any]]: Complete settings or None if not found
+        """
+        sql = "SELECT settings FROM Guilds WHERE id = %s"
+
+        try:
+            result = self.execute_query(sql, (guild_id,))
+            if result and len(result) > 0 and result[0][0]:
+                return json.loads(result[0][0])
+            return None
+        except Exception as e:
+            self.logger.error(f"Error getting guild settings for guild {guild_id}: {e}")
+            return None
+
+    def update_guild_settings(self, guild_id: int, settings: Dict[str, Any]) -> bool:
+        """
+        Update the complete settings JSON for a guild.
+
+        Args:
+            guild_id (int): Guild ID
+            settings (Dict[str, Any]): Complete settings dictionary
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = "UPDATE Guilds SET settings = %s WHERE id = %s"
+
+        try:
+            settings_json = json.dumps(settings)
+            self.execute_query(sql, (settings_json, guild_id), commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating guild settings for guild {guild_id}: {e}")
+            return False
+
+    def get_ai_settings_from_json(self, guild_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get AI settings from the new JSON settings structure.
+
+        Args:
+            guild_id (int): Guild ID
+
+        Returns:
+            Optional[Dict[str, Any]]: AI settings or None if not found
+        """
+        settings = self.get_guild_settings(guild_id)
+        if settings and 'ai' in settings:
+            return settings['ai']
+
+        # Return default AI settings if none exist
+        return {
+            'model': 'gpt-4o-mini',
+            'enabled': False,
+            'daily_limit': 20,
+            'instructions': None
+        }
+
+    def update_ai_settings_in_json(self, guild_id: int, ai_updates: Dict[str, Any]) -> bool:
+        """
+        Update AI settings within the JSON settings structure.
+
+        Args:
+            guild_id (int): Guild ID
+            ai_updates (Dict[str, Any]): AI settings to update
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get current settings
+            settings = self.get_guild_settings(guild_id) or {}
+
+            # Initialize AI section if it doesn't exist
+            if 'ai' not in settings:
+                settings['ai'] = {
+                    'model': 'gpt-4o-mini',
+                    'enabled': False,
+                    'daily_limit': 20,
+                    'instructions': None
+                }
+
+            # Update AI settings
+            settings['ai'].update(ai_updates)
+
+            # Save back to database
+            return self.update_guild_settings(guild_id, settings)
+
+        except Exception as e:
+            self.logger.error(f"Error updating AI settings in JSON for guild {guild_id}: {e}")
+            return False
+
     def get_all_guilds(self) -> List[Guild]:
         """
         Get all guilds from the database.
