@@ -64,7 +64,7 @@ class Coinflip(commands.Cog):
             amount_won = cost
             amount_lost = 0
 
-            embed.title = f"🪙 {interaction.user.display_name} called {call}! 🪙"
+            embed.title = f":white_check_mark: {interaction.user.display_name} called {call}! :white_check_mark:"
             embed.description = f"# {result.upper()}! | {interaction.user.display_name} won {cost:,.0f} credits! <:PepeDank:1200292095131406388>"
             embed.colour = discord.Color.green()
             embed.add_field(name="New Balance", value=f"{guild_user.currency:,} credits", inline=True)
@@ -82,8 +82,8 @@ class Coinflip(commands.Cog):
                 vgain = int(cost * 0.1)  # 10% of the lost credits
                 guild_dao.add_vault_currency(interaction.guild.id, vgain)
 
-                embed.title = f"🏦 {interaction.user.display_name} called {call}! 🏦"
-                # embed.description = f"# {result.upper()}! | {interaction.user.display_name} lost {cost:,.0f} credits. <a:giggle:1165098258968879134>\n\n{vgain:,.0f} Credits have been added to the vault! 🏦"
+                embed.title = f":x: {interaction.user.display_name} called {call}! :x:"
+                embed.description = f"# {result.upper()}! | {interaction.user.display_name} lost {cost:,.0f} credits. <a:giggle:1165098258968879134>\n\n{vgain:,.0f} Credits have been added to the vault! 🏦"
                 embed.colour = discord.Color.red()
                 embed.add_field(name="New Balance", value=f"{guild_user.currency:,} credits", inline=True)
                 embed.add_field(name="Vault Gained", value=f"{vgain:,} credits", inline=True)
