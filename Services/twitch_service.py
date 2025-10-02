@@ -1,8 +1,9 @@
 import os
-from dotenv import load_dotenv
-import requests
-from typing import Optional, Dict, Any
+import aiohttp
+import asyncio
 import logging
+from dotenv import load_dotenv
+from typing import Optional, Dict, Any, List
 
 load_dotenv()
 
@@ -16,115 +17,86 @@ class TwitchService:
         self._access_token: Optional[str] = None
         self.logger = logging.getLogger(__name__)
 
-        # Consider moving this to a config file or database
         self.streamer_mapping = {
             266745647447670786: 'Bingo1',
             110637665128325120: 'Acosmic',
             912980670979129346: 'Soft',
         }
 
-    def _get_access_token(self) -> str:
-        """Get or refresh the access token."""
-        if not self._access_token:
-            self._access_token = self._fetch_new_token()
-        return self._access_token
-
-    def _fetch_new_token(self) -> str:
-        """Fetch a new access token from Twitch."""
+    async def _fetch_new_token(self, session: aiohttp.ClientSession) -> str:
         try:
-            response = requests.post(self.auth_url, data={
+            async with session.post(self.auth_url, data={
                 'client_id': self.client_id,
                 'client_secret': self.client_secret,
                 'grant_type': 'client_credentials'
-            })
-            response.raise_for_status()
-            return response.json()['access_token']
-        except requests.RequestException as e:
+            }, timeout=10) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+                self._access_token = data['access_token']
+                return self._access_token
+        except Exception as e:
             self.logger.error(f"Failed to get Twitch access token: {e}")
             raise
 
-    def _get_headers(self) -> Dict[str, str]:
-        """Get headers with authentication."""
+    async def _get_access_token(self, session: aiohttp.ClientSession) -> str:
+        if not self._access_token:
+            await self._fetch_new_token(session)
+        return self._access_token
+
+    async def _get_headers(self, session: aiohttp.ClientSession) -> Dict[str, str]:
         return {
             'Client-ID': self.client_id,
-            'Authorization': f'Bearer {self._get_access_token()}'
+            'Authorization': f'Bearer {await self._get_access_token(session)}'
         }
 
-    def _make_api_request(self, endpoint: str, params: Dict[str, str]) -> Dict[str, Any]:
-        """Make a request to the Twitch API."""
+    async def _make_api_request(self, session: aiohttp.ClientSession, endpoint: str, params: List[tuple]) -> Dict[str, Any]:
         url = f"{self.base_url}/{endpoint}"
-
+        response = None
         try:
-            response = requests.get(url, headers=self._get_headers(), params=params)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
+            headers = await self._get_headers(session)
+            async with session.get(url, headers=headers, params=params, timeout=10) as response:
+                if response.status == 401:
+                    # Refresh token and retry once
+                    self._access_token = None
+                    headers = await self._get_headers(session)
+                    async with session.get(url, headers=headers, params=params, timeout=10) as retry_resp:
+                        retry_resp.raise_for_status()
+                        return await retry_resp.json()
+
+                response.raise_for_status()
+                return await response.json()
+        except Exception as e:
             self.logger.error(f"Twitch API request failed for {endpoint}: {e}")
-            # If it's an auth error, clear token and retry once
-            if response.status_code == 401:
-                self._access_token = None
-                try:
-                    response = requests.get(url, headers=self._get_headers(), params=params)
-                    response.raise_for_status()
-                    return response.json()
-                except requests.RequestException as retry_error:
-                    self.logger.error(f"Twitch API retry failed: {retry_error}")
-                    raise
-            raise
+            return {}
 
-    def is_user_live(self, username: str) -> bool:
-        """Check if a user is currently live streaming."""
-        stream_data = self.get_stream_info(username)
-        return bool(stream_data.get('data'))
+    async def is_user_live(self, session: aiohttp.ClientSession, username: str) -> bool:
+        data = await self.get_stream_info(session, username)
+        return bool(data.get("data"))
 
-    def get_stream_info(self, username: str) -> Dict[str, Any]:
-        """Get detailed stream information for a user."""
-        return self._make_api_request('streams', {'user_login': username})
+    async def get_stream_info(self, session: aiohttp.ClientSession, username: str) -> Dict[str, Any]:
+        return await self._make_api_request(session, "streams", [("user_login", username)])
 
-    def get_user_profile_picture(self, username: str) -> Optional[str]:
-        """Get user's profile picture URL."""
-        user_data = self._make_api_request('users', {'login': username})
+    async def get_user_info(self, session: aiohttp.ClientSession, username: str) -> Optional[Dict[str, Any]]:
+        data = await self._make_api_request(session, "users", [("login", username)])
+        return data["data"][0] if data.get("data") else None
 
-        if user_data.get('data'):
-            return user_data['data'][0]['profile_image_url']
-        return None
-
-    def get_user_info(self, username: str) -> Optional[Dict[str, Any]]:
-        """Get comprehensive user information."""
-        user_data = self._make_api_request('users', {'login': username})
-
-        if user_data.get('data'):
-            return user_data['data'][0]
-        return None
-
-    def get_multiple_streams(self, usernames: list) -> Dict[str, Any]:
-        """Get stream info for multiple users at once (more efficient)."""
+    async def get_multiple_streams(self, session: aiohttp.ClientSession, usernames: List[str]) -> Dict[str, Any]:
         if not usernames:
-            return {'data': []}
+            return {"data": []}
+        params = [("user_login", u) for u in usernames]
+        return await self._make_api_request(session, "streams", params)
 
-        # Twitch API accepts multiple user_login parameters
-        params = {}
-        for i, username in enumerate(usernames):
-            params[f'user_login'] = username if i == 0 else params['user_login'] + f'&user_login={username}'
-
-        return self._make_api_request('streams', {'user_login': usernames})
-
-    # Convenience methods for your specific streamers
-    def get_tracked_streamers_status(self) -> Dict[int, Dict[str, Any]]:
-        """Get live status for all tracked streamers."""
+    async def get_tracked_streamers_status(self, session: aiohttp.ClientSession) -> Dict[int, Dict[str, Any]]:
         usernames = list(self.streamer_mapping.values())
-        streams_data = self.get_multiple_streams(usernames)
+        streams_data = await self.get_multiple_streams(session, usernames)
+        live_streamers = {s["user_login"].lower(): s for s in streams_data.get("data", [])}
 
-        # Map back to discord IDs
         result = {}
-        live_streamers = {stream['user_login'].lower(): stream for stream in streams_data.get('data', [])}
-
         for discord_id, username in self.streamer_mapping.items():
             stream_info = live_streamers.get(username.lower())
             result[discord_id] = {
-                'username': username,
-                'is_live': bool(stream_info),
-                'stream_data': stream_info
+                "username": username,
+                "is_live": bool(stream_info),
+                "stream_data": stream_info
             }
-
         return result
