@@ -84,7 +84,7 @@ class ReminderCommand(commands.Cog):
             embed = discord.Embed(
                 title="⏰ Reminder Set!",
                 description=f"I'll remind you in **{time_str}**",
-                color=discord.Color.green()
+                color=interaction.user.color,
             )
             embed.add_field(name="Reminder", value=message, inline=False)
             embed.add_field(name="When", value=f"<t:{int(remind_at.timestamp())}:F>", inline=False)
