@@ -15,7 +15,10 @@ class Eightball(commands.Cog):
 
     @app_commands.command(name="8ball", description="Ask the magic 8ball your yes/no questions for 50 Credits")
     async def eightball(self, interaction: discord.Interaction, question: str):
-
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         # Funnier and more varied 8-ball responses
         responses = [
             # Positive responses (with humor)

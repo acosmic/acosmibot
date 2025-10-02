@@ -13,7 +13,10 @@ class Color(commands.Cog):
 
     @app_commands.command(name="color", description="Change your color role. Cost = 5,000 credits.")
     async def color(self, interaction: discord.Interaction, r: int, g: int, b: int):
-            
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         if r < 0 or r > 255 or g < 0 or g > 255 or b < 0 or b > 255:
             await interaction.response.send_message(f"## Please enter valid RGB values (0-255).", ephemeral=True)
             return

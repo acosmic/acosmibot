@@ -15,7 +15,10 @@ class Deathroll(commands.Cog):
 
     @app_commands.command(name="deathroll", description="Start a game of Deathroll. First person to roll a 1 loses!")
     async def deathroll(self, interaction: discord.Interaction, target: discord.Member, bet: int):
-
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         if bet < 100:
             await interaction.response.send_message(f"Please enter a bet of at least 100.", ephemeral=True)
             return

@@ -21,7 +21,10 @@ class Coinflip(commands.Cog):
 
     @app_commands.command(name="coinflip", description="Flip a coin for a chance to win credits")
     async def coinflip(self, interaction: discord.Interaction, call: typing.Literal['Heads', 'Tails'], bet: int):
-
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         if call not in ['Heads', 'Tails']:
             await interaction.response.send_message("Invalid choice. Please choose either 'Heads' or 'Tails'.",
                                                     ephemeral=True)

@@ -15,7 +15,10 @@ class Burn(commands.Cog):
     @app_commands.command(name = "admin-burn", description = "set attribute to 0 for target")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def burn(self, interaction: discord.Interaction, target: discord.Member, column: typing.Literal['currency', 'exp', 'daily', 'streak', "level"]):
-        
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")
         dao = UserDao()
         if role in interaction.user.roles:

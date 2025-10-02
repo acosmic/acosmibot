@@ -19,7 +19,10 @@ class Stats(commands.Cog):
     @app_commands.command(name="stats",
                           description="Leave blank to see your own stats, or mention another user to see their stats.")
     async def stats(self, interaction: discord.Interaction, user: discord.User = None):
-
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         guild_user_dao = GuildUserDao()
         user_dao = UserDao()
         cfdao = CoinflipDao()

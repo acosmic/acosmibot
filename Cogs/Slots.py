@@ -100,6 +100,10 @@ class Slots(commands.Cog):
     @app_commands.describe(bet="Choose your bet amount")
     @app_commands.autocomplete(bet=bet_autocomplete)
     async def slots(self, interaction: discord.Interaction, bet: int):
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         # Get configuration
         config = self.get_slots_config(interaction.guild.id)
 

@@ -13,6 +13,10 @@ class Create_Invite(commands.Cog):
 
     @app_commands.command(name = "create_invite", description = "Creates a new invite link.")
     async def create_invite(self, interaction: discord.Interaction):
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         guild = interaction.guild
         invite = await guild.text_channels[0].create_invite(max_age=0, max_uses=1, unique=True)
         await interaction.response.send_message(f"Invite link: {invite.url}")
