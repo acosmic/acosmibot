@@ -15,7 +15,7 @@ class Dictionary(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="define", description="Look up the definition of a word.")
-    async def balance(self, interaction: discord.Interaction, word: str):
+    async def define(self, interaction: discord.Interaction, word: str):
 
         
 

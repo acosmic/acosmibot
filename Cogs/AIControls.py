@@ -43,87 +43,6 @@ class AIControls(commands.Cog):
         if self.bot.user in message.mentions:
             await self.handle_ai_interaction(message)
 
-    # async def handle_ai_interaction(self, message: discord.Message):
-    #     """Handle AI interactions when bot is mentioned"""
-    #     try:
-    #         # Check if AI is enabled for this guild (this is handled in the OpenAI client)
-    #         guild_settings = self.guild_dao.get_ai_settings(message.guild.id)
-    #         if not guild_settings or not guild_settings.get('ai_enabled', False):
-    #             embed = discord.Embed(
-    #                 title="🤖 AI Disabled",
-    #                 description="AI features are currently disabled for this server. An administrator can enable them using `/ai enable`.",
-    #                 color=discord.Color.orange()
-    #             )
-    #             await message.channel.send(embed=embed)
-    #             return
-    #
-    #         # Remove the mention and strip the message
-    #         prompt = message.content
-    #         for mention in message.mentions:
-    #             prompt = prompt.replace(f'<@{mention.id}>', '').replace(f'<@!{mention.id}>', '')
-    #         prompt = prompt.strip()
-    #
-    #         if not prompt:
-    #             embed = discord.Embed(
-    #                 title="",
-    #                 description="Hey there! You mentioned me but didn't ask anything. How can I help you?",
-    #                 color=discord.Color.blue()
-    #             )
-    #             await message.channel.send(embed=embed)
-    #             return
-    #
-    #         # Get conversation history for context
-    #         conversation_history = self.get_conversation_history(message.guild.id, message.channel.id)
-    #
-    #         # Show typing indicator
-    #         async with message.channel.typing():
-    #             response = await self.chatgpt.get_chatgpt_response(
-    #                 prompt=prompt,
-    #                 user_name=message.author.display_name,
-    #                 guild_id=message.guild.id,
-    #                 conversation_history=conversation_history
-    #             )
-    #
-    #         # Store user message in history
-    #         self.add_to_conversation_history(
-    #             message.guild.id,
-    #             message.channel.id,
-    #             message.author.display_name,
-    #             prompt,
-    #             is_bot=False
-    #         )
-    #
-    #         # Split and send responses
-    #         response_messages = self.split_response(response)
-    #
-    #         for i, res in enumerate(response_messages):
-    #             if i == 0:
-    #                 # Reply to the original message for the first response
-    #                 sent_message = await message.reply(res, mention_author=False)
-    #             else:
-    #                 # Send subsequent messages normally
-    #                 sent_message = await message.channel.send(res)
-    #
-    #             # Add bot response to conversation history
-    #             if i == len(response_messages) - 1:  # Only store the last message to avoid duplicates
-    #                 self.add_to_conversation_history(
-    #                     message.guild.id,
-    #                     message.channel.id,
-    #                     self.bot.user.display_name,
-    #                     response,
-    #                     is_bot=True
-    #                 )
-    #
-    #     except Exception as e:
-    #         logger.error(f'AI Error in {message.guild.name}: {e}')
-    #
-    #         error_embed = discord.Embed(
-    #             title="🚫 Error",
-    #             description="I'm sorry, I encountered an error processing your request. Please try again later.",
-    #             color=discord.Color.red()
-    #         )
-    #         await message.channel.send(embed=error_embed)
-
     async def handle_ai_interaction(self, message: discord.Message):
         """Handle AI interactions using the new settings structure"""
         try:
@@ -311,42 +230,15 @@ class AIControls(commands.Cog):
             # Wait 1 hour before next cleanup
             await asyncio.sleep(3600)
 
-    # # Slash Commands for AI Management
-    # @discord.app_commands.command(name="ai-status", description="Check AI status for the server")
-    # @discord.app_commands.default_permissions(manage_guild=True)
-    # async def ai_status_slash(self, interaction: discord.Interaction):
-    #     """Check AI status for the server"""
-    #     settings = self.guild_dao.get_ai_settings(interaction.guild.id)
-    #
-    #     if not settings:
-    #         embed = discord.Embed(
-    #             title="🤖 AI Status",
-    #             description="AI settings not found for this server.",
-    #             color=discord.Color.red()
-    #         )
-    #     else:
-    #         status_color = discord.Color.green() if settings.get('ai_enabled') else discord.Color.red()
-    #         status_text = "Enabled" if settings.get('ai_enabled') else "Disabled"
-    #
-    #         embed = discord.Embed(
-    #             title="🤖 AI Status",
-    #             color=status_color
-    #         )
-    #         embed.add_field(name="Status", value=status_text, inline=True)
-    #         embed.add_field(name="Temperature", value=f"{settings.get('ai_temperature', 1.0)}", inline=True)
-    #
-    #         personality = settings.get('ai_personality_traits', {})
-    #         if personality:
-    #             personality_text = "\n".join([f"{k.replace('_', ' ').title()}: {v.title()}"
-    #                                           for k, v in personality.items()])
-    #             embed.add_field(name="Personality", value=personality_text, inline=False)
-    #
-    #     await interaction.response.send_message(embed=embed)
 
     @discord.app_commands.command(name="ai-status", description="Check AI status and usage for the server")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_status(self, interaction: discord.Interaction):
         """Check AI status using new settings structure"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         guild_dao = GuildDao()
         ai_settings = guild_dao.get_ai_settings_from_json(interaction.guild.id)
 
@@ -377,31 +269,14 @@ class AIControls(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    # @discord.app_commands.command(name="ai-enable", description="Enable AI features for this server")
-    # @discord.app_commands.default_permissions(manage_guild=True)
-    # async def ai_enable_slash(self, interaction: discord.Interaction):
-    #     """Enable AI features"""
-    #     success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, ai_enabled=True)
-    #
-    #     if success:
-    #         embed = discord.Embed(
-    #             title="🤖 AI Enabled",
-    #             description="AI features have been enabled for this server! Mention me to start chatting.",
-    #             color=discord.Color.green()
-    #         )
-    #     else:
-    #         embed = discord.Embed(
-    #             title="🚫 Error",
-    #             description="Failed to enable AI features. Please try again.",
-    #             color=discord.Color.red()
-    #         )
-    #
-    #     await interaction.response.send_message(embed=embed)
-
     @discord.app_commands.command(name="ai-enable", description="Enable AI features for this server")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_enable(self, interaction: discord.Interaction):
         """Enable AI features using new settings structure"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, enabled=True)
 
         if success:
@@ -420,31 +295,14 @@ class AIControls(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
 
-    # @discord.app_commands.command(name="ai-disable", description="Disable AI features for this server")
-    # @discord.app_commands.default_permissions(manage_guild=True)
-    # async def ai_disable_slash(self, interaction: discord.Interaction):
-    #     """Disable AI features"""
-    #     success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, ai_enabled=False)
-    #
-    #     if success:
-    #         embed = discord.Embed(
-    #             title="🤖 AI Disabled",
-    #             description="AI features have been disabled for this server.",
-    #             color=discord.Color.orange()
-    #         )
-    #     else:
-    #         embed = discord.Embed(
-    #             title="🚫 Error",
-    #             description="Failed to disable AI features. Please try again.",
-    #             color=discord.Color.red()
-    #         )
-    #
-    #     await interaction.response.send_message(embed=embed)
-
     @discord.app_commands.command(name="ai-disable", description="Disable AI features for this server")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_disable(self, interaction: discord.Interaction):
         """Disable AI features using new settings structure"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, enabled=False)
 
         if success:
@@ -467,6 +325,10 @@ class AIControls(commands.Cog):
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_model(self, interaction: discord.Interaction, model: str):
         """Set AI model using new settings structure"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         # List of valid models
         valid_models = ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo']
 
@@ -503,6 +365,10 @@ class AIControls(commands.Cog):
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_limit(self, interaction: discord.Interaction, limit: int):
         """Set daily AI limit using new settings structure"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         if not 1 <= limit <= 100:
             embed = discord.Embed(
                 title="🚫 Invalid Limit",
@@ -536,6 +402,10 @@ class AIControls(commands.Cog):
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_instructions(self, interaction: discord.Interaction, instructions: str):
         """Set AI instructions using new settings structure"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         if len(instructions) > 500:
             embed = discord.Embed(
                 title="🚫 Instructions Too Long",
@@ -563,43 +433,15 @@ class AIControls(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    # @discord.app_commands.command(name="ai-temperature", description="Set AI creativity level (0.1-2.0)")
-    # @discord.app_commands.describe(temperature="AI creativity level between 0.1 (focused) and 2.0 (creative)")
-    # @discord.app_commands.default_permissions(manage_guild=True)
-    # async def ai_temperature_slash(self, interaction: discord.Interaction, temperature: float):
-    #     """Set AI creativity level (0.1-2.0)"""
-    #     if not 0.1 <= temperature <= 2.0:
-    #         embed = discord.Embed(
-    #             title="🚫 Invalid Temperature",
-    #             description="Temperature must be between 0.1 and 2.0.\n"
-    #                         "• Lower values (0.1-0.7): More focused and deterministic\n"
-    #                         "• Higher values (1.3-2.0): More creative and random",
-    #             color=discord.Color.red()
-    #         )
-    #         await interaction.response.send_message(embed=embed)
-    #         return
-    #
-    #     success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, ai_temperature=temperature)
-    #
-    #     if success:
-    #         embed = discord.Embed(
-    #             title="🌡️ Temperature Updated",
-    #             description=f"AI creativity level set to {temperature}",
-    #             color=discord.Color.green()
-    #         )
-    #     else:
-    #         embed = discord.Embed(
-    #             title="🚫 Error",
-    #             description="Failed to update temperature setting.",
-    #             color=discord.Color.red()
-    #         )
-    #
-    #     await interaction.response.send_message(embed=embed)
 
     @discord.app_commands.command(name="ai-clear", description="Clear conversation history for this server")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def ai_clear_slash(self, interaction: discord.Interaction):
         """Clear conversation history for this server"""
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         if interaction.guild.id in self.conversation_history:
             del self.conversation_history[interaction.guild.id]
 

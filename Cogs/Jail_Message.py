@@ -13,6 +13,10 @@ class Jail_Message(commands.Cog):
 
     @app_commands.command(name="jailmail", description="send a message to or from the jail. Costs 50,000 credits.")
     async def jail(self, interaction: discord.Interaction, mail: str):
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         cost = 50000
         dao = UserDao()
         user = dao.get_user(interaction.user.id)

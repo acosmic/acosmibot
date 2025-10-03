@@ -15,6 +15,10 @@ class Admin_Stats(commands.Cog):
     @app_commands.command(name = "admin-stats", description = "Get server stats.")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def admin_stats(self, interaction: discord.Interaction):
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         uDao = UserDao()
         try:
             total_users = uDao.get_total_active_users()

@@ -13,6 +13,10 @@ class Bailout(commands.Cog):
 
     @app_commands.command(name="bailout", description="Pay bail to get out of jail or pay someone else's bail.")
     async def bail(self, interaction: discord.Interaction, target: discord.User = None):
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         general_channel = self.bot.get_channel(1155577095787917384)
         jail_channel = self.bot.get_channel(1233867818055893062)
         first_role = discord.utils.get(interaction.guild.roles, name="Microbe")

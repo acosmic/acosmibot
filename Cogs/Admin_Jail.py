@@ -25,6 +25,10 @@ class Admin_Jail(commands.Cog):
     @app_commands.command(name="admin-jail", description="Send a user to jail.")
     @discord.app_commands.default_permissions(manage_guild=True)
     async def jail(self, interaction: discord.Interaction, member: discord.Member):
+        # Only work in guilds
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+            return
         # Identify all removable roles that the user has
         # removable_roles = [role for role in member.roles if role.name in level_roles]  # Update with actual role names
 
