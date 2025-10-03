@@ -272,7 +272,7 @@ class GuildUserDao(BaseDao[GuildUser]):
             self.logger.error(f"Error getting guild user rank: {e}")
             return None
 
-    def get_top_guild_users(self, guild_id: int, column: str, limit: int = 5) -> List[Tuple]:
+    def get_top_guild_users(self, guild_id: int, column: str, limit: int = 10) -> List[Tuple]:
         """
         Get the top guild users by a specific column within a guild.
 
@@ -285,7 +285,7 @@ class GuildUserDao(BaseDao[GuildUser]):
             List[Tuple]: List of top guild users
         """
         sql = f"""
-            SELECT user_id, nickname, {column}
+            SELECT user_id, name, nickname, {column}
             FROM GuildUsers
             WHERE guild_id = %s AND is_active = TRUE
             ORDER BY {column} DESC

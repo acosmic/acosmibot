@@ -294,7 +294,7 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting user rank by global exp: {e}")
             return None
 
-    def get_top_users_by_global_level(self, limit: int = 5) -> List[Tuple]:
+    def get_top_users_by_global_level(self, limit: int = 10) -> List[Tuple]:
         """
         Get the top users by global level.
 
@@ -358,7 +358,7 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting user rank by currency: {e}")
             return None
 
-    def get_top_users_by_global_exp(self, limit: int = 5) -> List[Tuple]:
+    def get_top_users_by_global_exp(self, limit: int = 10) -> List[Tuple]:
         """
         Get the top users by global experience.
 
