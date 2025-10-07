@@ -5,6 +5,8 @@ from discord.ext import commands
 from discord import app_commands
 import random
 from datetime import datetime
+
+from Dao.GamesDao import GamesDao
 from Dao.GuildUserDao import GuildUserDao
 from Dao.UserDao import UserDao
 from Dao.GuildDao import GuildDao
@@ -96,6 +98,8 @@ class Slots(commands.Cog):
                 app_commands.Choice(name="2,000 credits", value=2000)
             ]
 
+    # In your Slots command file, update the slots method:
+
     @app_commands.command(name="slots", description="Play a simple slots game")
     @app_commands.describe(bet="Choose your bet amount")
     @app_commands.autocomplete(bet=bet_autocomplete)
@@ -104,6 +108,7 @@ class Slots(commands.Cog):
         if not interaction.guild:
             await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
             return
+
         # Get configuration
         config = self.get_slots_config(interaction.guild.id)
 
@@ -114,8 +119,9 @@ class Slots(commands.Cog):
 
         # Get DAOs and user objects
         guild_user_dao = GuildUserDao()
-        slotDao = SlotsDao()
-        guildDao = GuildDao()
+        slots_dao = SlotsDao()
+        games_dao = GamesDao()  # ADD THIS
+        guild_dao = GuildDao()
 
         current_guild_user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild.id)
 
@@ -158,40 +164,57 @@ class Slots(commands.Cog):
 
         amount_won = 0
         amount_lost = 0
+        game_result = ""
 
         # Check for wins
         if slot1 == slot2 == slot3:
             # Three of a kind - jackpot
             amount_won = cost * config["match_three_multiplier"]
+            game_result = "win"
             embed.description = f"# 🎰 JACKPOT! 🎰\n\n{result}\n\n{interaction.user.mention} won {amount_won:,} credits!"
             embed.color = discord.Color.gold()
 
         elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
             # Two matching - small win
             amount_won = cost * config["match_two_multiplier"]
+            game_result = "win"
             embed.description = f"# 🎰 Nice! 🎰\n\n{result}\n\n{interaction.user.mention} won {amount_won:,} credits!"
             embed.color = discord.Color.green()
 
         else:
             # Loss
             amount_lost = cost
+            game_result = "lose"
             embed.description = f"# 🎰 {interaction.user.name} 🎰\n\n{result}\n\nYou lost {amount_lost:,} credits."
             embed.color = discord.Color.red()
 
         # Update user currency
         current_guild_user.currency += amount_won
         current_guild_user.currency -= amount_lost
-
-        # Save to database
         guild_user_dao.update_guild_user(current_guild_user)
 
-        #update bank currency
-        guildDao.add_vault_currency(interaction.guild_id, (int(amount_lost*.1)))
+        # Update bank currency
+        guild_dao.add_vault_currency(interaction.guild_id, int(amount_lost * 0.1))
 
-        # Log the event
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_event = SlotEvent(0, interaction.user.id, slot1, slot2, slot3, cost, amount_won, amount_lost, timestamp)
-        slotDao.add_new_event(new_event)
+        # Calculate multiplier
+        multiplier = amount_won / cost if (cost > 0 and amount_won > 0) else 0.0
+
+        games_dao = GamesDao()
+        game_result = "win" if amount_won > 0 else "lose"
+
+        game_id = games_dao.add_game(
+            user_id=interaction.user.id,
+            guild_id=interaction.guild.id,
+            game_type="slots",
+            amount_bet=cost,
+            amount_won=amount_won,
+            amount_lost=amount_lost,
+            result=game_result,
+            game_data={"symbols": [slot1, slot2, slot3], "multiplier": multiplier}  # JSON!
+        )
+
+        if not game_id:
+            logger.error("Failed to log slots game")
 
         await interaction.response.send_message(embed=embed)
         logger.info(f"{interaction.user.name} used /slots command")

@@ -274,6 +274,8 @@ class Deathroll_View(discord.ui.View):
 
             # Record games in database
             games_dao = GamesDao()
+
+            # Log for winner
             games_dao.add_game(
                 user_id=winner.id,
                 guild_id=self.guild_id,
@@ -281,8 +283,15 @@ class Deathroll_View(discord.ui.View):
                 amount_bet=self.bet,
                 amount_won=self.bet,
                 amount_lost=0,
-                result="win"
+                result="win",
+                game_data={
+                    "opponent_id": loser.id,
+                    "opponent_name": loser.display_name,
+                    "final_roll": self.current_roll
+                }
             )
+
+            # Log for loser
             games_dao.add_game(
                 user_id=loser.id,
                 guild_id=self.guild_id,
@@ -290,5 +299,10 @@ class Deathroll_View(discord.ui.View):
                 amount_bet=self.bet,
                 amount_won=0,
                 amount_lost=self.bet,
-                result="lose"
+                result="lose",
+                game_data={
+                    "opponent_id": winner.id,
+                    "opponent_name": winner.display_name,
+                    "final_roll": self.current_roll
+                }
             )

@@ -244,6 +244,97 @@ class CoinflipDao(BaseDao[CoinflipEvent]):
         except Exception as e:
             self.logger.error(f"Error getting top losses: {e}")
             return []
+
+    def get_coinflip_stats(self, discord_id: int, guild_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Get detailed coinflip statistics for a user from the new Coinflip_Games table.
+
+        Args:
+            discord_id: Discord user ID
+            guild_id: Optional guild filter
+
+        Returns:
+            Dictionary of statistics
+        """
+        where_clause = "WHERE user_id = %s"
+        params = [discord_id]
+
+        if guild_id:
+            where_clause += " AND guild_id = %s"
+            params.append(guild_id)
+
+        # Query the NEW Coinflip_Games table
+        sql = f"""
+            SELECT 
+                COUNT(*) as total_games,
+                SUM(amount_bet) as total_bet,
+                SUM(amount_won) as total_won,
+                SUM(amount_lost) as total_lost,
+                SUM(CASE WHEN user_call = actual_result THEN 1 ELSE 0 END) as correct_calls
+            FROM Coinflip_Games 
+            {where_clause}
+        """
+
+        try:
+            result = self.execute_query(sql, params)
+            if result and result[0][0] > 0:
+                row = result[0]
+                total_games = row[0]
+                total_bet = row[1] if row[1] else 0
+                total_won = row[2] if row[2] else 0
+                total_lost = row[3] if row[3] else 0
+                correct_calls = row[4] if row[4] else 0
+
+                return {
+                    'total_games': total_games,
+                    'total_bet': total_bet,
+                    'total_won': total_won,
+                    'total_lost': total_lost,
+                    'correct_calls': correct_calls,
+                    'accuracy': (correct_calls / total_games * 100) if total_games > 0 else 0,
+                    'net_profit': total_won - total_lost
+                }
+            return {}
+        except Exception as e:
+            self.logger.error(f"Error getting coinflip stats from Coinflip_Games: {e}")
+            # Fallback to old table if new table query fails
+            return self._get_coinflip_stats_legacy(discord_id)
+
+    def _get_coinflip_stats_legacy(self, discord_id: int) -> Dict[str, Any]:
+        """
+        Legacy method to get stats from old Coinflip table.
+        """
+        sql = """
+              SELECT COUNT(*)                                         as total_games, \
+                     SUM(amount_won)                                  as total_won, \
+                     SUM(amount_lost)                                 as total_lost, \
+                     SUM(CASE WHEN amount_won > 0 THEN 1 ELSE 0 END)  as wins, \
+                     SUM(CASE WHEN amount_lost > 0 THEN 1 ELSE 0 END) as losses
+              FROM Coinflip
+              WHERE discord_id = %s \
+              """
+
+        try:
+            result = self.execute_query(sql, (discord_id,))
+            if result and result[0][0] > 0:
+                row = result[0]
+                total_games = row[0]
+                total_won = row[1] if row[1] else 0
+                total_lost = row[2] if row[2] else 0
+                wins = row[3] if row[3] else 0
+
+                return {
+                    'total_games': total_games,
+                    'total_won': total_won,
+                    'total_lost': total_lost,
+                    'correct_calls': wins,
+                    'accuracy': (wins / total_games * 100) if total_games > 0 else 0,
+                    'net_profit': total_won - total_lost
+                }
+            return {}
+        except Exception as e:
+            self.logger.error(f"Error getting legacy coinflip stats: {e}")
+            return {}
     
     def save(self, coinflip_event: CoinflipEvent) -> Optional[CoinflipEvent]:
         """

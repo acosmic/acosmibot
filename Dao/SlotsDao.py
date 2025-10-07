@@ -5,284 +5,268 @@ from Dao.BaseDao import BaseDao
 from Entities.SlotEvent import SlotEvent
 import logging
 
+
 class SlotsDao(BaseDao[SlotEvent]):
     """
     Data Access Object for SlotEvent entities.
-    Provides methods to interact with the Slots table in the database.
+    Integrates with the unified Games system.
     """
-    
+
     def __init__(self, db: Optional[Database] = None):
-        """
-        Initialize the SlotsDao with connection parameters.
-        
-        Args:
-            db (Optional[Database], optional): Database connection. Defaults to None.
-        """
-        super().__init__(SlotEvent, "Slots", db)
-        
-        # Create the table if it doesn't exist
+        super().__init__(SlotEvent, "Slots_Games", db)
         self._create_table_if_not_exists()
-    
+
     def _create_table_if_not_exists(self) -> None:
         """
-        Create the Slots table if it doesn't exist.
+        Create the Slots_Games table if it doesn't exist.
+        This table stores slot-specific details and references the Games table.
         """
         create_table_sql = '''
-        CREATE TABLE IF NOT EXISTS Slots (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            discord_id BIGINT NOT NULL,
-            slot1 VARCHAR(255) NOT NULL,
-            slot2 VARCHAR(255) NOT NULL,
-            slot3 VARCHAR(255) NOT NULL,
-            bet_amount INT NOT NULL,
-            amount_won INT NOT NULL,
-            amount_lost INT NOT NULL,
-            timestamp DATETIME NOT NULL
-        )
-        '''
+                           CREATE TABLE IF NOT EXISTS Slots_Games \
+                           ( \
+                               id \
+                               BIGINT \
+                               AUTO_INCREMENT \
+                               PRIMARY \
+                               KEY, \
+                               game_id \
+                               BIGINT \
+                               NOT \
+                               NULL, \
+                               user_id \
+                               BIGINT \
+                               NOT \
+                               NULL, \
+                               guild_id \
+                               BIGINT \
+                               NOT \
+                               NULL, \
+                               symbols \
+                               JSON \
+                               NOT \
+                               NULL, \
+                               multiplier \
+                               DECIMAL \
+                           ( \
+                               4, \
+                               2 \
+                           ) DEFAULT 0.00,
+                               amount_bet INT NOT NULL,
+                               amount_won INT NOT NULL DEFAULT 0,
+                               amount_lost INT NOT NULL DEFAULT 0,
+                               created_at DATETIME NOT NULL,
+                               INDEX idx_user_guild \
+                           ( \
+                               user_id, \
+                               guild_id \
+                           ),
+                               INDEX idx_game_id \
+                           ( \
+                               game_id \
+                           )
+                               ) \
+                           '''
         self.create_table_if_not_exists(create_table_sql)
-    
-    def add_new_event(self, slot_event: SlotEvent) -> bool:
+
+    def add_slots_game(self, game_id: int, user_id: int, guild_id: int,
+                       slot1: str, slot2: str, slot3: str,
+                       amount_bet: int, amount_won: int, amount_lost: int) -> bool:
         """
-        Add a new slot event to the database.
-        
+        Add a specific slots game record linked to a Games table entry.
+
         Args:
-            slot_event (SlotEvent): Slot event to add
-            
+            game_id: Reference to Games table entry
+            user_id: Discord user ID
+            guild_id: Discord guild ID
+            slot1, slot2, slot3: Slot symbols
+            amount_bet: Bet amount
+            amount_won: Amount won (0 if lost)
+            amount_lost: Amount lost (0 if won)
+
         Returns:
             bool: True if successful, False otherwise
         """
+        import json
+
+        # Create symbols JSON array
+        symbols = json.dumps([slot1, slot2, slot3])
+
+        # Calculate multiplier
+        multiplier = 0.0
+        if amount_won > 0:
+            multiplier = amount_won / amount_bet if amount_bet > 0 else 0.0
+
         sql = """
-            INSERT INTO Slots (discord_id, slot1, slot2, slot3, bet_amount, amount_won, amount_lost, timestamp) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+              INSERT INTO Slots_Games (game_id, user_id, guild_id, symbols, multiplier,
+                                       amount_bet, amount_won, amount_lost, created_at)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) \
+              """
         values = (
-            slot_event.discord_id,
-            slot_event.slot1,
-            slot_event.slot2,
-            slot_event.slot3,
-            slot_event.bet_amount,
-            slot_event.amount_won,
-            slot_event.amount_lost,
-            slot_event.timestamp
+            game_id,
+            user_id,
+            guild_id,
+            symbols,
+            multiplier,
+            amount_bet,
+            amount_won,
+            amount_lost,
+            datetime.now()
         )
-        
+
         try:
             self.execute_query(sql, values, commit=True)
             return True
         except Exception as e:
-            self.logger.error(f"Error adding slot event: {e}")
+            self.logger.error(f"Error adding slots game: {e}")
             return False
 
+    def get_slots_history(self, user_id: int, guild_id: Optional[int] = None,
+                          limit: int = 10) -> List[Dict]:
+        """
+        Get slots history for a user.
+
+        Args:
+            user_id: Discord user ID
+            guild_id: Optional guild filter
+            limit: Number of results
+
+        Returns:
+            List of slot game records
+        """
+        import json
+
+        where_clause = "WHERE user_id = %s"
+        params = [user_id]
+
+        if guild_id:
+            where_clause += " AND guild_id = %s"
+            params.append(guild_id)
+
+        sql = f"""
+            SELECT * FROM Slots_Games 
+            {where_clause}
+            ORDER BY created_at DESC 
+            LIMIT %s
+        """
+        params.append(limit)
+
+        try:
+            results = self.execute_query(sql, params)
+            if results:
+                history = []
+                for row in results:
+                    record = self._row_to_dict(row)
+                    # Parse symbols JSON if it exists
+                    if 'symbols' in record and record['symbols']:
+                        try:
+                            record['symbols'] = json.loads(record['symbols'])
+                        except:
+                            pass
+                    history.append(record)
+                return history
+            return []
+        except Exception as e:
+            self.logger.error(f"Error getting slots history: {e}")
+            return []
+
+    def get_slots_stats(self, user_id: int, guild_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Get detailed slots statistics for a user.
+
+        Args:
+            user_id: Discord user ID
+            guild_id: Optional guild filter
+
+        Returns:
+            Dictionary of statistics
+        """
+        where_clause = "WHERE user_id = %s"
+        params = [user_id]
+
+        if guild_id:
+            where_clause += " AND guild_id = %s"
+            params.append(guild_id)
+
+        sql = f"""
+            SELECT 
+                COUNT(*) as total_spins,
+                SUM(amount_bet) as total_bet,
+                SUM(amount_won) as total_won,
+                SUM(amount_lost) as total_lost,
+                SUM(CASE WHEN amount_won > 0 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN amount_lost > 0 THEN 1 ELSE 0 END) as losses,
+                MAX(amount_won) as biggest_win
+            FROM Slots_Games 
+            {where_clause}
+        """
+
+        try:
+            result = self.execute_query(sql, params)
+            if result and result[0][0] > 0:
+                row = result[0]
+                return {
+                    'total_spins': row[0],
+                    'total_bet': row[1],
+                    'total_won': row[2],
+                    'total_lost': row[3],
+                    'net_profit': row[2] - row[3],
+                    'wins': row[4],
+                    'losses': row[5],
+                    'win_rate': (row[4] / row[0] * 100) if row[0] > 0 else 0,
+                    'biggest_win': row[6]
+                }
+            return {}
+        except Exception as e:
+            self.logger.error(f"Error getting slots stats: {e}")
+            return {}
+
+    def _row_to_dict(self, row) -> Dict:
+        """Convert database row to dictionary"""
+        import json
+
+        symbols_data = row[4]
+        # Parse JSON if it's a string
+        if isinstance(symbols_data, str):
+            try:
+                symbols_data = json.loads(symbols_data)
+            except:
+                symbols_data = row[4]
+
+        return {
+            'id': row[0],
+            'game_id': row[1],
+            'user_id': row[2],
+            'guild_id': row[3],
+            'symbols': symbols_data,
+            'multiplier': float(row[5]) if row[5] else 0.0,
+            'amount_bet': row[6],
+            'amount_won': row[7],
+            'amount_lost': row[8],
+            'created_at': row[9]
+        }
+
+    # Legacy support methods (kept for backward compatibility)
     def get_slot_wins(self, discord_id: int) -> int:
-        """
-        Get the number of slot wins for a user.
-        
-        Args:
-            discord_id (int): Discord user ID
-            
-        Returns:
-            int: Number of wins
-        """
-        sql = """
-            SELECT COUNT(*)
-            FROM Slots
-            WHERE discord_id = %s AND amount_won > 0
-        """
-        
-        try:
-            result = self.execute_query(sql, (discord_id,))
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting slot wins: {e}")
-            return 0
-    
+        """Get number of slot wins (legacy method)"""
+        stats = self.get_slots_stats(discord_id)
+        return stats.get('wins', 0)
+
     def get_slot_losses(self, discord_id: int) -> int:
-        """
-        Get the number of slot losses for a user.
-        
-        Args:
-            discord_id (int): Discord user ID
-            
-        Returns:
-            int: Number of losses
-        """
-        sql = """
-            SELECT COUNT(*)
-            FROM Slots
-            WHERE discord_id = %s AND amount_lost > 0
-        """
-        
-        try:
-            result = self.execute_query(sql, (discord_id,))
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting slot losses: {e}")
-            return 0
-    
+        """Get number of slot losses (legacy method)"""
+        stats = self.get_slots_stats(discord_id)
+        return stats.get('losses', 0)
+
     def get_total_slots(self, discord_id: int) -> int:
-        """
-        Get the total number of slot games played by a user.
-        
-        Args:
-            discord_id (int): Discord user ID
-            
-        Returns:
-            int: Total number of games
-        """
-        sql = """
-            SELECT COUNT(*)
-            FROM Slots
-            WHERE discord_id = %s
-        """
-        
-        try:
-            result = self.execute_query(sql, (discord_id,))
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting total slots: {e}")
-            return 0
-    
+        """Get total spins (legacy method)"""
+        stats = self.get_slots_stats(discord_id)
+        return stats.get('total_spins', 0)
+
     def get_total_won(self, discord_id: int) -> int:
-        """
-        Get the total amount won by a user.
-        
-        Args:
-            discord_id (int): Discord user ID
-            
-        Returns:
-            int: Total amount won
-        """
-        sql = """
-            SELECT SUM(amount_won)
-            FROM Slots
-            WHERE discord_id = %s
-        """
-        
-        try:
-            result = self.execute_query(sql, (discord_id,))
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting total won: {e}")
-            return 0
-    
+        """Get total won (legacy method)"""
+        stats = self.get_slots_stats(discord_id)
+        return stats.get('total_won', 0)
+
     def get_total_lost(self, discord_id: int) -> int:
-        """
-        Get the total amount lost by a user.
-        
-        Args:
-            discord_id (int): Discord user ID
-            
-        Returns:
-            int: Total amount lost
-        """
-        sql = """
-            SELECT SUM(amount_lost)
-            FROM Slots
-            WHERE discord_id = %s
-        """
-        
-        try:
-            result = self.execute_query(sql, (discord_id,))
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting total lost: {e}")
-            return 0
-
-    def get_top_wins(self) -> List[Tuple]:
-        """
-        Get the top slot wins.
-        
-        Returns:
-            List[Tuple]: List of top wins
-        """
-        sql = """
-            SELECT u.discord_username,
-                s.amount_won AS largest_single_win,
-                s.timestamp AS win_timestamp
-            FROM Slots s
-            JOIN Users u ON s.discord_id = u.id
-            WHERE (u.id, s.amount_won) IN (
-                SELECT u.id,
-                    MAX(s1.amount_won) AS max_win
-                FROM Slots s1
-                JOIN Users u ON s1.discord_id = u.id
-                GROUP BY u.id
-            )
-            ORDER BY largest_single_win DESC
-            LIMIT 5;
-            """
-        
-        try:
-            return self.execute_query(sql) or []
-        except Exception as e:
-            self.logger.error(f"Error getting top wins: {e}")
-            return []
-    
-    def get_top_losses(self) -> List[Tuple]:
-        """
-        Get the top slot losses.
-        
-        Returns:
-            List[Tuple]: List of top losses
-        """
-        sql = """
-            SELECT u.discord_username,
-                s.amount_lost AS largest_single_loss,
-                s.timestamp AS loss_timestamp
-            FROM Slots s
-            JOIN Users u ON s.discord_id = u.id
-            WHERE (u.id, s.amount_lost) IN (
-                SELECT u.id,
-                    MAX(s1.amount_lost) AS max_loss
-                FROM Slots s1
-                JOIN Users u ON s1.discord_id = u.id
-                GROUP BY u.id
-            )
-            ORDER BY largest_single_loss DESC
-            LIMIT 5;
-            """
-        
-        try:
-            return self.execute_query(sql) or []
-        except Exception as e:
-            self.logger.error(f"Error getting top losses: {e}")
-            return []
-
-    def get_total_spins(self) -> int:
-        """
-        Get the total number of slot spins across all users.
-        
-        Returns:
-            int: Total number of spins
-        """
-        sql = """
-            SELECT COUNT(*)
-            FROM Slots
-        """
-        
-        try:
-            result = self.execute_query(sql)
-            return result[0][0] if result and result[0][0] else 0
-        except Exception as e:
-            self.logger.error(f"Error getting total spins: {e}")
-            return 0
-    
-    def save(self, slot_event: SlotEvent) -> Optional[SlotEvent]:
-        """
-        Save a slot event to the database (insert if new, update if exists).
-        
-        Args:
-            slot_event (SlotEvent): Slot event to save
-            
-        Returns:
-            Optional[SlotEvent]: Saved slot event or None on error
-        """
-        try:
-            # For slot events, we usually just insert new ones
-            if self.add_new_event(slot_event):
-                return slot_event
-            return None
-        except Exception as e:
-            self.logger.error(f"Error saving slot event: {e}")
-            return None
+        """Get total lost (legacy method)"""
+        stats = self.get_slots_stats(discord_id)
+        return stats.get('total_lost', 0)

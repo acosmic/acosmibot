@@ -162,12 +162,13 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         """Create embed for matchmaking phase"""
         desc = f"{self.initiator.display_name} is looking for a match. Bet = {self.bet} Credits!"
         embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
-        rps_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1283269805520195634/ac_rock-paper-scissors-halloween.png?ex=66fc16e3&is=66fac563&hm=4075e9d6a6d29bb9845c327c8c9d9fe826d277021f1e15ab423e44371e3842a7&"
+
+
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1207159417980588052/1283269805520195634/ac_rock-paper-scissors-halloween.png?ex=68e53363&is=68e3e1e3&hm=3a0bb30607b2abfb7b65c5376a371c0c8d344f4cc56bd341106d9828964af141&")
 
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
         embed.add_field(inline=True, name="🔄 Joined - 0 Bet", value=self.convert_user_list_to_str(self.tentative_users))
         embed.add_field(inline=True, name="❌ Declined", value=self.convert_user_list_to_str(self.declined_users))
-        embed.set_image(url=rps_image)
         return embed
 
     def create_game_embed(self):
@@ -416,25 +417,41 @@ class View_Rock_Paper_Scissors(discord.ui.View):
                     guild_user_dao.update_guild_user(user_one)
                     guild_user_dao.update_guild_user(user_two)
 
-                    # Record game in database
+                    # Record game in database with game_data
                     games_dao = GamesDao()
                     games_dao.add_game(
                         user_id=self.player_one.id,
                         guild_id=self.guild_id,
-                        game_type="rps",
+                        game_type="rockpaperscissors",
                         amount_bet=self.bet,
                         amount_won=self.bet,
                         amount_lost=0,
-                        result="win"
+                        result="win",
+                        game_data={
+                            "opponent_id": self.player_two.id,
+                            "opponent_name": self.player_two.display_name,
+                            "rounds": self.round_number - 1,
+                            "player_wins": self.player_one_wins,
+                            "opponent_wins": self.player_two_wins,
+                            "draws": self.draws
+                        }
                     )
                     games_dao.add_game(
                         user_id=self.player_two.id,
                         guild_id=self.guild_id,
-                        game_type="rps",
+                        game_type="rockpaperscissors",
                         amount_bet=self.bet,
                         amount_won=0,
                         amount_lost=self.bet,
-                        result="lose"
+                        result="lose",
+                        game_data={
+                            "opponent_id": self.player_one.id,
+                            "opponent_name": self.player_one.display_name,
+                            "rounds": self.round_number - 1,
+                            "player_wins": self.player_two_wins,
+                            "opponent_wins": self.player_one_wins,
+                            "draws": self.draws
+                        }
                     )
 
             elif self.player_two_wins >= 3:
@@ -444,30 +461,30 @@ class View_Rock_Paper_Scissors(discord.ui.View):
 
                 if user_one and user_two:
                     user_one.currency -= self.bet
-                    user_two.currency += self.bet
-                    guild_user_dao.update_guild_user(user_one)
-                    guild_user_dao.update_guild_user(user_two)
 
-                    # Record game in database
-                    games_dao = GamesDao()
-                    games_dao.add_game(
-                        user_id=self.player_one.id,
-                        guild_id=self.guild_id,
-                        game_type="rps",
-                        amount_bet=self.bet,
-                        amount_won=0,
-                        amount_lost=self.bet,
-                        result="lose"
-                    )
-                    games_dao.add_game(
-                        user_id=self.player_two.id,
-                        guild_id=self.guild_id,
-                        game_type="rps",
-                        amount_bet=self.bet,
-                        amount_won=self.bet,
-                        amount_lost=0,
-                        result="win"
-                    )
+                    async def complete_game(self):
+                        """Complete the game"""
+                        if self.bet > 0:
+                            await self.announce_winner()
+                            self.winner_payout()
+
+                        # Disable all buttons
+                        for child in self.children:
+                            child.disabled = True
+
+                        logging.info(f"RPS game {self.game_id} completed in guild {self.guild_id}")
+
+                        async def complete_game(self):
+                            """Complete the game"""
+                            if self.bet > 0:
+                                await self.announce_winner()
+                                self.winner_payout()
+
+                            # Disable all buttons
+                            for child in self.children:
+                                child.disabled = True
+
+                            logging.info(f"RPS game {self.game_id} completed in guild {self.guild_id}")
 
     async def complete_game(self):
         """Complete the game"""

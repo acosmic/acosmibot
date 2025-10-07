@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from Dao.UserDao import UserDao
 from Dao.GuildUserDao import GuildUserDao
-from Dao.GamesDao import GamesDao, CoinflipDao
+from Dao.GamesDao import GamesDao
 from Dao.GuildDao import GuildDao
 
 import random
@@ -102,9 +102,10 @@ class Coinflip(commands.Cog):
         # Log the event to both tables
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Add to main Games table first
+        # Remove all the old CoinflipDao stuff and just do this:
         games_dao = GamesDao()
         game_result = "win" if amount_won > 0 else "lose"
+
         game_id = games_dao.add_game(
             user_id=interaction.user.id,
             guild_id=interaction.guild.id,
@@ -112,22 +113,12 @@ class Coinflip(commands.Cog):
             amount_bet=cost,
             amount_won=amount_won,
             amount_lost=amount_lost,
-            result=game_result
+            result=game_result,
+            game_data={"user_call": call, "actual_result": result}  # JSON!
         )
 
-        # Add to specific Coinflip table
-        if game_id:
-            coinflip_dao = CoinflipDao()
-            coinflip_dao.add_coinflip_game(
-                game_id=game_id,
-                user_id=interaction.user.id,
-                guild_id=interaction.guild.id,
-                user_call=call,
-                actual_result=result,
-                amount_bet=cost,
-                amount_won=amount_won,
-                amount_lost=amount_lost
-            )
+        if not game_id:
+            logger.error("Failed to log coinflip game")
 
         # Update database
         try:
