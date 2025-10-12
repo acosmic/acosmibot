@@ -4,13 +4,6 @@ from models.base_models import RoleAssignmentMode, ExpFormula, GuildLevelingRole
 from models.discord_models import DiscordRole, GuildChannelInfo
 
 
-class UpdateEconomySettingsRequest(BaseModel):
-    """Request model for updating economy settings"""
-    enabled: bool
-    daily_bonus: int = Field(ge=1, le=10000, description="Daily bonus amount")
-    gambling_enabled: bool
-    announcement_channel_id: Optional[str] = Field(None, description="Channel ID for economy announcements")
-
 class UpdateAISettingsRequest(BaseModel):
     """Request model for updating AI settings"""
     enabled: bool
@@ -51,6 +44,9 @@ class UpdateLevelingSettingsRequest(BaseModel):
     exp_formula: Optional[ExpFormula] = None
     base_exp: Optional[int] = Field(None, ge=50, le=1000)
     exp_growth_factor: Optional[float] = Field(None, ge=1.0, le=3.0)
+    daily_bonus: Optional[int] = Field(None, ge=100, le=10000)
+    daily_announcements_enabled: Optional[bool] = None
+    daily_announcement_channel_id: Optional[str] = None
 
     @field_validator('announcement_channel_id')
     @classmethod
@@ -78,6 +74,7 @@ class UpdateRoleSettingsRequest(BaseModel):
     max_level_tracked: Optional[int] = Field(None, ge=1, le=1000)
     role_announcement: Optional[bool] = None
     role_announcement_message: Optional[str] = None
+    announcement_channel_id: Optional[str] = None
 
     @field_validator('role_announcement_message')
     @classmethod

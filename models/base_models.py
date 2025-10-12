@@ -48,6 +48,11 @@ class LevelingSettings(BaseModel):
     base_exp: int = Field(default=100, ge=50, le=1000)
     exp_growth_factor: float = Field(default=1.2, ge=1.0, le=3.0)
 
+    # Daily reward settings
+    daily_bonus: int = Field(default=1000, ge=100, le=10000)
+    daily_announcements_enabled: bool = False
+    daily_announcement_channel_id: Optional[str] = None
+
     @field_validator('announcement_channel_id')
     def validate_channel_id(cls, v):
         if v is not None and not v.isdigit():
@@ -89,6 +94,7 @@ class RoleSystemSettings(BaseModel):
     # Announcement settings
     role_announcement: bool = True
     role_announcement_message: str = "🎉 {user} reached level {level} and earned the {role} role!"
+    announcement_channel_id: Optional[str] = None
 
     @field_validator('role_mappings')
     def validate_role_mappings(cls, v):

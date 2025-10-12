@@ -24,7 +24,10 @@ class LevelingSystem:
             "level_up_announcements": True,
             "announcement_channel_id": None,
             "streak_multiplier": 0.05,  # 5% bonus per streak day
-            "max_streak_bonus": 20  # Maximum streak days for bonus calculation
+            "max_streak_bonus": 20,  # Maximum streak days for bonus calculation
+            "daily_bonus": 1000,  # Daily reward bonus amount
+            "daily_announcements_enabled": False,  # Enable daily reward announcements
+            "daily_announcement_channel_id": None  # Channel for daily reward announcements
         }
 
     def get_leveling_config(self, guild_id):
@@ -190,7 +193,7 @@ class LevelingSystem:
             guild = message.guild
 
             # Calculate level up reward with streak bonus (similar to current system)
-            base_reward = 1000
+            base_reward = config.get("daily_bonus", 1000)
             streak = min(guild_user.streak, config["max_streak_bonus"])  # Cap streak for reward calculation
             streak_multiplier = config["streak_multiplier"]
             streak_bonus_percentage = streak * streak_multiplier
