@@ -23,14 +23,14 @@ async def check_reminders_task(bot):
 
     iteration = 0
     while not bot.is_closed():
-        iteration += 1
-        logger.info(f'=== REMINDER TASK: Iteration {iteration} - Checking for due reminders ===')
+        # iteration += 1
+        # logger.info(f'=== REMINDER TASK: Iteration {iteration} - Checking for due reminders ===')
         try:
             due_reminders = reminder_dao.get_due_reminders()
-            logger.info(f'=== REMINDER TASK: Found {len(due_reminders)} due reminder(s) ===')
+            # logger.info(f'=== REMINDER TASK: Found {len(due_reminders)} due reminder(s) ===')
 
             for reminder in due_reminders:
-                logger.info(f'=== REMINDER TASK: Processing reminder ID {reminder.id} for user {reminder.user_id} ===')
+                # logger.info(f'=== REMINDER TASK: Processing reminder ID {reminder.id} for user {reminder.user_id} ===')
                 try:
                     # Get the user
                     logger.debug(f'Fetching user {reminder.user_id}...')
@@ -112,5 +112,5 @@ async def check_reminders_task(bot):
             logger.error(f"❌ CRITICAL ERROR in reminder check task: {e}", exc_info=True)
 
         # Check every 30 seconds
-        logger.debug(f"=== REMINDER TASK: Sleeping for 30 seconds (iteration {iteration} complete) ===")
+        # logger.debug(f"=== REMINDER TASK: Sleeping for 30 seconds (iteration {iteration} complete) ===")
         await asyncio.sleep(30)

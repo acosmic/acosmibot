@@ -98,10 +98,9 @@ class ReminderDao(BaseDao[Reminder]):
 
         # Convert timezone-aware datetimes to naive UTC for MySQL DATETIME storage
         # mysql.connector converts tz-aware to server local time, so we strip tz to force UTC storage
-        remind_at_naive = reminder.remind_at.astimezone(timezone.utc).replace(tzinfo=None) if reminder.remind_at.tzinfo else reminder.remind_at
-        created_at_naive = reminder.created_at.astimezone(timezone.utc).replace(tzinfo=None) if reminder.created_at.tzinfo else reminder.created_at
-
-        self.logger.info(f"Saving reminder: remind_at={remind_at_naive} (naive UTC), user_id={reminder.user_id}")
+        # Also strip microseconds since MySQL DATETIME doesn't store them (causes comparison issues)
+        remind_at_naive = reminder.remind_at.astimezone(timezone.utc).replace(tzinfo=None, microsecond=0) if reminder.remind_at.tzinfo else reminder.remind_at.replace(microsecond=0)
+        created_at_naive = reminder.created_at.astimezone(timezone.utc).replace(tzinfo=None, microsecond=0) if reminder.created_at.tzinfo else reminder.created_at.replace(microsecond=0)
 
         values = (
             reminder.user_id,
@@ -115,10 +114,9 @@ class ReminderDao(BaseDao[Reminder]):
 
         try:
             self.execute_query(sql, values, commit=True)
-            self.logger.info(f"✅ Reminder saved successfully with remind_at={remind_at_naive}")
             return True
         except Exception as e:
-            self.logger.error(f"❌ Error adding reminder: {e}", exc_info=True)
+            self.logger.error(f"Error adding reminder: {e}")
             return False
 
     def get_due_reminders(self) -> List[Reminder]:
@@ -146,13 +144,12 @@ class ReminderDao(BaseDao[Reminder]):
 
         try:
             # Use naive UTC datetime to match how we store in the database
-            now_utc_naive = datetime.now(timezone.utc).replace(tzinfo=None)
-            self.logger.info(f"Querying for reminders due before: {now_utc_naive} (naive UTC)")
+            # Strip microseconds to match MySQL DATETIME precision
+            now_utc_naive = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
             results = self.execute_query(sql, (now_utc_naive,))
             reminders = []
             if results:
-                self.logger.info(f"✅ Found {len(results)} due reminder(s) in database")
                 for row in results:
                     reminder = Reminder(
                         id=row[0],
@@ -165,13 +162,10 @@ class ReminderDao(BaseDao[Reminder]):
                         completed=bool(row[7]),
                         message_url=row[8] if row[8] else ""
                     )
-                    self.logger.info(f"  - Reminder ID {reminder.id}: due at {reminder.remind_at} (from DB)")
                     reminders.append(reminder)
-            else:
-                self.logger.debug("No due reminders found in database")
             return reminders
         except Exception as e:
-            self.logger.error(f"❌ Error getting due reminders: {e}", exc_info=True)
+            self.logger.error(f"Error getting due reminders: {e}")
             return []
 
     def mark_completed(self, reminder_id: int) -> bool:
