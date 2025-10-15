@@ -1,7 +1,9 @@
 import asyncio
 from datetime import datetime, timedelta
 import logging
+import json
 from Dao.GuildUserDao import GuildUserDao
+from Dao.GuildDao import GuildDao
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,13 @@ async def _reset_daily_rewards_all_guilds(bot):
 
 async def _reset_daily_rewards_for_guild(guild_user_dao: GuildUserDao, guild):
     """Reset daily rewards for a specific guild."""
+    # Check if leveling is enabled for this guild
+    leveling_config = _get_leveling_config(guild.id)
+
+    if not leveling_config.get("enabled", True):
+        logger.info(f'Guild {guild.name}: Leveling disabled, skipping daily reset')
+        return
+
     # Reset daily status for all users in this guild
     guild_user_dao.reset_daily(guild.id)
 
@@ -90,6 +99,37 @@ async def _reset_daily_rewards_for_guild(guild_user_dao: GuildUserDao, guild):
             logger.error(f'Error processing user {member.name} in guild {guild.name}: {e}')
 
     logger.info(f'Guild {guild.name}: Processed {processed_count} users, reset {streak_resets} streaks')
+
+
+def _get_leveling_config(guild_id):
+    """Get leveling configuration from guild settings"""
+    default_config = {
+        "enabled": True
+    }
+
+    try:
+        guild_dao = GuildDao()
+        guild = guild_dao.get_guild(guild_id)
+
+        if not guild or not guild.settings:
+            return default_config
+
+        # Parse settings JSON
+        settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
+
+        # Get leveling settings or return default
+        leveling_settings = settings.get("leveling", {})
+
+        # Merge with defaults
+        config = default_config.copy()
+        config.update(leveling_settings)
+
+        return config
+
+    except Exception as e:
+        logger.error(f"Error getting leveling config for guild {guild_id}: {e}")
+        return default_config
+
 
 # import asyncio
 # from datetime import datetime, timedelta

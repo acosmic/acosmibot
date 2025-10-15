@@ -94,7 +94,6 @@ class Bot(commands.Bot):
         invDao = InviteDao()
         invDao.create_table()
 
-        await self.setup_hook()
         await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
 
 

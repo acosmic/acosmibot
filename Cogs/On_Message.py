@@ -9,6 +9,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from Dao.GuildUserDao import GuildUserDao
 from Dao.UserDao import UserDao
+from Dao.GuildDao import GuildDao
 from Entities.GuildUser import GuildUser
 from Entities.User import User
 from logger import AppLogger
@@ -81,16 +82,62 @@ class On_Message(commands.Cog):
 
         return cleaned.strip()
 
+    def get_leveling_config(self, guild_id):
+        """Get leveling configuration from guild settings"""
+        default_config = {
+            "enabled": True,
+            "daily_announcements_enabled": False,
+            "daily_announcement_channel_id": None
+        }
+
+        try:
+            guild_dao = GuildDao()
+            guild = guild_dao.get_guild(guild_id)
+
+            if not guild or not guild.settings:
+                return default_config
+
+            # Parse settings JSON
+            settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
+
+            # Get leveling settings or return default
+            leveling_settings = settings.get("leveling", {})
+
+            # Merge with defaults
+            config = default_config.copy()
+            config.update(leveling_settings)
+
+            return config
+
+        except Exception as e:
+            logger.error(f"Error getting leveling config for guild {guild_id}: {e}")
+            return default_config
+
     @commands.Cog.listener()
     async def on_message(self, message: Message):
         # Skip if not in a guild or if author is a bot
         if not message.guild or message.author.bot:
             return
 
-        # Find appropriate channels for this guild
-        daily_reward_channel = self.find_channel_by_name(message.guild,
-                                                         ['daily-rewards', 'daily', 'rewards', 'bot-updates',
-                                                          'general'])
+        # Get guild leveling config
+        leveling_config = self.get_leveling_config(message.guild.id)
+
+        # Skip if leveling is disabled
+        if not leveling_config.get("enabled", True):
+            return
+
+        # Determine daily reward announcement channel
+        daily_reward_channel = None
+        if leveling_config.get("daily_announcements_enabled", False):
+            # Use configured channel if set
+            if leveling_config.get("daily_announcement_channel_id"):
+                daily_reward_channel = message.guild.get_channel(int(leveling_config["daily_announcement_channel_id"]))
+
+            # Fallback to searching by name if no channel configured or channel not found
+            if not daily_reward_channel:
+                daily_reward_channel = self.find_channel_by_name(message.guild,
+                                                                 ['daily-rewards', 'daily', 'rewards', 'bot-updates',
+                                                                  'general'])
 
         # Get guild-specific roles
         inmate_role = discord.utils.get(message.guild.roles, name='Inmate')

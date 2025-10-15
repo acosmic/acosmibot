@@ -37,23 +37,27 @@ async def _check_all_guilds_streaming_status(bot):
 
 async def _check_guild_streaming_status(guild):
     """Check streaming status for a specific guild."""
-    # Get roles for this guild
+    # Get roles for this guild - check for both "Live Now" and "Streamers"
     live_now_role = discord.utils.get(guild.roles, name="Live Now")
+
+    # Check for "Streamer" or "Streamers" role (some servers use plural)
     streamer_role = discord.utils.get(guild.roles, name="Streamer")
+    if not streamer_role:
+        streamer_role = discord.utils.get(guild.roles, name="Streamers")
 
     if not live_now_role:
         logger.warning(f'Guild {guild.name}: "Live Now" role not found')
         return
 
     if not streamer_role:
-        logger.warning(f'Guild {guild.name}: "Streamer" role not found')
+        logger.warning(f'Guild {guild.name}: "Streamer" or "Streamers" role not found')
         return
 
     members_processed = 0
     roles_added = 0
     roles_removed = 0
 
-    # Check all members with the Streamer role
+    # Check all members with the Streamer/Streamers role
     for member in guild.members:
         if streamer_role not in member.roles:
             continue
