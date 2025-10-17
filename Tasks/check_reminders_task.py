@@ -23,8 +23,8 @@ async def check_reminders_task(bot):
 
     iteration = 0
     while not bot.is_closed():
-        # iteration += 1
-        # logger.info(f'=== REMINDER TASK: Iteration {iteration} - Checking for due reminders ===')
+        iteration += 1
+        logger.info(f'=== REMINDER TASK: Iteration {iteration} - Checking for due reminders ===')
         try:
             due_reminders = reminder_dao.get_due_reminders()
             # logger.info(f'=== REMINDER TASK: Found {len(due_reminders)} due reminder(s) ===')

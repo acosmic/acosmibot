@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import os
 import json
 import math
+import random
 from typing import Optional
 import discord
 from discord import Message
@@ -201,7 +202,8 @@ class On_Message(commands.Cog):
             # OTHER REACTIONS
             if message.content.lower() == "yo":
                 try:
-                    await message.add_reaction("👋")  # Using standard wave emoji as fallback
+                    yo_emojis = ["🖕", "🍆", "🤝", "🦉", "🤡", "😘", "👋", "👽", "🦏", "❄️", "🤙"]
+                    await message.add_reaction(random.choice(yo_emojis))
                 except:
                     pass  # If reaction fails, just continue
 

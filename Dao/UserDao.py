@@ -712,6 +712,65 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error ensuring user exists for {discord_user.name}: {e}")
             return False
 
+    def bulk_upsert_users(self, users: List[User]) -> bool:
+        """
+        Bulk insert or update users in a single transaction.
+        Uses INSERT ... ON DUPLICATE KEY UPDATE for efficiency.
+
+        Args:
+            users (List[User]): List of users to upsert
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not users:
+            return True
+
+        sql = '''
+              INSERT INTO Users (id, discord_username, global_name, avatar_url, is_bot,
+                                 global_exp, global_level, total_currency, total_messages,
+                                 total_reactions, account_created, first_seen, last_seen,
+                                 privacy_settings, global_settings)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+              ON DUPLICATE KEY UPDATE
+                  discord_username = VALUES(discord_username),
+                  global_name = VALUES(global_name),
+                  avatar_url = COALESCE(VALUES(avatar_url), avatar_url),
+                  last_seen = VALUES(last_seen)
+              '''
+
+        try:
+            # Prepare all values at once
+            values_list = [
+                (
+                    user.id,
+                    user.discord_username,
+                    user.global_name,
+                    user.avatar_url,
+                    user.is_bot,
+                    user.global_exp,
+                    user.global_level,
+                    user.total_currency,
+                    user.total_messages,
+                    user.total_reactions,
+                    user.account_created,
+                    user.first_seen,
+                    user.last_seen,
+                    user.privacy_settings,
+                    user.global_settings
+                )
+                for user in users
+            ]
+
+            # Execute with executemany for bulk insert
+            self.execute_many(sql, values_list, commit=True)
+            self.logger.info(f"Bulk upserted {len(users)} users")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error bulk upserting users: {e}")
+            return False
+
     def save(self, user: User) -> Optional[User]:
         """
         Save a user to the database (insert if new, update if exists).

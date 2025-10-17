@@ -103,6 +103,65 @@ class BaseDao(Generic[T]):
         # If we get here, all retries failed
         return False if commit else None
 
+    def execute_many(self, query: str, params_list: List[tuple], commit: bool = False) -> bool:
+        """
+        Execute a SQL query with multiple parameter sets (bulk operation).
+
+        Args:
+            query (str): SQL query with placeholders
+            params_list (List[tuple]): List of parameter tuples for bulk execution
+            commit (bool, optional): Whether to commit the transaction. Defaults to False.
+
+        Returns:
+            bool: True if successful, False on error
+        """
+        if not params_list:
+            return True
+
+        max_retries = 2
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Check if connection is still alive
+                if not self.db.mydb.is_connected():
+                    self.logger.info("Database connection lost, attempting to reconnect...")
+                    self._reconnect()
+
+                cursor = self.db.mycursor
+
+                # Execute many with all parameter sets
+                cursor.executemany(query, params_list)
+
+                if commit:
+                    self.db.mydb.commit()
+                    return True
+                else:
+                    return True
+
+            except MySQLError as err:
+                self.logger.error(f"Database error in executemany (attempt {attempt + 1}): {err}")
+                self.logger.error(f"Query: {query}")
+                self.logger.error(f"Number of parameter sets: {len(params_list)}")
+
+                # Check if it's a connection error that we can retry
+                if err.errno in (2006, 2013, 2014) and attempt < max_retries:  # Connection lost errors
+                    self.logger.info(f"Connection error detected, retrying... (attempt {attempt + 1})")
+                    try:
+                        self._reconnect()
+                        continue
+                    except Exception as reconnect_err:
+                        self.logger.error(f"Failed to reconnect: {reconnect_err}")
+
+                if commit:
+                    try:
+                        self.db.mydb.rollback()
+                    except:
+                        pass
+                return False
+
+        # If we get here, all retries failed
+        return False
+
     def _reconnect(self):
         """Reconnect to the database"""
         try:

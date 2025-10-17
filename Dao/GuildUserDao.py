@@ -624,6 +624,69 @@ class GuildUserDao(BaseDao[GuildUser]):
             self.logger.error(f"Error getting user total exp across guilds: {e}")
             return 0
 
+    def bulk_upsert_guild_users(self, guild_users: List[GuildUser]) -> bool:
+        """
+        Bulk insert or update guild users in a single transaction.
+        Uses INSERT ... ON DUPLICATE KEY UPDATE for efficiency.
+
+        Args:
+            guild_users (List[GuildUser]): List of guild users to upsert
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not guild_users:
+            return True
+
+        sql = """
+            INSERT INTO GuildUsers (
+                user_id, guild_id, name, nickname, level,
+                streak, highest_streak, exp, exp_gained, exp_lost, currency,
+                messages_sent, reactions_sent, joined_at, last_active,
+                daily, last_daily, is_active
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                nickname = VALUES(nickname),
+                is_active = VALUES(is_active),
+                last_active = VALUES(last_active)
+        """
+
+        try:
+            # Prepare all values at once
+            values_list = [
+                (
+                    gu.user_id,
+                    gu.guild_id,
+                    gu.name,
+                    gu.nickname,
+                    gu.level,
+                    gu.streak,
+                    gu.highest_streak,
+                    gu.exp,
+                    gu.exp_gained,
+                    gu.exp_lost,
+                    gu.currency,
+                    gu.messages_sent,
+                    gu.reactions_sent,
+                    gu.joined_at,
+                    gu.last_active,
+                    gu.daily,
+                    gu.last_daily,
+                    gu.is_active
+                )
+                for gu in guild_users
+            ]
+
+            # Execute with executemany for bulk insert
+            self.execute_many(sql, values_list, commit=True)
+            self.logger.info(f"Bulk upserted {len(guild_users)} guild users")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error bulk upserting guild users: {e}")
+            return False
+
     def save(self, guild_user: GuildUser) -> Optional[GuildUser]:
         """
         Save a guild user to the database (insert if new, update if exists).

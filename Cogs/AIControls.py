@@ -50,13 +50,23 @@ class AIControls(commands.Cog):
             guild_dao = GuildDao()
             ai_settings = guild_dao.get_ai_settings_from_json(message.guild.id)
 
+            # if not ai_settings or not ai_settings.get('enabled', False):
+            #     embed = discord.Embed(
+            #         title="🤖 AI Disabled",
+            #         description="AI features are currently disabled for this server. An administrator can enable them using `/ai enable`.",
+            #         color=discord.Color.orange()
+            #     )
+            #     await message.channel.send(embed=embed)
+            #     return
+
             if not ai_settings or not ai_settings.get('enabled', False):
-                embed = discord.Embed(
-                    title="🤖 AI Disabled",
-                    description="AI features are currently disabled for this server. An administrator can enable them using `/ai enable`.",
-                    color=discord.Color.orange()
-                )
-                await message.channel.send(embed=embed)
+                try:
+                    await message.author.send(
+                        f"🤖 **AI Disabled in {message.guild.name}** - AI features are currently disabled for this server. Ask an administrator to enable AI features via the website."
+                    )
+                except discord.Forbidden:
+                    # User has DMs disabled, silently ignore
+                    pass
                 return
 
             # Check daily limit

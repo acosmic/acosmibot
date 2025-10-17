@@ -12,6 +12,7 @@ from Entities.User import User
 from logger import AppLogger
 import os
 from dotenv import load_dotenv
+import asyncio
 
 load_dotenv()
 logger = AppLogger(__name__).get_logger()
@@ -103,112 +104,89 @@ class On_Guild_Join(commands.Cog):
     async def _add_guild_members(self, guild: discord.Guild, guild_user_dao: GuildUserDao, user_dao: UserDao):
         """
         Add all current guild members to the database (both global and guild-specific).
+        Uses bulk operations for performance with large member counts.
         """
         try:
-            guild_users_added = 0
-            guild_users_updated = 0
-            global_users_added = 0
-            global_users_updated = 0
+            # Prepare lists for bulk operations
+            global_users_to_upsert = []
+            guild_users_to_upsert = []
 
+            formatted_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Build lists of users to upsert (no database calls yet)
             for member in guild.members:
                 if member.bot:
                     continue  # Skip bots
 
-                # Handle global user first
-                existing_global_user = user_dao.get_user(member.id)
+                # Prepare global user
+                try:
+                    account_created = member.created_at.strftime("%Y-%m-%d %H:%M:%S") if member.created_at else formatted_now
+                except Exception:
+                    account_created = formatted_now
 
-                if existing_global_user:
-                    # Update existing global user
-                    existing_global_user._discord_username = member.name
-                    existing_global_user._global_name = member.global_name if hasattr(member,
-                                                                                      'global_name') else member.name
-                    existing_global_user._avatar_url = str(
-                        member.avatar.url) if member.avatar else existing_global_user.avatar_url
-                    existing_global_user._last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    user_dao.update_user(existing_global_user)
-                    global_users_updated += 1
-                    logger.info(f"Updated global user: {member.name}")
-                else:
-                    # Create new global user
-                    formatted_creation_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                global_user = User(
+                    id=member.id,
+                    discord_username=member.name,
+                    global_name=member.global_name if hasattr(member, 'global_name') else member.name,
+                    avatar_url=str(member.avatar.url) if member.avatar else None,
+                    is_bot=member.bot,
+                    global_exp=0,
+                    global_level=0,
+                    total_currency=0,
+                    total_messages=0,
+                    total_reactions=0,
+                    account_created=account_created,
+                    first_seen=formatted_now,
+                    last_seen=formatted_now,
+                    privacy_settings=None,
+                    global_settings=None
+                )
+                global_users_to_upsert.append(global_user)
 
-                    try:
-                        account_created = member.created_at.strftime(
-                            "%Y-%m-%d %H:%M:%S") if member.created_at else formatted_creation_date
-                    except Exception:
-                        account_created = formatted_creation_date
+                # Prepare guild user
+                try:
+                    joined_at = member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else formatted_now
+                except Exception:
+                    joined_at = formatted_now
 
-                    new_global_user = User(
-                        id=member.id,
-                        discord_username=member.name,
-                        global_name=member.global_name if hasattr(member, 'global_name') else member.name,
-                        avatar_url=str(member.avatar.url) if member.avatar else None,
-                        is_bot=member.bot,
-                        global_exp=0,
-                        global_level=0,
-                        total_currency=0,
-                        total_messages=0,
-                        total_reactions=0,
-                        account_created=account_created,
-                        first_seen=formatted_creation_date,
-                        last_seen=formatted_creation_date,
-                        privacy_settings=None,
-                        global_settings=None
-                    )
+                guild_user = GuildUser(
+                    user_id=member.id,
+                    guild_id=guild.id,
+                    name=member.name,
+                    nickname=member.display_name,
+                    level=0,
+                    streak=0,
+                    highest_streak=0,
+                    exp=0,
+                    exp_gained=0,
+                    exp_lost=0,
+                    currency=1000,  # Starting currency for new users
+                    messages_sent=0,
+                    reactions_sent=0,
+                    joined_at=joined_at,
+                    last_active=formatted_now,
+                    daily=0,
+                    last_daily=None,
+                    is_active=True
+                )
+                guild_users_to_upsert.append(guild_user)
 
-                    if user_dao.add_user(new_global_user):
-                        global_users_added += 1
-                        logger.info(f"Created new global user: {member.name}")
-                    else:
-                        logger.error(f"Failed to create global user: {member.name}")
+            # Perform bulk operations in separate thread to avoid blocking event loop
+            def bulk_db_operations():
+                success_global = user_dao.bulk_upsert_users(global_users_to_upsert)
+                success_guild = guild_user_dao.bulk_upsert_guild_users(guild_users_to_upsert)
+                return success_global, success_guild
 
-                # Handle guild user
-                existing_guild_user = guild_user_dao.get_guild_user(member.id, guild.id)
+            # Run blocking database operations in thread pool
+            success_global, success_guild = await asyncio.to_thread(bulk_db_operations)
 
-                if existing_guild_user:
-                    # Update name, nickname, and reactivate in one call
-                    existing_guild_user.name = member.name
-                    existing_guild_user.nickname = member.display_name
-                    existing_guild_user.is_active = True
-                    guild_user_dao.update_guild_user(existing_guild_user)
-                    guild_users_updated += 1
-                    logger.info(f"Updated guild user: {member.name} (nickname: {member.display_name}) in {guild.name}")
-                else:
-                    # Create new guild user record
-                    formatted_join_date = member.joined_at.strftime(
-                        "%Y-%m-%d %H:%M:%S") if member.joined_at else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                    new_guild_user = GuildUser(
-                        user_id=member.id,
-                        guild_id=guild.id,
-                        name=member.name,
-                        nickname=member.display_name,
-                        level=0,
-                        streak=0,
-                        highest_streak=0,
-                        exp=0,
-                        exp_gained=0,
-                        exp_lost=0,
-                        currency=1000,  # Starting currency for new users
-                        messages_sent=0,
-                        reactions_sent=0,
-                        joined_at=formatted_join_date,
-                        last_active=formatted_join_date,
-                        daily=0,
-                        last_daily=None,
-                        is_active=True
-                    )
-
-                    if guild_user_dao.add_guild_user(new_guild_user):
-                        guild_users_added += 1
-                    else:
-                        logger.error(f"Failed to add guild user: {member.name} to {guild.name}")
-
-            logger.info(
-                f"Member processing complete for {guild.name}: "
-                f"Global users: {global_users_added} added, {global_users_updated} updated | "
-                f"Guild users: {guild_users_added} added, {guild_users_updated} reactivated"
-            )
+            if success_global and success_guild:
+                logger.info(
+                    f"Member processing complete for {guild.name}: "
+                    f"Processed {len(global_users_to_upsert)} global users and {len(guild_users_to_upsert)} guild users in bulk"
+                )
+            else:
+                logger.error(f"Some bulk operations failed for {guild.name}")
 
         except Exception as e:
             logger.error(f"Error adding guild members for {guild.name}: {e}")
