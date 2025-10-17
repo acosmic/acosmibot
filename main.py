@@ -30,6 +30,7 @@ class Bot(commands.Bot):
             "Cogs.Admin_Stats",
             # "Cogs.DeleteAiThread",
             "Cogs.Slots",
+            "Cogs.Blackjack",
             # "Cogs.Reset_AI_Thread",
             # "Cogs.Reset_Season",
             # "Cogs.Reset_Daily",
