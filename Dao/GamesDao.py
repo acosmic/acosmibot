@@ -124,7 +124,7 @@ class GamesDao(BaseDao):
         where_clause = " AND ".join(where_clauses)
 
         sql = f"""
-            SELECT 
+            SELECT
                 game_type,
                 COUNT(*) as total_games,
                 SUM(amount_bet) as total_bet,
@@ -132,8 +132,8 @@ class GamesDao(BaseDao):
                 SUM(amount_lost) as total_lost,
                 SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN result = 'lose' THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN result = 'draw' THEN 1 ELSE 0 END) as draws
-            FROM Games 
+                SUM(CASE WHEN result = 'draw' OR result = 'push' THEN 1 ELSE 0 END) as draws
+            FROM Games
             WHERE {where_clause}
             GROUP BY game_type
         """
@@ -243,15 +243,15 @@ class GamesDao(BaseDao):
         where_clause = " AND ".join(where_clauses)
 
         sql = f"""
-            SELECT 
+            SELECT
                 COUNT(*) as total_games,
                 SUM(amount_bet) as total_bet,
                 SUM(amount_won) as total_won,
                 SUM(amount_lost) as total_lost,
                 SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN result = 'draw' THEN 1 ELSE 0 END) as draws,
+                SUM(CASE WHEN result = 'draw' OR result = 'push' THEN 1 ELSE 0 END) as draws,
                 MAX(amount_won) as biggest_win
-            FROM Games 
+            FROM Games
             WHERE {where_clause}
         """
 

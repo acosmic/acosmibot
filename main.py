@@ -49,6 +49,7 @@ class Bot(commands.Bot):
             "Cogs.Balance",
             "Cogs.Rank",
             "Cogs.Stats",
+            "Cogs.StatsGames",
             "Cogs.Give",
             "Cogs.Check_Bank",
             "Cogs.Eightball",

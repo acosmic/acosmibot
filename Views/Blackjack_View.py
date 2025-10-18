@@ -475,7 +475,7 @@ class Blackjack_View(discord.ui.View):
         elif total_won < total_lost:
             game_result = "lose"
         else:
-            game_result = "push"
+            game_result = "draw"
 
         total_bet = self.bet
         if self.game.doubled_down:
@@ -495,7 +495,7 @@ class Blackjack_View(discord.ui.View):
             guild_id=self.guild_id,
             game_type="blackjack",
             amount_bet=total_bet,
-            amount_won=total_won if game_result != "push" else 0,
+            amount_won=total_won if game_result != "draw" else 0,
             amount_lost=total_lost,
             result=game_result,
             game_data=game_data
