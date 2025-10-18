@@ -203,6 +203,10 @@ class LevelingSystem:
             # Add currency reward
             guild_user.currency += calculated_reward
 
+            # Save currency update to database
+            guild_user_dao = GuildUserDao()
+            guild_user_dao.update_guild_user(guild_user)
+
             # Send level up announcement if enabled
             if config["level_up_announcements"]:
                 # Determine channel to send announcement
@@ -218,9 +222,9 @@ class LevelingSystem:
                 # Create level up message with streak bonus info
                 emoji = "🎉"
                 if streak > 0:
-                    level_message = f'## {emoji} {user.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward:,} Credits! {base_reward:,} + {streak_bonus} from {streak}x Streak! {emoji}'
+                    level_message = f'## {user.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward:,} Credits! {base_reward:,} + {streak_bonus} from {streak}x Streak! {emoji}'
                 else:
-                    level_message = f'## {emoji} {user.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward:,} Credits! {emoji}'
+                    level_message = f'## {user.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward:,} Credits! {emoji}'
 
                 try:
                     await announcement_channel.send(level_message)
