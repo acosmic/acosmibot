@@ -267,10 +267,10 @@ class Deathroll_View(discord.ui.View):
         loser_user = guild_user_dao.get_guild_user(loser.id, self.guild_id)
 
         if winner_user and loser_user:
-            winner_user.currency += self.bet
+            guild_user_dao.update_currency_with_global_sync(winner.id, self.guild_id, self.bet)
+            guild_user_dao.update_currency_with_global_sync(loser.id, self.guild_id, -self.bet)
+            winner_user.currency += self.bet  # Update local objects
             loser_user.currency -= self.bet
-            guild_user_dao.update_guild_user(winner_user)
-            guild_user_dao.update_guild_user(loser_user)
 
             # Record games in database
             games_dao = GamesDao()

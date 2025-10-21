@@ -3,7 +3,7 @@ from lib2to3.fixes import fix_standarderror
 import discord
 from discord.ext import commands
 from discord import app_commands
-from Dao.UserDao import UserDao
+from Dao.GuildUserDao import GuildUserDao
 from logger import AppLogger
 
 class Bailout(commands.Cog):
@@ -21,13 +21,15 @@ class Bailout(commands.Cog):
         jail_channel = self.bot.get_channel(1233867818055893062)
         first_role = discord.utils.get(interaction.guild.roles, name="Microbe")
         inmate_role = discord.utils.get(interaction.guild.roles, name="Inmate")
-        
+
         bail = 100000
 
-        dao = UserDao()
-        current_user = dao.get_user(interaction.user.id)
+        guild_user_dao = GuildUserDao()
+        current_user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild.id)
 
-        
+        if not current_user:
+            await interaction.response.send_message("Failed to get user data.", ephemeral=True)
+            return
 
         if current_user.currency < bail:
             await interaction.response.send_message("You do not have enough credits for /bail.", ephemeral=True)
@@ -39,31 +41,30 @@ class Bailout(commands.Cog):
                     if role.name == "Inmate":
                         await interaction.user.remove_roles(role)
                         await interaction.user.add_roles(first_role)
+                        guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -bail)
                         current_user.currency -= bail
-                        dao.update_user(current_user)
                         await interaction.response.send_message(f"{interaction.user.name} paid {bail:,.0f} credits to get out of jail.")
                         await general_channel.send(f"## {interaction.user.name} paid {bail:,.0f} credits to get out of jail.")
                         return
                     else:
                         await interaction.response.send_message("You are not in jail.", ephemeral=True)
                         return
-            
+
             else:
-                
+
                 if inmate_role in target.roles:
                     await target.remove_roles(inmate_role)
                     if first_role not in target.roles:
-                        await target.add_roles(first_role)    
+                        await target.add_roles(first_role)
 
+                    guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -bail)
                     current_user.currency -= bail
-                    dao.update_user(current_user)
                     await interaction.response.send_message(f"{interaction.user.name} paid {bail:,.0f} credits to get {target.name} out of jail.")
                     await general_channel.send(f"## {interaction.user.name} paid {bail:,.0f} credits to get {target.name} out of jail.")
                     return
                 else:
                     await interaction.response.send_message(f"{target.name} is not in jail.", ephemeral=True)
                     return
-        dao.update_user(current_user)
                 
 
 async def setup(bot: commands.Bot):

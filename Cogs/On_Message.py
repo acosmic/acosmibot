@@ -172,12 +172,10 @@ class On_Message(commands.Cog):
             now = datetime.now(timezone.utc).replace(tzinfo=None)
             current_guild_user.last_active = now.strftime("%Y-%m-%d %H:%M:%S")
 
-            # Update message count
-            current_guild_user.messages_sent += 1
+            # Note: Message count is incremented in Leveling.py, not here
+            # to avoid double counting
 
             # Update global stats
-            if hasattr(current_user, 'total_messages'):
-                current_user.total_messages += 1
             if hasattr(current_user, 'last_seen'):
                 current_user.last_seen = now.strftime("%Y-%m-%d %H:%M:%S")
 

@@ -62,13 +62,13 @@ class Give(commands.Cog):
                     f"{interaction.user.name} tried to give {amount:,.0f} Credits to {target.name} but didn't have enough Credits.")
                 return
 
-            # Perform the transfer
+            # Perform the transfer with global sync
+            guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -amount)
+            guild_user_dao.update_currency_with_global_sync(target.id, interaction.guild.id, amount)
+
+            # Update local objects for display
             giving_user.currency -= amount
             target_user.currency += amount
-
-            # Update both users in database
-            guild_user_dao.update_guild_user(giving_user)
-            guild_user_dao.update_guild_user(target_user)
 
             await interaction.response.send_message(
                 f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>\n'

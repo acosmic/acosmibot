@@ -62,8 +62,9 @@ class Coinflip(commands.Cog):
         embed = discord.Embed()
 
         if result == call:
-            # User wins
-            guild_user.currency += cost
+            # User wins - update currency and global stats
+            guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, cost)
+            guild_user.currency += cost  # Update local object for display
             amount_won = cost
             amount_lost = 0
 
@@ -73,8 +74,9 @@ class Coinflip(commands.Cog):
             embed.add_field(name="New Balance", value=f"{guild_user.currency:,} credits", inline=True)
 
         else:
-            # User loses
-            guild_user.currency -= cost
+            # User loses - update currency and global stats
+            guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -cost)
+            guild_user.currency -= cost  # Update local object for display
             amount_won = 0
             amount_lost = cost
 
@@ -120,23 +122,23 @@ class Coinflip(commands.Cog):
         if not game_id:
             logger.error("Failed to log coinflip game")
 
-        # Update database
-        try:
-            guild_user_dao.update_guild_user(guild_user)
+        # Note: Currency already updated via update_currency_with_global_sync() above
+        # No additional database updates needed here
 
-            # Also update global user stats if needed
-            user_dao = UserDao()
-            global_user = user_dao.get_user(interaction.user.id)
-            if global_user:
-                if hasattr(global_user, 'total_currency'):
-                    if amount_won > 0:
-                        global_user.total_currency += amount_won
-                    elif amount_lost > 0:
-                        global_user.total_currency = max(0, global_user.total_currency - amount_lost)
-                    user_dao.update_user(global_user)
-
-        except Exception as e:
-            logger.error(f"Error updating database for coinflip: {e}")
+        # Commented out old manual update code - now handled by update_currency_with_global_sync()
+        # try:
+        #     guild_user_dao.update_guild_user(guild_user)
+        #     user_dao = UserDao()
+        #     global_user = user_dao.get_user(interaction.user.id)
+        #     if global_user:
+        #         if hasattr(global_user, 'total_currency'):
+        #             if amount_won > 0:
+        #                 global_user.total_currency += amount_won
+        #             elif amount_lost > 0:
+        #                 global_user.total_currency = max(0, global_user.total_currency - amount_lost)
+        #             user_dao.update_user(global_user)
+        # except Exception as e:
+        #     logger.error(f"Error updating database for coinflip: {e}")
 
             # # Check if we've already responded
             # if interaction.response.is_done():

@@ -185,8 +185,8 @@ class Blackjack_View(discord.ui.View):
             await interaction.response.send_message("You don't have enough credits for insurance!", ephemeral=True)
             return
 
-        player_user.currency -= insurance_cost
-        guild_user_dao.update_guild_user(player_user)
+        guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -insurance_cost)
+        player_user.currency -= insurance_cost  # Update local object
 
         self.game.take_insurance(self.bet)
         self.insurance_phase = False
@@ -283,9 +283,9 @@ class Blackjack_View(discord.ui.View):
             await interaction.response.send_message("You don't have enough credits to double down!", ephemeral=True)
             return
 
-        # Deduct the additional bet
-        player_user.currency -= self.bet
-        guild_user_dao.update_guild_user(player_user)
+        # Deduct the additional bet with global sync
+        guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+        player_user.currency -= self.bet  # Update local object
 
         self.main_game_started = True
         await interaction.response.defer()
@@ -317,9 +317,9 @@ class Blackjack_View(discord.ui.View):
             await interaction.response.send_message("You don't have enough credits to split!", ephemeral=True)
             return
 
-        # Deduct the split bet
-        player_user.currency -= self.bet
-        guild_user_dao.update_guild_user(player_user)
+        # Deduct the split bet with global sync
+        guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+        player_user.currency -= self.bet  # Update local object
 
         self.main_game_started = True
         await interaction.response.defer()
@@ -456,8 +456,8 @@ class Blackjack_View(discord.ui.View):
         player_user = guild_user_dao.get_guild_user(self.player.id, self.guild_id)
 
         if player_user:
-            player_user.currency += total_won
-            guild_user_dao.update_guild_user(player_user)
+            guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, total_won)
+            player_user.currency += total_won  # Update local object
 
             # Add to vault (10% of losses)
             if total_lost > 0:

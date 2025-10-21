@@ -160,9 +160,9 @@ class Blackjack(commands.Cog):
             )
             return
 
-        # Deduct bet from user's currency
-        current_guild_user.currency -= cost
-        guild_user_dao.update_guild_user(current_guild_user)
+        # Deduct bet from user's currency with global sync
+        guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -cost)
+        current_guild_user.currency -= cost  # Update local object
 
         # Create and send game view
         game_view = Blackjack_View(

@@ -687,6 +687,46 @@ class GuildUserDao(BaseDao[GuildUser]):
             self.logger.error(f"Error bulk upserting guild users: {e}")
             return False
 
+    def update_currency_with_global_sync(self, user_id: int, guild_id: int, currency_delta: int) -> bool:
+        """
+        Update guild user currency and synchronize with global user stats.
+        This method ensures that both guild-specific and global currency totals are updated atomically.
+
+        Args:
+            user_id (int): Discord user ID
+            guild_id (int): Discord guild ID
+            currency_delta (int): Amount to change currency by (positive for gain, negative for loss)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Update guild user currency
+            guild_sql = """
+                UPDATE GuildUsers
+                SET currency = currency + %s
+                WHERE user_id = %s AND guild_id = %s
+            """
+
+            # Update global user currency
+            global_sql = """
+                UPDATE Users
+                SET total_currency = total_currency + %s,
+                    last_seen = NOW()
+                WHERE id = %s
+            """
+
+            # Execute both updates
+            self.execute_query(guild_sql, (currency_delta, user_id, guild_id), commit=True)
+            self.execute_query(global_sql, (currency_delta, user_id), commit=True)
+
+            self.logger.debug(f"Updated currency for user {user_id} in guild {guild_id}: delta={currency_delta}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error updating currency with global sync for user {user_id} in guild {guild_id}: {e}")
+            return False
+
     def save(self, guild_user: GuildUser) -> Optional[GuildUser]:
         """
         Save a guild user to the database (insert if new, update if exists).

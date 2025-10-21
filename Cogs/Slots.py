@@ -188,10 +188,11 @@ class Slots(commands.Cog):
             embed.description = f"# 🎰 {interaction.user.name} 🎰\n\n{result}\n\nYou lost {amount_lost:,} credits."
             embed.color = discord.Color.red()
 
-        # Update user currency
+        # Update user currency and global stats
+        currency_delta = amount_won - amount_lost
+        guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, currency_delta)
         current_guild_user.currency += amount_won
-        current_guild_user.currency -= amount_lost
-        guild_user_dao.update_guild_user(current_guild_user)
+        current_guild_user.currency -= amount_lost  # Update local object for display
 
         # Update bank currency
         guild_dao.add_vault_currency(interaction.guild_id, int(amount_lost * 0.1))

@@ -2,7 +2,7 @@ import typing
 import discord
 from discord.ext import commands
 from discord import app_commands
-from Dao.UserDao import UserDao
+from Dao.GuildUserDao import GuildUserDao
 from logger import AppLogger
 
 
@@ -20,11 +20,18 @@ class Burn(commands.Cog):
             await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
             return
         role = discord.utils.get(interaction.guild.roles, name="Acosmic")
-        dao = UserDao()
+        guild_user_dao = GuildUserDao()
         if role in interaction.user.roles:
-            target_user = dao.get_user(target.id)
+            target_user = guild_user_dao.get_guild_user(target.id, interaction.guild.id)
+
+            if not target_user:
+                await interaction.response.send_message("Failed to get user data.", ephemeral=True)
+                return
 
             if column == "currency":
+                # Calculate how much we're burning to sync global stats
+                currency_delta = -target_user.currency
+                guild_user_dao.update_currency_with_global_sync(target.id, interaction.guild.id, currency_delta)
                 target_user.currency = 0
 
             if column == "exp":
@@ -34,16 +41,18 @@ class Burn(commands.Cog):
                 target_user.daily = 0
 
             if column == "streak":
-                target_user.daily = 0
+                target_user.streak = 0
 
             if column == "level":
-                target_user.level = 0            
+                target_user.level = 0
 
             try:
-                dao.update_user(target_user)
+                # Only update if not currency (currency already updated via update_currency_with_global_sync)
+                if column != "currency":
+                    guild_user_dao.update_guild_user(target_user)
                 await interaction.response.send_message(f"{interaction.user.name} has burned {target.mention}'s {column} to 0! <a:pepesith:1165101386921418792>")
             except Exception as e:
-                logger.info(f'/give command - target = {target.name} - {e}.')
+                logger.error(f'/admin-burn command - target = {target.name} - {e}.')
         else:
             await interaction.response.send_message(f'only {role} can run this command. <:FeelsNaughty:1199732493792858214>', ephemeral=True)
    

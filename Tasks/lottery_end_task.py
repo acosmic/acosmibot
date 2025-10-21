@@ -142,9 +142,9 @@ async def _update_lottery_records(lottery_event, winner_guild_user, lottery_cred
         lottery_event.credits = lottery_credits
         le_dao.update_event(lottery_event)
 
-        # Update winner's guild currency
-        winner_guild_user.currency += lottery_credits
-        guild_user_dao.update_guild_user(winner_guild_user)
+        # Update winner's guild currency with global sync
+        guild_user_dao.update_currency_with_global_sync(winner_guild_user.user_id, guild.id, lottery_credits)
+        winner_guild_user.currency += lottery_credits  # Update local object
 
         # Reset guild vault currency to 0
         guild_dao.update_vault_currency(guild.id, 0)

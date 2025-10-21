@@ -48,11 +48,11 @@ class Admin_Give(commands.Cog):
                     await interaction.response.send_message("Failed to get user data.", ephemeral=True)
                     return
 
-                # Add currency to guild user
-                target_guild_user.currency += amount
+                # Add currency to guild user with global sync
+                guild_user_dao.update_currency_with_global_sync(target.id, interaction.guild.id, amount)
 
-                # Update database
-                guild_user_dao.update_guild_user(target_guild_user)
+                # Update local object for display
+                target_guild_user.currency += amount
 
                 await interaction.response.send_message(
                     f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! 🎰'
