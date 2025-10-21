@@ -122,9 +122,6 @@ class ReminderDao(BaseDao[Reminder]):
     def get_due_reminders(self) -> List[Reminder]:
         """
         Get all reminders that are due and not completed.
-
-        Returns:
-            List[Reminder]: List of due reminders
         """
         sql = """
               SELECT id, \
@@ -143,14 +140,14 @@ class ReminderDao(BaseDao[Reminder]):
               """
 
         try:
-            # Use naive UTC datetime to match how we store in the database
-            # Strip microseconds to match MySQL DATETIME precision
             now_utc_naive = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
             results = self.execute_query(sql, (now_utc_naive,))
+
             reminders = []
             if results:
                 for row in results:
+                    self.logger.info(f"[get_due_reminders] Found due reminder: id={row[0]} remind_at={row[5]} user_id={row[1]}")
                     reminder = Reminder(
                         id=row[0],
                         user_id=row[1],
@@ -163,9 +160,11 @@ class ReminderDao(BaseDao[Reminder]):
                         message_url=row[8] if row[8] else ""
                     )
                     reminders.append(reminder)
+
             return reminders
+
         except Exception as e:
-            self.logger.error(f"Error getting due reminders: {e}")
+            self.logger.error(f"[get_due_reminders] Error: {e}", exc_info=True)
             return []
 
     def mark_completed(self, reminder_id: int) -> bool:

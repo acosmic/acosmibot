@@ -63,6 +63,8 @@ class ReminderCommand(commands.Cog):
         # Create message URL
         message_url = f"https://discord.com/channels/{interaction.guild_id}/{interaction.channel_id}"
 
+        remind_at = remind_at.replace(microsecond=0)
+
         # Create reminder object
         reminder = Reminder(
             user_id=interaction.user.id,

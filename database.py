@@ -20,7 +20,8 @@ class Database:
             host=self.db_host,
             user=self.db_user,
             password=self.db_password,
-            database=self.db_name
+            database=self.db_name,
+            autocommit=True  # Enable autocommit to see cross-connection changes immediately
         )
         self.mycursor = self.mydb.cursor()
 

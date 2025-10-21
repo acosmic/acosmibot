@@ -20,6 +20,11 @@ class AIControls(commands.Cog):
         # Format: {guild_id: {channel_id: [(user_name, message, is_bot, timestamp), ...]}}
         self.conversation_history = {}
 
+        # Mention rate limiting (prevents spam mentions)
+        # Format: {user_id:guild_id: datetime}
+        self.mention_cooldowns = {}
+        self.mention_cooldown_seconds = 3  # Cooldown between mentions
+
         # Configuration
         self.max_history_per_channel = 15  # Keep last 15 messages for context
         self.history_cleanup_hours = 6  # Clear history older than 6 hours
@@ -32,6 +37,34 @@ class AIControls(commands.Cog):
         if hasattr(self, 'cleanup_task'):
             self.cleanup_task.cancel()
 
+    def is_on_mention_cooldown(self, user_id: int, guild_id: int) -> bool:
+        """Check if user is on mention cooldown"""
+        now = datetime.now()
+
+        # Auto-cleanup: remove expired cooldown entries to prevent memory leak
+        expired_keys = [
+            key for key, timestamp in self.mention_cooldowns.items()
+            if (now - timestamp).total_seconds() > self.mention_cooldown_seconds
+        ]
+        for key in expired_keys:
+            del self.mention_cooldowns[key]
+
+        # Check current user's cooldown
+        cooldown_key = f"{user_id}:{guild_id}"
+
+        if cooldown_key not in self.mention_cooldowns:
+            return False
+
+        last_mention_time = self.mention_cooldowns[cooldown_key]
+        time_since_last = (now - last_mention_time).total_seconds()
+
+        return time_since_last < self.mention_cooldown_seconds
+
+    def set_mention_cooldown(self, user_id: int, guild_id: int):
+        """Set user on mention cooldown"""
+        cooldown_key = f"{user_id}:{guild_id}"
+        self.mention_cooldowns[cooldown_key] = datetime.now()
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Handle AI interactions when bot is mentioned"""
@@ -41,6 +74,15 @@ class AIControls(commands.Cog):
 
         # Check if bot is mentioned
         if self.bot.user in message.mentions:
+            # Check mention cooldown to prevent spam
+            if self.is_on_mention_cooldown(message.author.id, message.guild.id):
+                # Silently ignore spam mentions
+                return
+
+            # Set cooldown for this user
+            self.set_mention_cooldown(message.author.id, message.guild.id)
+
+            # Process the mention
             await self.handle_ai_interaction(message)
 
     async def handle_ai_interaction(self, message: discord.Message):

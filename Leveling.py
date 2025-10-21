@@ -77,13 +77,24 @@ class LevelingSystem:
 
     def is_user_on_cooldown(self, user_id, guild_id, cooldown_seconds):
         """Check if user is on experience cooldown"""
+        now = datetime.now()
+
+        # Auto-cleanup: remove expired cooldown entries to prevent memory leak
+        expired_keys = [
+            key for key, timestamp in self.user_cooldowns.items()
+            if (now - timestamp).total_seconds() > cooldown_seconds
+        ]
+        for key in expired_keys:
+            del self.user_cooldowns[key]
+
+        # Check current user's cooldown
         cooldown_key = f"{guild_id}_{user_id}"
 
         if cooldown_key not in self.user_cooldowns:
             return False
 
         last_exp_time = self.user_cooldowns[cooldown_key]
-        time_since_last = (datetime.now() - last_exp_time).total_seconds()
+        time_since_last = (now - last_exp_time).total_seconds()
 
         return time_since_last < cooldown_seconds
 

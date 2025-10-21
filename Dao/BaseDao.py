@@ -43,8 +43,8 @@ class BaseDao(Generic[T]):
 
     from mysql.connector.errors import OperationalError, InterfaceError
 
-    def execute_query(self, query: str, params: Optional[tuple] = None, commit: bool = False) -> Union[
-        Optional[List[tuple]], bool]:
+    def execute_query(self, query: str, params: Optional[tuple] = None, commit: bool = False, return_description: bool = False) -> Union[
+        Optional[List[tuple]], bool, Tuple[Optional[List[tuple]], Optional[List]]]:
         """
         Execute a SQL query with error handling and connection recovery.
 
@@ -52,20 +52,24 @@ class BaseDao(Generic[T]):
             query (str): SQL query with placeholders
             params (Optional[tuple], optional): Query parameters. Defaults to None.
             commit (bool, optional): Whether to commit the transaction. Defaults to False.
+            return_description (bool, optional): Whether to return cursor description with results. Defaults to False.
 
         Returns:
             Union[Optional[List[tuple]], bool]: Query results for SELECT queries, True for successful commits, None/False on error
+            If return_description=True, returns tuple of (results, description)
         """
         max_retries = 2
 
         for attempt in range(max_retries + 1):
+            cursor = None
             try:
                 # Check if connection is still alive
                 if not self.db.mydb.is_connected():
                     self.logger.info("Database connection lost, attempting to reconnect...")
                     self._reconnect()
 
-                cursor = self.db.mycursor
+                # Create a fresh cursor for each query to avoid stale state
+                cursor = self.db.mydb.cursor()
 
                 # Log the query for debugging
                 if params:
@@ -77,7 +81,11 @@ class BaseDao(Generic[T]):
                     self.db.mydb.commit()
                     return True  # Return True for successful commit
                 else:
-                    return cursor.fetchall()
+                    results = cursor.fetchall()
+                    if return_description:
+                        description = cursor.description
+                        return (results, description)
+                    return results
 
             except MySQLError as err:
                 self.logger.error(f"Database error (attempt {attempt + 1}): {err}")
@@ -98,9 +106,21 @@ class BaseDao(Generic[T]):
                         self.db.mydb.rollback()
                     except:
                         pass
+                if return_description:
+                    return (None, None) if not commit else False
                 return False if commit else None
 
+            finally:
+                # Always close the cursor after use
+                if cursor:
+                    try:
+                        cursor.close()
+                    except:
+                        pass
+
         # If we get here, all retries failed
+        if return_description:
+            return (None, None) if not commit else False
         return False if commit else None
 
     def execute_many(self, query: str, params_list: List[tuple], commit: bool = False) -> bool:
@@ -121,13 +141,15 @@ class BaseDao(Generic[T]):
         max_retries = 2
 
         for attempt in range(max_retries + 1):
+            cursor = None
             try:
                 # Check if connection is still alive
                 if not self.db.mydb.is_connected():
                     self.logger.info("Database connection lost, attempting to reconnect...")
                     self._reconnect()
 
-                cursor = self.db.mycursor
+                # Create a fresh cursor for each query to avoid stale state
+                cursor = self.db.mydb.cursor()
 
                 # Execute many with all parameter sets
                 cursor.executemany(query, params_list)
@@ -158,6 +180,14 @@ class BaseDao(Generic[T]):
                     except:
                         pass
                 return False
+
+            finally:
+                # Always close the cursor after use
+                if cursor:
+                    try:
+                        cursor.close()
+                    except:
+                        pass
 
         # If we get here, all retries failed
         return False
@@ -225,11 +255,11 @@ class BaseDao(Generic[T]):
         """
         try:
             query = f"SELECT * FROM {self.table_name} WHERE id = %s"
-            result = self.execute_query(query, (id_value,))
+            result, description = self.execute_query(query, (id_value,), return_description=True)
 
-            if result and len(result) > 0:
+            if result and len(result) > 0 and description:
                 # Convert tuple to dictionary
-                columns = [column[0] for column in self.db.mycursor.description]
+                columns = [column[0] for column in description]
                 entity_dict = dict(zip(columns, result[0]))
 
                 # Create entity from dictionary
@@ -249,11 +279,11 @@ class BaseDao(Generic[T]):
         """
         try:
             query = f"SELECT * FROM {self.table_name}"
-            results = self.execute_query(query)
+            results, description = self.execute_query(query, return_description=True)
 
             entities = []
-            if results:
-                columns = [column[0] for column in self.db.mycursor.description]
+            if results and description:
+                columns = [column[0] for column in description]
                 for row in results:
                     entity_dict = dict(zip(columns, row))
                     entities.append(self.entity_class.from_dict(entity_dict))
