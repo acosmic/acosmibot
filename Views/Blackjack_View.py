@@ -365,7 +365,24 @@ class Blackjack_View(discord.ui.View):
         if self.game.has_insurance:
             total_bet += self.game.insurance_bet
 
-        title = f"♠️ Blackjack - {total_bet:,} Credits at Risk ♥️"
+        # Determine title based on game state
+        if self.game.game_over:
+            # Game ended - show winner in title
+            if self.game.surrendered:
+                title = f"♠️ Blackjack - Surrendered ♥️"
+            else:
+                total_won, total_lost, _ = self.game.calculate_total_payout(self.bet)
+                net = total_won - total_lost
+
+                if net > 0:
+                    title = f"♠️ Blackjack - {self.player.display_name} wins! ♥️"
+                elif net < 0:
+                    title = f"♠️ Blackjack - Dealer wins! ♥️"
+                else:
+                    title = f"♠️ Blackjack - Push! ♥️"
+        else:
+            # Game in progress - show credits at risk
+            title = f"♠️ Blackjack - {total_bet:,} Credits at Risk ♥️"
 
         # Insurance phase
         if self.insurance_phase:

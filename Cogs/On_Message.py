@@ -200,7 +200,7 @@ class On_Message(commands.Cog):
             # OTHER REACTIONS
             if message.content.lower() == "yo":
                 try:
-                    yo_emojis = ["🖕", "🍆", "🤝", "🦉", "🤡", "😘", "👋", "👽", "🦏", "❄️", "🤙"]
+                    yo_emojis = ["🖕", "🍆", "🤝", "🦉", "🤡", "😘", "👋", "👽", "🤙"]
                     await message.add_reaction(random.choice(yo_emojis))
                 except:
                     pass  # If reaction fails, just continue
@@ -248,32 +248,22 @@ class On_Message(commands.Cog):
             guild_user.daily = 1
             guild_user.last_daily = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
-            # Send daily reward message using custom templates
+            # Send daily reward message using custom template
             if daily_channel:
                 # Get leveling config for custom message templates
                 leveling_config = self.get_leveling_config(member.guild.id)
 
-                if streak > 0:
-                    # Use template with streak
-                    template = leveling_config.get("daily_announcement_message_with_streak",
-                        "💰 {mention} claimed their daily reward! +{credits} Credits! ({base_credits} + {streak_bonus} from {streak}x streak!)")
-                    message = template.format(
-                        mention=member.mention,
-                        username=member.name,
-                        credits=f"{calculated_daily_reward:,}",
-                        base_credits=f"{base_daily:,}",
-                        streak=streak,
-                        streak_bonus=f"{streak_bonus:,}"
-                    )
-                else:
-                    # Use regular daily template
-                    template = leveling_config.get("daily_announcement_message",
-                        "💰 {mention} claimed their daily reward! +{credits} Credits!")
-                    message = template.format(
-                        mention=member.mention,
-                        username=member.name,
-                        credits=f"{calculated_daily_reward:,}"
-                    )
+                # Use single template with all placeholders available
+                template = leveling_config.get("daily_announcement_message",
+                    "{username} claimed their daily reward! +{credits} Credits! 💰")
+                message = template.format(
+                    mention=member.mention,
+                    username=member.name,
+                    credits=f"{calculated_daily_reward:,}",
+                    base_credits=f"{base_daily:,}",
+                    streak=streak,
+                    streak_bonus=f"{streak_bonus:,}"
+                )
 
                 await daily_channel.send(message)
 

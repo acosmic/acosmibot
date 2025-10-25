@@ -231,31 +231,19 @@ class LevelingSystem:
                     announcement_channel = message.channel
 
                 # Create level up message using custom template
-                if streak > 0:
-                    # Use template with streak
-                    template = config.get("level_up_message_with_streak",
-                        "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits! {base_credits} + {streak_bonus} from {streak}x Streak!")
-                    level_message = template.format(
-                        mention=user.mention,
-                        username=user.name,
-                        level=new_level,
-                        xp=guild_user.exp,
-                        credits=f"{calculated_reward:,}",
-                        base_credits=f"{base_reward:,}",
-                        streak=streak,
-                        streak_bonus=f"{streak_bonus:,}"
-                    )
-                else:
-                    # Use regular level up template
-                    template = config.get("level_up_message",
-                        "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits!")
-                    level_message = template.format(
-                        mention=user.mention,
-                        username=user.name,
-                        level=new_level,
-                        xp=guild_user.exp,
-                        credits=f"{calculated_reward:,}"
-                    )
+                # Use single template with all placeholders available
+                template = config.get("level_up_message",
+                    "{username}, you have reached level {level}! Gained {credits} Credits! 🎉")
+                level_message = template.format(
+                    mention=user.mention,
+                    username=user.name,
+                    level=new_level,
+                    xp=guild_user.exp,
+                    credits=f"{calculated_reward:,}",
+                    base_credits=f"{base_reward:,}",
+                    streak=streak,
+                    streak_bonus=f"{streak_bonus:,}"
+                )
 
                 try:
                     await announcement_channel.send(level_message)
@@ -333,7 +321,7 @@ class LevelingSystem:
                     # Send role announcement if enabled
                     if roles_config.get("role_announcement", False):
                         # Get custom announcement message for this level or use default
-                        role_mapping_entry = roles_settings.get("role_mappings", {}).get(str(new_level))
+                        role_mapping_entry = roles_config.get("role_mappings", {}).get(str(new_level))
 
                         if isinstance(role_mapping_entry, dict):
                             # New format with custom message
