@@ -52,6 +52,9 @@ class UserDao(BaseDao[User]):
                                global_exp INT DEFAULT 0,
                                global_level INT DEFAULT 0,
                                total_currency INT DEFAULT 0,
+                               bank_balance INT DEFAULT 0,
+                               daily_transfer_amount INT DEFAULT 0,
+                               last_transfer_reset DATE,
                                total_messages INT DEFAULT 0,
                                total_reactions INT DEFAULT 0,
                                account_created DATETIME,
@@ -61,7 +64,8 @@ class UserDao(BaseDao[User]):
                                global_settings JSON,
                                INDEX idx_global_exp (global_exp DESC),
                                INDEX idx_global_level (global_level DESC),
-                               INDEX idx_total_currency (total_currency DESC)
+                               INDEX idx_total_currency (total_currency DESC),
+                               INDEX idx_bank_balance (bank_balance DESC)
                                ) \
                            '''
         self.create_table_if_not_exists(create_table_sql)
@@ -85,6 +89,9 @@ class UserDao(BaseDao[User]):
                                  global_exp, \
                                  global_level, \
                                  total_currency, \
+                                 bank_balance, \
+                                 daily_transfer_amount, \
+                                 last_transfer_reset, \
                                  total_messages, \
                                  total_reactions, \
                                  account_created, \
@@ -92,7 +99,7 @@ class UserDao(BaseDao[User]):
                                  last_seen, \
                                  privacy_settings, \
                                  global_settings) \
-              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
               '''
         values = (
             new_user.id,
@@ -103,6 +110,9 @@ class UserDao(BaseDao[User]):
             new_user.global_exp,
             new_user.global_level,
             new_user.total_currency,
+            new_user.bank_balance,
+            new_user.daily_transfer_amount,
+            new_user.last_transfer_reset,
             new_user.total_messages,
             new_user.total_reactions,
             new_user.account_created,
@@ -138,6 +148,9 @@ class UserDao(BaseDao[User]):
                   global_exp       = %s,
                   global_level     = %s,
                   total_currency   = %s,
+                  bank_balance     = %s,
+                  daily_transfer_amount = %s,
+                  last_transfer_reset = %s,
                   total_messages   = %s,
                   total_reactions  = %s,
                   account_created  = %s,
@@ -155,6 +168,9 @@ class UserDao(BaseDao[User]):
             updated_user.global_exp,
             updated_user.global_level,
             updated_user.total_currency,
+            updated_user.bank_balance,
+            updated_user.daily_transfer_amount,
+            updated_user.last_transfer_reset,
             updated_user.total_messages,
             updated_user.total_reactions,
             updated_user.account_created,
@@ -198,13 +214,16 @@ class UserDao(BaseDao[User]):
                     global_exp=user_data[5],
                     global_level=user_data[6],
                     total_currency=user_data[7],
-                    total_messages=user_data[8],
-                    total_reactions=user_data[9],
-                    account_created=user_data[10],
-                    first_seen=user_data[11],
-                    last_seen=user_data[12],
-                    privacy_settings=user_data[13],
-                    global_settings=user_data[14]
+                    bank_balance=user_data[8],
+                    daily_transfer_amount=user_data[9],
+                    last_transfer_reset=user_data[10],
+                    total_messages=user_data[11],
+                    total_reactions=user_data[12],
+                    account_created=user_data[13],
+                    first_seen=user_data[14],
+                    last_seen=user_data[15],
+                    privacy_settings=user_data[16],
+                    global_settings=user_data[17]
                 )
                 return user
             return None
@@ -239,13 +258,16 @@ class UserDao(BaseDao[User]):
                     global_exp=user_data[5],
                     global_level=user_data[6],
                     total_currency=user_data[7],
-                    total_messages=user_data[8],
-                    total_reactions=user_data[9],
-                    account_created=user_data[10],
-                    first_seen=user_data[11],
-                    last_seen=user_data[12],
-                    privacy_settings=user_data[13],
-                    global_settings=user_data[14]
+                    bank_balance=user_data[8],
+                    daily_transfer_amount=user_data[9],
+                    last_transfer_reset=user_data[10],
+                    total_messages=user_data[11],
+                    total_reactions=user_data[12],
+                    account_created=user_data[13],
+                    first_seen=user_data[14],
+                    last_seen=user_data[15],
+                    privacy_settings=user_data[16],
+                    global_settings=user_data[17]
                 )
                 return user
             return None
@@ -568,13 +590,16 @@ class UserDao(BaseDao[User]):
                         global_exp=user_data[5],
                         global_level=user_data[6],
                         total_currency=user_data[7],
-                        total_messages=user_data[8],
-                        total_reactions=user_data[9],
-                        account_created=user_data[10],
-                        first_seen=user_data[11],
-                        last_seen=user_data[12],
-                        privacy_settings=user_data[13],
-                        global_settings=user_data[14]
+                        bank_balance=user_data[8],
+                        daily_transfer_amount=user_data[9],
+                        last_transfer_reset=user_data[10],
+                        total_messages=user_data[11],
+                        total_reactions=user_data[12],
+                        account_created=user_data[13],
+                        first_seen=user_data[14],
+                        last_seen=user_data[15],
+                        privacy_settings=user_data[16],
+                        global_settings=user_data[17]
                     ))
 
             return users
@@ -675,6 +700,9 @@ class UserDao(BaseDao[User]):
                 global_exp=0,
                 global_level=0,
                 total_currency=0,
+                bank_balance=0,
+                daily_transfer_amount=0,
+                last_transfer_reset=None,
                 total_messages=0,
                 total_reactions=0,
                 account_created=account_created,
@@ -728,10 +756,11 @@ class UserDao(BaseDao[User]):
 
         sql = '''
               INSERT INTO Users (id, discord_username, global_name, avatar_url, is_bot,
-                                 global_exp, global_level, total_currency, total_messages,
+                                 global_exp, global_level, total_currency, bank_balance,
+                                 daily_transfer_amount, last_transfer_reset, total_messages,
                                  total_reactions, account_created, first_seen, last_seen,
                                  privacy_settings, global_settings)
-              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
               ON DUPLICATE KEY UPDATE
                   discord_username = VALUES(discord_username),
                   global_name = VALUES(global_name),
@@ -751,6 +780,9 @@ class UserDao(BaseDao[User]):
                     user.global_exp,
                     user.global_level,
                     user.total_currency,
+                    user.bank_balance,
+                    user.daily_transfer_amount,
+                    user.last_transfer_reset,
                     user.total_messages,
                     user.total_reactions,
                     user.account_created,
@@ -798,3 +830,106 @@ class UserDao(BaseDao[User]):
         except Exception as e:
             self.logger.error(f"Error saving user: {e}")
             return None
+
+    # ==================== Bank Methods ====================
+
+    def get_bank_balance(self, user_id: int) -> Optional[int]:
+        """
+        Get a user's bank balance.
+
+        Args:
+            user_id (int): User ID
+
+        Returns:
+            Optional[int]: Bank balance or None on error
+        """
+        sql = 'SELECT bank_balance FROM Users WHERE id = %s'
+
+        try:
+            result = self.execute_query(sql, (user_id,))
+            if result and len(result) > 0:
+                return result[0][0]
+            return None
+        except Exception as e:
+            self.logger.error(f"Error getting bank balance for user {user_id}: {e}")
+            return None
+
+    def update_bank_balance(self, user_id: int, new_balance: int) -> bool:
+        """
+        Update a user's bank balance atomically.
+
+        Args:
+            user_id (int): User ID
+            new_balance (int): New bank balance
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = 'UPDATE Users SET bank_balance = %s WHERE id = %s'
+
+        try:
+            self.execute_query(sql, (new_balance, user_id), commit=True)
+            self.logger.info(f"Updated bank balance for user {user_id} to {new_balance}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating bank balance for user {user_id}: {e}")
+            return False
+
+    def reset_daily_transfer_if_needed(self, user_id: int) -> bool:
+        """
+        Reset daily transfer amount if it's a new day.
+        Checks last_transfer_reset and resets if different from current date.
+
+        Args:
+            user_id (int): User ID
+
+        Returns:
+            bool: True if reset occurred or not needed, False on error
+        """
+        from datetime import date
+
+        sql = '''
+              UPDATE Users
+              SET daily_transfer_amount = 0,
+                  last_transfer_reset = %s
+              WHERE id = %s
+                AND (last_transfer_reset IS NULL OR last_transfer_reset < %s) \
+              '''
+
+        try:
+            today = date.today()
+            result = self.execute_query(sql, (today, user_id, today), commit=True)
+            # Check if any rows were updated
+            if result is not None:
+                self.logger.debug(f"Reset daily transfer for user {user_id}")
+                return True
+            return True  # No reset needed
+        except Exception as e:
+            self.logger.error(f"Error resetting daily transfer for user {user_id}: {e}")
+            return False
+
+    def increment_daily_transfer(self, user_id: int, amount: int) -> bool:
+        """
+        Increment the daily transfer amount for a user.
+        Should be called after reset_daily_transfer_if_needed().
+
+        Args:
+            user_id (int): User ID
+            amount (int): Amount to add to daily total
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = '''
+              UPDATE Users
+              SET daily_transfer_amount = daily_transfer_amount + %s
+              WHERE id = %s \
+              '''
+
+        try:
+            self.execute_query(sql, (amount, user_id), commit=True)
+            self.logger.debug(f"Incremented daily transfer for user {user_id} by {amount}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error incrementing daily transfer for user {user_id}: {e}")
+            return False

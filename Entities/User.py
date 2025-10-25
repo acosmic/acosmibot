@@ -20,6 +20,9 @@ class User(BaseEntity):
             global_exp: int = 0,
             global_level: int = 0,
             total_currency: int = 0,
+            bank_balance: int = 0,
+            daily_transfer_amount: int = 0,
+            last_transfer_reset: Union[str, datetime, None] = None,
             total_messages: int = 0,
             total_reactions: int = 0,
             account_created: Union[str, datetime, None] = None,
@@ -41,12 +44,15 @@ class User(BaseEntity):
         self._global_exp = self._convert_to_int(global_exp)
         self._global_level = self._convert_to_int(global_level)
         self._total_currency = self._convert_to_int(total_currency)
+        self._bank_balance = self._convert_to_int(bank_balance)
+        self._daily_transfer_amount = self._convert_to_int(daily_transfer_amount)
         self._total_messages = self._convert_to_int(total_messages)
         self._total_reactions = self._convert_to_int(total_reactions)
 
         self._account_created = account_created
         self._first_seen = first_seen
         self._last_seen = last_seen
+        self._last_transfer_reset = last_transfer_reset
         self._privacy_settings = privacy_settings
         self._global_settings = global_settings
 
@@ -112,6 +118,36 @@ class User(BaseEntity):
     def total_currency(self, value):
         """Set total currency, ensuring it's an int"""
         self._total_currency = self._convert_to_int(value)
+
+    @property
+    def bank_balance(self) -> int:
+        """Currency stored in personal bank"""
+        return self._bank_balance
+
+    @bank_balance.setter
+    def bank_balance(self, value):
+        """Set bank balance, ensuring it's an int"""
+        self._bank_balance = self._convert_to_int(value)
+
+    @property
+    def daily_transfer_amount(self) -> int:
+        """Amount transferred today (for daily limit tracking)"""
+        return self._daily_transfer_amount
+
+    @daily_transfer_amount.setter
+    def daily_transfer_amount(self, value):
+        """Set daily transfer amount, ensuring it's an int"""
+        self._daily_transfer_amount = self._convert_to_int(value)
+
+    @property
+    def last_transfer_reset(self) -> Union[str, datetime, None]:
+        """Last date when daily transfer amount was reset"""
+        return self._last_transfer_reset
+
+    @last_transfer_reset.setter
+    def last_transfer_reset(self, value):
+        """Set last transfer reset date"""
+        self._last_transfer_reset = value
 
     @property
     def total_messages(self) -> int:

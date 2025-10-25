@@ -12,7 +12,7 @@ class CheckBank(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="checkbank", description="Check the amount of Credits in this server's bank!")
+    @app_commands.command(name="guildbank", description="Check the amount of Credits in this server's bank!")
     async def checkbank(self, interaction: discord.Interaction):
         # Only work in guilds
         if not interaction.guild:
@@ -25,7 +25,7 @@ class CheckBank(commands.Cog):
 
         await interaction.response.send_message(
             f"There is currently {formatted_currency} Credits in {interaction.guild.name}'s Bank! 🏦")
-        logger.info(f"{interaction.user.name} used /checkvault command in {interaction.guild.name}")
+        logger.info(f"{interaction.user.name} used /guildbank command in {interaction.guild.name}")
 
 
 async def setup(bot: commands.Bot):

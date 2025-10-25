@@ -24,6 +24,7 @@ class Bot(commands.Bot):
             "Cogs.Admin_Start_Lotto",
             "Cogs.RipAudio",
             "Cogs.ReminderCommand",
+            "Cogs.Bank",
             # "Cogs.RPG",
             # "Cogs.Admin_Jail",
             # "Cogs.Admin_Jail_Release",

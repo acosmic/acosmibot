@@ -3,6 +3,7 @@ from datetime import datetime
 from database import Database
 from Dao.BaseDao import BaseDao
 from Entities.GuildUser import GuildUser
+from Entities.BankTransaction import BankTransaction
 from dotenv import load_dotenv
 import os
 import logging
@@ -754,3 +755,214 @@ class GuildUserDao(BaseDao[GuildUser]):
         except Exception as e:
             self.logger.error(f"Error saving guild user: {e}")
             return None
+
+    # ==================== Bank Transfer Methods ====================
+
+    def transfer_to_bank(self, user_id: int, guild_id: int, amount: int, fee: int = 0) -> Dict[str, Any]:
+        """
+        Transfer currency from guild wallet to global bank atomically.
+        Handles: guild currency deduction, bank balance increase, fee to guild vault, transaction logging.
+
+        Args:
+            user_id (int): Discord user ID
+            guild_id (int): Discord guild ID
+            amount (int): Amount to deposit (before fees)
+            fee (int): Fee amount that goes to guild vault (default 0)
+
+        Returns:
+            Dict with keys: success (bool), message (str), balance_before (int), balance_after (int)
+        """
+        from Dao.UserDao import UserDao
+        from Dao.BankTransactionDao import BankTransactionDao
+        from Dao.GuildDao import GuildDao
+
+        try:
+            user_dao = UserDao()
+            bank_dao = BankTransactionDao()
+            guild_dao = GuildDao()
+
+            # Get current balances
+            guild_user = self.get_guild_user(user_id, guild_id)
+            if not guild_user:
+                return {'success': False, 'message': 'Guild user not found'}
+
+            user = user_dao.get_user(user_id)
+            if not user:
+                return {'success': False, 'message': 'User not found'}
+
+            # Validate sufficient funds
+            if guild_user.currency < amount:
+                return {
+                    'success': False,
+                    'message': f'Insufficient funds. You have {guild_user.currency:,} credits in this server.'
+                }
+
+            # Calculate net deposit (after fee)
+            net_deposit = amount - fee
+            balance_before = user.bank_balance
+            balance_after = balance_before + net_deposit
+
+            # Start atomic transaction
+            # 1. Deduct from guild wallet
+            guild_sql = """
+                UPDATE GuildUsers
+                SET currency = currency - %s
+                WHERE user_id = %s AND guild_id = %s
+            """
+            self.execute_query(guild_sql, (amount, user_id, guild_id), commit=False)
+
+            # 2. Add to bank balance
+            bank_sql = """
+                UPDATE Users
+                SET bank_balance = bank_balance + %s
+                WHERE id = %s
+            """
+            self.execute_query(bank_sql, (net_deposit, user_id), commit=False)
+
+            # 3. If fee exists, add to guild vault
+            if fee > 0:
+                vault_sql = """
+                    UPDATE Guilds
+                    SET vault_currency = vault_currency + %s
+                    WHERE guild_id = %s
+                """
+                self.execute_query(vault_sql, (fee, guild_id), commit=False)
+
+            new_transaction = BankTransaction(
+                user_id=user_id,
+                guild_id=guild_id,
+                transaction_type="deposit",
+                amount=amount,
+                fee=fee,
+                balance_before=balance_before,
+                balance_after=balance_after,
+                timestamp=datetime.now())
+            # 4. Log transaction
+            bank_dao.add_transaction(new_transaction)
+
+            # Commit all changes atomically
+            self.db.mydb.commit()
+
+            self.logger.info(
+                f"User {user_id} deposited {amount:,} (fee: {fee:,}, net: {net_deposit:,}) "
+                f"to bank from guild {guild_id}. New balance: {balance_after:,}"
+            )
+
+            return {
+                'success': True,
+                'message': 'Deposit successful',
+                'balance_before': balance_before,
+                'balance_after': balance_after,
+                'amount': amount,
+                'fee': fee,
+                'net_deposit': net_deposit
+            }
+
+        except Exception as e:
+            self.db.mydb.rollback()
+            self.logger.error(f"Error transferring to bank for user {user_id} in guild {guild_id}: {e}")
+            return {'success': False, 'message': f'Transaction failed: {str(e)}'}
+
+    def transfer_from_bank(self, user_id: int, guild_id: int, amount: int, fee: int = 0) -> Dict[str, Any]:
+        """
+        Transfer currency from global bank to guild wallet atomically.
+        Handles: bank balance deduction, guild currency increase, fee to guild vault, transaction logging.
+
+        Args:
+            user_id (int): Discord user ID
+            guild_id (int): Discord guild ID
+            amount (int): Amount to withdraw (before fees)
+            fee (int): Fee amount that goes to guild vault (default 0)
+
+        Returns:
+            Dict with keys: success (bool), message (str), balance_before (int), balance_after (int)
+        """
+        from Dao.UserDao import UserDao
+        from Dao.BankTransactionDao import BankTransactionDao
+        from Dao.GuildDao import GuildDao
+
+        try:
+            user_dao = UserDao()
+            bank_dao = BankTransactionDao()
+            guild_dao = GuildDao()
+
+            # Get current balances
+            user = user_dao.get_user(user_id)
+            if not user:
+                return {'success': False, 'message': 'User not found'}
+
+            guild_user = self.get_guild_user(user_id, guild_id)
+            if not guild_user:
+                return {'success': False, 'message': 'Guild user not found'}
+
+            # Validate sufficient bank funds (need to cover amount + fee from bank)
+            total_needed = amount + fee
+            if user.bank_balance < total_needed:
+                return {
+                    'success': False,
+                    'message': f'Insufficient bank balance. You need {total_needed:,} credits but have {user.bank_balance:,}.'
+                }
+
+            # Calculate amounts
+            balance_before = user.bank_balance
+            balance_after = balance_before - total_needed
+
+            # Start atomic transaction
+            # 1. Deduct from bank (amount + fee)
+            bank_sql = """
+                UPDATE Users
+                SET bank_balance = bank_balance - %s
+                WHERE id = %s
+            """
+            self.execute_query(bank_sql, (total_needed, user_id), commit=False)
+
+            # 2. Add amount to guild wallet
+            guild_sql = """
+                UPDATE GuildUsers
+                SET currency = currency + %s
+                WHERE user_id = %s AND guild_id = %s
+            """
+            self.execute_query(guild_sql, (amount, user_id, guild_id), commit=False)
+
+            # 3. If fee exists, add to guild vault
+            if fee > 0:
+                vault_sql = """
+                    UPDATE Guilds
+                    SET vault_currency = vault_currency + %s
+                    WHERE guild_id = %s
+                """
+                self.execute_query(vault_sql, (fee, guild_id), commit=False)
+
+            new_transaction = BankTransaction(
+                user_id=user_id,
+                guild_id=guild_id,
+                transaction_type= "withdraw",
+                amount=amount,
+                fee=fee,
+                balance_before=balance_before,
+                balance_after=balance_after,
+                timestamp=datetime.now())
+            # 4. Log transaction
+            bank_dao.add_transaction(new_transaction)
+
+            # Commit all changes atomically
+            self.db.mydb.commit()
+
+            self.logger.info(
+                f"User {user_id} withdrew {amount:,} (fee: {fee:,}) "
+                f"from bank to guild {guild_id}. New balance: {balance_after:,}"
+            )
+
+            return {
+                'success': True,
+                'message': 'Withdrawal successful',
+                'balance_before': balance_before,
+                'balance_after': balance_after,
+                'amount': amount,
+                'fee': fee
+            }
+
+        except Exception as e:
+            self.db.mydb.rollback()
+            self.logger.error(f"Error transferring from bank for user {user_id} in guild {guild_id}: {e}")
+            return {'success': False, 'message': f'Transaction failed: {str(e)}'}
