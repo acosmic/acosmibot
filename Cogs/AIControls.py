@@ -92,6 +92,11 @@ class AIControls(commands.Cog):
             guild_dao = GuildDao()
             ai_settings = guild_dao.get_ai_settings_from_json(message.guild.id)
 
+            # Check if AI is allowed in this channel
+            if not self.chatgpt.is_channel_allowed(message.guild.id, message.channel.id):
+                # Silently ignore if channel is restricted
+                return
+
             # if not ai_settings or not ai_settings.get('enabled', False):
             #     embed = discord.Embed(
             #         title="🤖 AI Disabled",

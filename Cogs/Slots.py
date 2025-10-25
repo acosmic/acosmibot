@@ -24,14 +24,25 @@ class Slots(commands.Cog):
         self.bot = bot
 
         # Default configuration
+        # NOTE: multipliers, min_bet, max_bet, and bet_options will eventually
+        # be moved to global config. Only 'enabled' and 'symbols' remain guild-specific.
         self.default_config = {
             "enabled": True,
             "symbols": ["🍒", "🍋", "🍊", "🍇", "🍎", "🍌", "⭐", "🔔", "💎", "🎰", "🍀", "❤️"],
             "match_two_multiplier": 2,
-            "match_three_multiplier": 5,
-            "min_bet": 10,
-            "max_bet": 2000,
-            "bet_options": [10, 100, 200, 300, 500, 1000, 2000]
+            "match_three_multiplier": 10,
+            "min_bet": 100,
+            "max_bet": 25000,
+            "bet_options": [100, 1000, 5000, 10000, 25000]
+        }
+
+        # Global config defaults (to be replaced with database reads in future)
+        self.global_defaults = {
+            "match_two_multiplier": 2,
+            "match_three_multiplier": 10,
+            "min_bet": 100,
+            "max_bet": 25000,
+            "bet_options": [100, 1000, 5000, 10000, 25000]
         }
 
     def get_slots_config(self, guild_id):
@@ -46,8 +57,17 @@ class Slots(commands.Cog):
             # Parse settings JSON
             settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
 
-            # Get games.slots-config or return default
+            # Get games settings
             games_settings = settings.get("games", {})
+
+            # Check parent games toggle FIRST
+            if not games_settings.get("enabled", False):
+                # Return disabled config if parent toggle is off
+                disabled_config = self.default_config.copy()
+                disabled_config["enabled"] = False
+                return disabled_config
+
+            # Get slots-specific config
             slots_config = games_settings.get("slots-config", {})
 
             # Merge with defaults

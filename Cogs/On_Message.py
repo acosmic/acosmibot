@@ -248,14 +248,34 @@ class On_Message(commands.Cog):
             guild_user.daily = 1
             guild_user.last_daily = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
-            # Send daily reward message
+            # Send daily reward message using custom templates
             if daily_channel:
+                # Get leveling config for custom message templates
+                leveling_config = self.get_leveling_config(member.guild.id)
+
                 if streak > 0:
-                    await daily_channel.send(
-                        f'## {member.mention}, You have collected your daily reward - {calculated_daily_reward} Credits! 100 + {streak_bonus} from {streak}x Streak! 🎉')
+                    # Use template with streak
+                    template = leveling_config.get("daily_announcement_message_with_streak",
+                        "💰 {mention} claimed their daily reward! +{credits} Credits! ({base_credits} + {streak_bonus} from {streak}x streak!)")
+                    message = template.format(
+                        mention=member.mention,
+                        username=member.name,
+                        credits=f"{calculated_daily_reward:,}",
+                        base_credits=f"{base_daily:,}",
+                        streak=streak,
+                        streak_bonus=f"{streak_bonus:,}"
+                    )
                 else:
-                    await daily_channel.send(
-                        f'## {member.mention}, You have collected your daily reward - 100 Credits! 🎉')
+                    # Use regular daily template
+                    template = leveling_config.get("daily_announcement_message",
+                        "💰 {mention} claimed their daily reward! +{credits} Credits!")
+                    message = template.format(
+                        mention=member.mention,
+                        username=member.name,
+                        credits=f"{calculated_daily_reward:,}"
+                    )
+
+                await daily_channel.send(message)
 
         except Exception as e:
             logger.error(f'Error processing daily reward for {member.name}: {e}')

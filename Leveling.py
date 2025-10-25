@@ -230,12 +230,32 @@ class LevelingSystem:
                 if not announcement_channel:
                     announcement_channel = message.channel
 
-                # Create level up message with streak bonus info
-                emoji = "🎉"
+                # Create level up message using custom template
                 if streak > 0:
-                    level_message = f'## {user.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward:,} Credits! {base_reward:,} + {streak_bonus} from {streak}x Streak! {emoji}'
+                    # Use template with streak
+                    template = config.get("level_up_message_with_streak",
+                        "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits! {base_credits} + {streak_bonus} from {streak}x Streak!")
+                    level_message = template.format(
+                        mention=user.mention,
+                        username=user.name,
+                        level=new_level,
+                        xp=guild_user.exp,
+                        credits=f"{calculated_reward:,}",
+                        base_credits=f"{base_reward:,}",
+                        streak=streak,
+                        streak_bonus=f"{streak_bonus:,}"
+                    )
                 else:
-                    level_message = f'## {user.mention} GUILD LEVEL UP! You have reached level {new_level}! Gained {calculated_reward:,} Credits! {emoji}'
+                    # Use regular level up template
+                    template = config.get("level_up_message",
+                        "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits!")
+                    level_message = template.format(
+                        mention=user.mention,
+                        username=user.name,
+                        level=new_level,
+                        xp=guild_user.exp,
+                        credits=f"{calculated_reward:,}"
+                    )
 
                 try:
                     await announcement_channel.send(level_message)
@@ -280,8 +300,14 @@ class LevelingSystem:
             roles_to_add = []
             roles_to_remove = []
 
-            for level_str, role_ids in role_mappings.items():
+            for level_str, role_data in role_mappings.items():
                 level_threshold = int(level_str)
+
+                # Handle both old array format and new object format
+                if isinstance(role_data, dict):
+                    role_ids = role_data.get("role_ids", [])
+                else:
+                    role_ids = role_data  # Old format (array)
 
                 if new_level >= level_threshold:
                     # User qualifies for these roles
@@ -306,13 +332,42 @@ class LevelingSystem:
 
                     # Send role announcement if enabled
                     if roles_config.get("role_announcement", False):
-                        role_names = [role.name for role in roles_to_add]
-                        embed = discord.Embed(
-                            title="🎭 New Role(s) Assigned!",
-                            description=f"{user.mention} earned: {', '.join(role_names)}",
-                            color=discord.Color.blue()
+                        # Get custom announcement message for this level or use default
+                        role_mapping_entry = roles_settings.get("role_mappings", {}).get(str(new_level))
+
+                        if isinstance(role_mapping_entry, dict):
+                            # New format with custom message
+                            template = role_mapping_entry.get("announcement_message",
+                                "🎉 {mention} reached level {level} and earned the {role} role!")
+                        else:
+                            # Fallback for old format
+                            template = roles_config.get("role_announcement_message",
+                                "🎉 {mention} reached level {level} and earned the {role} role!")
+
+                        # Format role mentions
+                        role_mentions = [role.mention for role in roles_to_add]
+                        if len(role_mentions) == 1:
+                            role_str = role_mentions[0]
+                        else:
+                            role_str = ", ".join(role_mentions)
+
+                        # Format the message
+                        announcement_message = template.format(
+                            mention=user.mention,
+                            username=user.name,
+                            level=new_level,
+                            role=role_str,
+                            roles=role_str
                         )
-                        await message.channel.send(embed=embed)
+
+                        # Determine announcement channel
+                        announcement_channel = message.channel
+                        if roles_config.get("announcement_channel_id"):
+                            channel = guild.get_channel(int(roles_config["announcement_channel_id"]))
+                            if channel:
+                                announcement_channel = channel
+
+                        await announcement_channel.send(announcement_message)
 
                 except discord.Forbidden:
                     logger.warning(f"No permission to add roles to user {user.id} in guild {guild_id}")

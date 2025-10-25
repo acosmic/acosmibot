@@ -36,10 +36,13 @@ class RoleCacheEntry(BaseModel):
 class LevelingSettings(BaseModel):
     """Leveling system configuration"""
     enabled: bool = True
-    exp_per_message: int = Field(default=15, ge=1, le=100)
-    exp_cooldown_seconds: int = Field(default=60, ge=0, le=300)
     level_up_announcements: bool = True
     announcement_channel_id: Optional[str] = None
+
+    # Custom announcement message templates
+    level_up_message: str = "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits!"
+    level_up_message_with_streak: str = "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits! {base_credits} + {streak_bonus} from {streak}x Streak!"
+
     exp_multiplier: float = Field(default=1.0, ge=0.1, le=5.0)
     max_level: int = Field(default=100, ge=1, le=1000)
 
@@ -49,11 +52,12 @@ class LevelingSettings(BaseModel):
     exp_growth_factor: float = Field(default=1.2, ge=1.0, le=3.0)
 
     # Daily reward settings
-    daily_bonus: int = Field(default=1000, ge=100, le=10000)
     daily_announcements_enabled: bool = False
     daily_announcement_channel_id: Optional[str] = None
+    daily_announcement_message: str = "💰 {mention} claimed their daily reward! +{credits} Credits!"
+    daily_announcement_message_with_streak: str = "💰 {mention} claimed their daily reward! +{credits} Credits! ({base_credits} + {streak_bonus} from {streak}x streak!)"
 
-    @field_validator('announcement_channel_id')
+    @field_validator('announcement_channel_id', 'daily_announcement_channel_id')
     def validate_channel_id(cls, v):
         if v is not None and not v.isdigit():
             raise ValueError('Channel ID must be a numeric string')
@@ -63,9 +67,8 @@ class LevelingSettings(BaseModel):
         json_schema_extra = {
             "example": {
                 "enabled": True,
-                "exp_per_message": 15,
-                "exp_cooldown_seconds": 60,
                 "level_up_announcements": True,
+                "level_up_message": "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits!",
                 "announcement_channel_id": "123456789012345678",
                 "exp_multiplier": 1.0,
                 "max_level": 100,
@@ -76,13 +79,19 @@ class LevelingSettings(BaseModel):
         }
 
 
+class RoleMappingEntry(BaseModel):
+    """Entry for role mappings with custom announcement message"""
+    role_ids: List[str] = Field(default_factory=list)
+    announcement_message: str = "🎉 {mention} reached level {level} and earned the {role} role!"
+
+
 class RoleSystemSettings(BaseModel):
     """Role assignment system configuration"""
     enabled: bool = False
     mode: RoleAssignmentMode = RoleAssignmentMode.PROGRESSIVE
 
-    # Role mappings: level -> [role_ids]
-    role_mappings: Dict[str, List[str]] = Field(default_factory=dict)
+    # Role mappings: level -> RoleMappingEntry (with role_ids and custom message)
+    role_mappings: Dict[str, RoleMappingEntry] = Field(default_factory=dict)
 
     # Role cache for validation and display
     role_cache: Dict[str, RoleCacheEntry] = Field(default_factory=dict)
@@ -93,7 +102,6 @@ class RoleSystemSettings(BaseModel):
 
     # Announcement settings
     role_announcement: bool = True
-    role_announcement_message: str = "🎉 {user} reached level {level} and earned the {role} role!"
     announcement_channel_id: Optional[str] = None
 
     @field_validator('role_mappings')
@@ -108,26 +116,27 @@ class RoleSystemSettings(BaseModel):
                 raise ValueError(f"Invalid level key: {level_str}. Must be a number.")
         return v
 
-    @field_validator('role_announcement_message')
-    def validate_announcement_message(cls, v):
-        """Ensure announcement message has required placeholders"""
-        required_placeholders = ['{user}', '{level}']
-        for placeholder in required_placeholders:
-            if placeholder not in v:
-                raise ValueError(f"Announcement message must contain {placeholder}")
-        return v
-
     def get_roles_for_level(self, level: int) -> List[str]:
         """Get role IDs for a specific level"""
-        return self.role_mappings.get(str(level), [])
+        entry = self.role_mappings.get(str(level))
+        return entry.role_ids if entry else []
 
-    def set_roles_for_level(self, level: int, role_ids: List[str]):
-        """Set role IDs for a specific level"""
+    def get_message_for_level(self, level: int) -> str:
+        """Get announcement message for a specific level"""
+        entry = self.role_mappings.get(str(level))
+        return entry.announcement_message if entry else "🎉 {mention} reached level {level} and earned the {role} role!"
+
+    def set_roles_for_level(self, level: int, role_ids: List[str], message: Optional[str] = None):
+        """Set role IDs and optionally message for a specific level"""
         if not role_ids:
             # Remove empty mappings
             self.role_mappings.pop(str(level), None)
         else:
-            self.role_mappings[str(level)] = role_ids
+            entry = RoleMappingEntry(
+                role_ids=role_ids,
+                announcement_message=message if message else "🎉 {mention} reached level {level} and earned the {role} role!"
+            )
+            self.role_mappings[str(level)] = entry
 
     def get_all_configured_levels(self) -> List[int]:
         """Get all levels that have role mappings configured"""
@@ -151,14 +160,82 @@ class RoleSystemSettings(BaseModel):
                 "enabled": True,
                 "mode": "progressive",
                 "role_mappings": {
-                    "5": ["123456789012345678"],
-                    "10": ["234567890123456789"],
-                    "20": ["345678901234567890"]
+                    "5": {
+                        "role_ids": ["123456789012345678"],
+                        "announcement_message": "🎉 {mention} reached level 5!"
+                    },
+                    "10": {
+                        "role_ids": ["234567890123456789"],
+                        "announcement_message": "🎉 {mention} reached level 10!"
+                    }
                 },
                 "remove_previous_roles": True,
                 "max_level_tracked": 50,
-                "role_announcement": True,
-                "role_announcement_message": "🎉 {user} reached level {level} and earned the {role} role!"
+                "role_announcement": True
+            }
+        }
+
+
+class AIChannelMode(str, Enum):
+    """AI channel restriction modes"""
+    ALL = "all"  # AI works in all channels
+    SPECIFIC = "specific"  # AI only works in specified channels
+    EXCLUDE = "exclude"  # AI works in all channels except specified
+
+
+class AISettings(BaseModel):
+    """AI configuration for a guild"""
+    enabled: bool = False
+    instructions: str = ""
+    model: str = "gpt-4o-mini"
+    channel_mode: AIChannelMode = AIChannelMode.ALL
+    allowed_channels: List[str] = Field(default_factory=list)
+    excluded_channels: List[str] = Field(default_factory=list)
+
+    class Config:
+        use_enum_values = True
+        schema_extra = {
+            "example": {
+                "enabled": True,
+                "instructions": "You are a friendly helper bot.",
+                "model": "gpt-4o-mini",
+                "channel_mode": "exclude",
+                "allowed_channels": [],
+                "excluded_channels": ["123456789", "987654321"]
+            }
+        }
+
+
+class SlotsConfig(BaseModel):
+    """Slots game configuration for a guild"""
+    enabled: bool = False
+    symbols: List[str] = Field(default_factory=lambda: [
+        "🍒", "🍋", "🍊", "🍇", "🍎", "🍌", "⭐", "🔔", "💎", "🎰", "🍀", "❤️"
+    ])
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "enabled": True,
+                "symbols": ["🍒", "🍋", "🍊", "🍇", "🍎", "🍌", "⭐", "🔔", "💎", "🎰", "🍀", "❤️"]
+            }
+        }
+
+
+class GamesSettings(BaseModel):
+    """Games configuration for a guild"""
+    enabled: bool = False
+    slots_config: SlotsConfig = Field(default_factory=SlotsConfig, alias="slots-config")
+
+    class Config:
+        populate_by_name = True
+        schema_extra = {
+            "example": {
+                "enabled": True,
+                "slots-config": {
+                    "enabled": True,
+                    "symbols": ["🍒", "🍋", "🍊", "🍇", "🍎", "🍌", "⭐", "🔔", "💎", "🎰", "🍀", "❤️"]
+                }
             }
         }
 
@@ -176,15 +253,31 @@ class GuildLevelingRoleSettings(BaseModel):
             "example": {
                 "leveling": {
                     "enabled": True,
-                    "exp_per_message": 15,
-                    "level_up_announcements": True
+                    "level_up_announcements": True,
+                    "level_up_message": "🎉 {mention} reached level {level}!"
                 },
                 "roles": {
                     "enabled": True,
                     "mode": "progressive",
                     "role_mappings": {
-                        "5": ["123456789012345678"]
+                        "5": {
+                            "role_ids": ["123456789012345678"],
+                            "announcement_message": "Congrats!"
+                        }
                     }
                 }
             }
         }
+
+
+class GuildSettings(BaseModel):
+    """Complete guild settings structure"""
+    leveling: LevelingSettings = Field(default_factory=LevelingSettings)
+    roles: RoleSystemSettings = Field(default_factory=RoleSystemSettings)
+    ai: AISettings = Field(default_factory=AISettings)
+    games: GamesSettings = Field(default_factory=GamesSettings)
+
+    class Config:
+        extra = "allow"
+        use_enum_values = True
+        validate_assignment = True

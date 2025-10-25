@@ -125,6 +125,39 @@ class OpenAIClient:
             logger.error(f"Error getting AI settings for guild {guild_id}: {e}")
             return None
 
+    def is_channel_allowed(self, guild_id: int, channel_id: int) -> bool:
+        """
+        Check if AI is allowed to respond in the specified channel based on guild settings.
+
+        Args:
+            guild_id (int): Guild ID
+            channel_id (int): Channel ID to check
+
+        Returns:
+            bool: True if AI can respond in this channel, False otherwise
+        """
+        ai_settings = self.get_guild_ai_settings(guild_id)
+        if not ai_settings:
+            return False
+
+        channel_mode = ai_settings.get('channel_mode', 'all')
+        channel_id_str = str(channel_id)
+
+        if channel_mode == 'all':
+            # AI works in all channels
+            return True
+        elif channel_mode == 'specific':
+            # AI only works in specified channels
+            allowed_channels = ai_settings.get('allowed_channels', [])
+            return channel_id_str in allowed_channels
+        elif channel_mode == 'exclude':
+            # AI works in all channels except specified
+            excluded_channels = ai_settings.get('excluded_channels', [])
+            return channel_id_str not in excluded_channels
+        else:
+            # Default to all channels if mode is unknown
+            return True
+
     def update_guild_ai_settings(self, guild_id: int, **kwargs) -> bool:
         """
         Update AI settings in the new JSON settings structure.
