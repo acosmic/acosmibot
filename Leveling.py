@@ -211,12 +211,15 @@ class LevelingSystem:
             streak_bonus = math.floor(base_reward * streak_bonus_percentage)
             calculated_reward = base_reward + streak_bonus
 
-            # Add currency reward
-            guild_user.currency += calculated_reward
-
-            # Save currency update to database
+            # Update currency with global sync
             guild_user_dao = GuildUserDao()
-            guild_user_dao.update_guild_user(guild_user)
+            guild_user_dao.update_currency_with_global_sync(
+                user.id,
+                guild.id,
+                calculated_reward
+            )
+            # Refresh guild_user object to reflect updated currency
+            guild_user = guild_user_dao.get_guild_user(user.id, guild.id)
 
             # Send level up announcement if enabled
             if config["level_up_announcements"]:

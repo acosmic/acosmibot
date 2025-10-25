@@ -23,7 +23,7 @@ class Leaderboard(commands.Cog):
 
     @app_commands.command(name="leaderboard", description="Returns top 10 users based on Currency, EXP, etc.")
     async def leaderboard(self, interaction: discord.Interaction, stat: typing.Literal[
-        'Currency', 'Exp', 'Level', 'Global Exp', 'Global Level', 'Coinflip Wins', 'Coinflip Losses', 'Slots Wins']):
+        'Currency', 'Exp', 'Level', 'Global Currency', 'Global Exp', 'Global Level']):
 
         # Only work in guilds
         if not interaction.guild:
@@ -59,12 +59,14 @@ class Leaderboard(commands.Cog):
             await interaction.response.send_message(embed=embed)
             logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 
-        if stat == 'Global Exp' or stat == 'Global Level':
+        if stat == 'Global Exp' or stat == 'Global Level' or stat == 'Global Currency':
             dao = UserDao()
             if stat == 'Global Exp':
                 leaders = dao.get_top_users_by_global_exp()
-            else:
+            elif stat == 'Global Level':
                 leaders = dao.get_top_users_by_global_level()
+            else:  # Global Currency
+                leaders = dao.get_top_users_by_currency()
 
             embed = discord.Embed(title=f"Top Users by {stat.upper()}", color=interaction.user.color)
             leaderboard_text = ""
@@ -81,54 +83,6 @@ class Leaderboard(commands.Cog):
                 leaderboard_text += line
 
             embed.description = f"```\n{leaderboard_text}```"
-            await interaction.response.send_message(embed=embed)
-            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
-
-        if stat == 'Coinflip Wins':
-            dao = UserDao()
-            cfdao = CoinflipDao()
-            leaders = cfdao.get_top_wins()
-
-            embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
-
-            for i, (discord_username, amount_won, timestamp) in enumerate(leaders, start=1):
-                formatted_amount_won = "{:,.0f}".format(amount_won)
-                formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
-                embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST",
-                                value=f"{formatted_amount_won} Credits", inline=False)
-
-            await interaction.response.send_message(embed=embed)
-            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
-
-        if stat == 'Coinflip Losses':
-            dao = UserDao()
-            cfdao = CoinflipDao()
-            leaders = cfdao.get_top_losses()
-
-            embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
-
-            for i, (discord_username, amount_lost, timestamp) in enumerate(leaders, start=1):
-                formatted_amount_lost = "{:,.0f}".format(amount_lost)
-                formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
-                embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST",
-                                value=f"{formatted_amount_lost} Credits", inline=False)
-
-            await interaction.response.send_message(embed=embed)
-            logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
-
-        if stat == 'Slots Wins':
-            dao = UserDao()
-            slotsDao = SlotsDao()
-            leaders = slotsDao.get_top_wins()
-
-            embed = discord.Embed(title=f"Top 5 Users by {stat.upper()}", color=interaction.user.color)
-
-            for i, (discord_username, amount_won, timestamp) in enumerate(leaders, start=1):
-                formatted_amount_won = "{:,.0f}".format(amount_won)
-                formatted_timestamp = timestamp.strftime('%m-%d-%Y %H:%M')
-                embed.add_field(name=f"{i}. {discord_username} | {formatted_timestamp} CST",
-                                value=f"{formatted_amount_won} Credits", inline=False)
-
             await interaction.response.send_message(embed=embed)
             logger.info(f"{interaction.user.name} used /leaderboard {stat.lower()}")
 

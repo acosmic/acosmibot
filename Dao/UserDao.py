@@ -382,18 +382,18 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error getting top users by global exp: {e}")
             return []
 
-    def get_top_users_by_currency(self, limit: int = 5) -> List[Tuple]:
+    def get_top_users_by_currency(self, limit: int = 10) -> List[Tuple]:
         """
         Get the top users by total currency.
 
         Args:
-            limit (int, optional): Maximum number of users to return. Defaults to 5.
+            limit (int, optional): Maximum number of users to return. Defaults to 10.
 
         Returns:
-            List[Tuple]: List of top users
+            List[Tuple]: List of top users (id, discord_username, global_name, total_currency, global_level)
         """
         sql = '''
-              SELECT id, discord_username, global_name, total_currency
+              SELECT id, discord_username, global_name, total_currency, global_level
               FROM Users
               WHERE is_bot = FALSE
               ORDER BY total_currency DESC

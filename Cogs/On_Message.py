@@ -242,11 +242,21 @@ class On_Message(commands.Cog):
             streak_bonus_percentage = streak * base_bonus_multiplier
             streak_bonus = math.floor(base_daily * streak_bonus_percentage)
             calculated_daily_reward = base_daily + streak_bonus
-            guild_user.currency += calculated_daily_reward
+
+            # Update currency with global sync
+            guild_user_dao = GuildUserDao()
+            guild_user_dao.update_currency_with_global_sync(
+                member.id,
+                member.guild.id,
+                calculated_daily_reward
+            )
 
             # Set daily and last_daily
             guild_user.daily = 1
             guild_user.last_daily = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+
+            # Save other updated fields (currency already saved by sync method)
+            guild_user_dao.update_guild_user(guild_user)
 
             # Send daily reward message using custom template
             if daily_channel:
