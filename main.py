@@ -56,7 +56,7 @@ class Bot(commands.Bot):
             "Cogs.Eightball",
             "Cogs.Polymorph",
             "Cogs.Coinflip",
-            "Cogs.Rock_Paper_Scissors", # fix soon
+            "Cogs.Rock_Paper_Scissors",
             "Cogs.Leaderboard",
             "Cogs.Reset_RPS",
             # "Cogs.Burn",
@@ -66,7 +66,9 @@ class Bot(commands.Bot):
             "Cogs.On_Member_Join",
             "Cogs.On_Raw_Member_Remove",
             "Cogs.On_Guild_Join",
-            "Cogs.AIControls"
+            "Cogs.AIControls",
+            "Cogs.PortalCommands",
+            "Cogs.PortalMessageListener"
         ]
         self.posted = False
 
@@ -97,7 +99,7 @@ class Bot(commands.Bot):
         invDao = InviteDao()
         invDao.create_table()
 
-        await self.change_presence(activity=discord.CustomActivity('/help for commands!'))
+        await self.change_presence(activity=discord.CustomActivity('clankin\' my clanker!'))
 
 
     # def giphy_search(self, search_term):

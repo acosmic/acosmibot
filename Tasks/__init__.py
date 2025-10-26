@@ -9,6 +9,7 @@ from .lottery_end_task import lottery_end_task
 from .check_reminders_task import check_reminders_task
 from .currency_reconciliation_task import currency_reconciliation_task
 from .bank_interest_task import bank_interest_task
+from .portal_manager import check_expired_portals
 
 __all__ = [
     "daily_reward_task",
@@ -17,5 +18,6 @@ __all__ = [
     "lottery_end_task",
     "check_reminders_task",
     "currency_reconciliation_task",
-    "bank_interest_task"
+    "bank_interest_task",
+    "portal_manager"
 ]

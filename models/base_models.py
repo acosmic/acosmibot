@@ -270,12 +270,39 @@ class GuildLevelingRoleSettings(BaseModel):
         }
 
 
+class CrossServerPortalSettings(BaseModel):
+    """Cross-server portal system configuration"""
+    enabled: bool = False
+    channel_id: Optional[str] = None
+    public_listing: bool = True
+    display_name: Optional[str] = None
+    portal_cost: int = 1000
+
+    @field_validator('channel_id')
+    def validate_channel_id(cls, v):
+        if v is not None and not v.isdigit():
+            raise ValueError('Channel ID must be a numeric string')
+        return v
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "enabled": True,
+                "channel_id": "123456789012345678",
+                "public_listing": True,
+                "display_name": "My Awesome Server",
+                "portal_cost": 1000
+            }
+        }
+
+
 class GuildSettings(BaseModel):
     """Complete guild settings structure"""
     leveling: LevelingSettings = Field(default_factory=LevelingSettings)
     roles: RoleSystemSettings = Field(default_factory=RoleSystemSettings)
     ai: AISettings = Field(default_factory=AISettings)
     games: GamesSettings = Field(default_factory=GamesSettings)
+    cross_server_portal: CrossServerPortalSettings = Field(default_factory=CrossServerPortalSettings)
 
     class Config:
         extra = "allow"
