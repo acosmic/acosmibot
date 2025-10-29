@@ -70,11 +70,25 @@ class Polymorph(commands.Cog):
                 vault_gain = int(cost * 0.1)  # 10% goes to vault
                 guild_dao.add_vault_currency(interaction.guild.id, vault_gain)
 
-                await interaction.response.send_message(
-                    f"# 🐑 {interaction.user.name} polymorphed **{target_original_name}** into {target.mention} for {cost:,.0f} Credits! 🐑\n"
-                    f"*{vault_gain:,.0f} Credits added to the vault.*"
+                embed=discord.Embed(
+                    title=f"Polymorph :sheep:",
+                    color=target.color,
+                    description=f"### {target.mention} is your new nickname.\n\n"
+                                f"-# Polymorphed by {interaction.user.name}\n\n"
                 )
 
+                embed.set_author(
+                    name=f"{target_original_name} ",
+                    icon_url=target.avatar.url,
+                )
+                embed.set_footer(text="/polymorph [@target] - costs 10,000 Credits")
+
+                await interaction.response.send_message(embed=embed, ephemeral=False)
+
+                # await interaction.response.send_message(
+                #     f"# 🐑 {interaction.user.name} polymorphed **{target_original_name}** into {target.mention} for {cost:,.0f} Credits! 🐑\n"
+                #     f"*{vault_gain:,.0f} Credits added to guild bank.*"
+                # )
                 logger.info(f'{interaction.user.name} used /polymorph on {target.name} in {interaction.guild.name}')
 
             except discord.Forbidden:

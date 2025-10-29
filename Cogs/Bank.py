@@ -132,7 +132,7 @@ class Bank(commands.Cog):
             await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
 
         try:
             # Get bank config
@@ -254,7 +254,7 @@ class Bank(commands.Cog):
             await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
 
         try:
             # Get bank config

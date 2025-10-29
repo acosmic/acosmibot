@@ -29,18 +29,30 @@ class Balance(commands.Cog):
 
                 if guild_user is None:
                     if target_user == interaction.user:
-                        message_text = "## You don't have an account in this server yet. Send a message to get started! 💰"
+                        message_text = "### You don't have an account in this server yet. Send a message to get started! 💰"
                     else:
-                        message_text = f"## {target_user.name} doesn't have an account in this server yet. 💰"
+                        message_text = f"### {target_user.name} doesn't have an account in this server yet. 💰"
                 else:
                     if target_user == interaction.user:
-                        message_text = f"## Your balance: {guild_user.currency:,.0f} Credits. 💰 {interaction.user.mention}"
+                        title_text = f"Your balance:"
+                        message_text = f"{guild_user.currency:,.0f} Credits. 💰"
                     else:
-                        message_text = f"## {target_user.name}'s balance: {guild_user.currency:,.0f} Credits. 💰 {interaction.user.mention}"
+                        title_text = f"{target_user.name}'s balance:"
+                        message_text = f"{guild_user.currency:,.0f} Credits. 💰"
             else:
-                message_text = "## Bots don't have balances. 🤖"
+                message_text = "### Bots don't have balances. 🤖"
 
-            await interaction.response.send_message(message_text)
+            embed = discord.Embed(
+                title= title_text,
+                color= target_user.color,
+                description=message_text,
+            )
+            embed.set_author(
+                name=f"{target_user.name}",
+                icon_url=target_user.avatar.url,
+            )
+
+            await interaction.response.send_message(embed=embed, ephemeral=False)
             logger.info(f"{interaction.user.name} used /balance command in {interaction.guild.name}")
 
         except Exception as e:

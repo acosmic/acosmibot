@@ -824,7 +824,7 @@ class GuildUserDao(BaseDao[GuildUser]):
                 vault_sql = """
                     UPDATE Guilds
                     SET vault_currency = vault_currency + %s
-                    WHERE guild_id = %s
+                    WHERE id = %s
                 """
                 self.execute_query(vault_sql, (fee, guild_id), commit=False)
 
@@ -929,7 +929,7 @@ class GuildUserDao(BaseDao[GuildUser]):
                 vault_sql = """
                     UPDATE Guilds
                     SET vault_currency = vault_currency + %s
-                    WHERE guild_id = %s
+                    WHERE id = %s
                 """
                 self.execute_query(vault_sql, (fee, guild_id), commit=False)
 
