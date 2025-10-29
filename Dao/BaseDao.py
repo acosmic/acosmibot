@@ -243,6 +243,40 @@ class BaseDao(Generic[T]):
             self.logger.error(f"Failed to create table: {e}")
             return False
 
+    def execute_read(self, query: str, params: Optional[tuple] = None) -> Optional[List[tuple]]:
+        """
+        Execute a SELECT query (convenience method for read operations).
+
+        Args:
+            query (str): SQL SELECT query with placeholders
+            params (Optional[tuple], optional): Query parameters. Defaults to None.
+
+        Returns:
+            Optional[List[tuple]]: Query results, or None on error
+        """
+        return self.execute_query(query, params, commit=False)
+
+    def execute_write(self, query: str, params: Optional[tuple] = None) -> Optional[int]:
+        """
+        Execute an INSERT, UPDATE, or DELETE query (convenience method for write operations).
+        For INSERT queries, returns the last insert ID.
+        For UPDATE/DELETE queries, returns True on success.
+
+        Args:
+            query (str): SQL INSERT/UPDATE/DELETE query with placeholders
+            params (Optional[tuple], optional): Query parameters. Defaults to None.
+
+        Returns:
+            Optional[int]: Last insert ID for INSERT queries, True for UPDATE/DELETE, None on error
+        """
+        result = self.execute_query(query, params, commit=True)
+
+        # If the query was successful and it's an INSERT, get the last insert ID
+        if result and query.strip().upper().startswith('INSERT'):
+            return self.get_last_insert_id()
+
+        return result
+
     def find_by_id(self, id_value: Any) -> Optional[T]:
         """
         Find an entity by its ID.

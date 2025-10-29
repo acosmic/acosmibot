@@ -6,6 +6,7 @@ from Dao.UserDao import UserDao
 from Dao.GuildUserDao import GuildUserDao
 from Dao.BankTransactionDao import BankTransactionDao
 from Dao.GuildDao import GuildDao
+from Dao.GlobalSettingsDao import GlobalSettingsDao
 from logger import AppLogger
 import typing
 from datetime import datetime
@@ -24,44 +25,98 @@ class Bank(commands.Cog):
         self.bot = bot
 
     def _get_bank_config(self, guild_id: int) -> dict:
-        """Get bank configuration from guild settings."""
+        """Get bank configuration from global settings + guild overrides."""
         import json
 
-        # Default bank configuration
-        default_config = {
+        # Fallback defaults (if GlobalSettings table is empty)
+        fallback_config = {
             'enabled': True,
-            'deposit_fee_percent': 0,  # % fee on deposits
-            'withdraw_fee_percent': 0,  # % fee on withdrawals
-            'daily_transfer_limit': 0,  # 0 = unlimited
+            'deposit_fee_percent': 2.0,
+            'withdraw_fee_percent': 2.0,
+            'daily_transfer_limit': 500000,
             'min_deposit': 100,
             'min_withdraw': 100,
             'interest_enabled': False,
-            'interest_rate': 0.01,  # 1% daily
-            'interest_interval': 'daily'  # 'daily' or 'weekly'
+            'interest_rate': 0.02,  # 2%
+            'interest_interval': 'daily'
         }
 
         try:
+            global_settings_dao = GlobalSettingsDao()
+
+            # Fetch economy settings from GlobalSettings table
+            economy_settings = {
+                'economy.deposit_fee_percent': 'deposit_fee_percent',
+                'economy.withdraw_fee_percent': 'withdraw_fee_percent',
+                'economy.min_transaction': 'min_deposit',  # Use same min for both
+                'economy.max_transaction': 'max_transaction',
+                'economy.daily_transfer_limit': 'daily_transfer_limit',
+                'economy.interest_enabled': 'interest_enabled',
+                'economy.interest_rate_percent': 'interest_rate',
+                'economy.interest_interval': 'interest_interval'
+            }
+
+            # Build config from global settings
+            config = {}
+            for setting_key, field_name in economy_settings.items():
+                value = global_settings_dao.get_setting_value(setting_key)
+                if value is not None:
+                    # Convert string booleans to actual booleans
+                    if value in ('true', 'false'):
+                        value = value == 'true'
+                    # Convert numeric strings to float/int
+                    elif isinstance(value, str):
+                        try:
+                            # Try float first
+                            float_val = float(value)
+                            # If it's a whole number, make it int
+                            value = int(float_val) if float_val.is_integer() else float_val
+                        except ValueError:
+                            # Keep as string (like "weekly", "daily")
+                            pass
+
+                    # Handle special mappings
+                    if field_name == 'min_deposit':
+                        config['min_deposit'] = value
+                        config['min_withdraw'] = value  # Use same minimum for both
+                    elif field_name == 'interest_rate':
+                        # Convert percentage to decimal (0.5% -> 0.005)
+                        config['interest_rate'] = value / 100 if isinstance(value, (int, float)) else 0.005
+                    else:
+                        config[field_name] = value
+                else:
+                    # Use fallback if setting not found
+                    if field_name == 'min_deposit':
+                        config['min_deposit'] = fallback_config['min_deposit']
+                        config['min_withdraw'] = fallback_config['min_withdraw']
+                    elif field_name == 'interest_rate':
+                        config['interest_rate'] = fallback_config['interest_rate']
+                    elif field_name in fallback_config:
+                        config[field_name] = fallback_config[field_name]
+
+            # Check if guild has any override for 'enabled' status
             guild_dao = GuildDao()
             guild = guild_dao.get_guild(guild_id)
 
-            if not guild or not guild.settings:
-                return default_config
+            if guild and guild.settings:
+                # Parse settings JSON
+                settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
 
-            # Parse settings JSON
-            settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
-
-            # Get bank settings or return default
-            bank_settings = settings.get("bank", {})
-
-            # Merge with defaults
-            config = default_config.copy()
-            config.update(bank_settings)
+                # Check if guild has economy/bank enabled override
+                economy_settings_guild = settings.get("economy", {})
+                if 'enabled' in economy_settings_guild:
+                    config['enabled'] = economy_settings_guild['enabled']
+                else:
+                    # Default to enabled if not specified
+                    config['enabled'] = True
+            else:
+                config['enabled'] = True
 
             return config
 
         except Exception as e:
             logger.error(f"Error getting bank config: {e}")
-            return default_config
+            return fallback_config
 
     def _calculate_fee(self, amount: int, fee_percent: float) -> int:
         """Calculate fee based on amount and percentage."""
@@ -182,7 +237,7 @@ class Bank(commands.Cog):
 
             embed.set_footer(text=f"Use /bank to view your balance • Server: {interaction.guild.name}")
 
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
             logger.info(f"User {interaction.user.id} deposited {deposit_amount:,} credits to bank")
 
         except Exception as e:
@@ -316,7 +371,7 @@ class Bank(commands.Cog):
 
             embed.set_footer(text=f"Use /bank to view your balance • Server: {interaction.guild.name}")
 
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
             logger.info(f"User {interaction.user.id} withdrew {withdraw_amount:,} credits from bank")
 
         except Exception as e:
@@ -331,7 +386,7 @@ class Bank(commands.Cog):
         # Use interaction user if no user specified
         target_user = user or interaction.user
 
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
 
         try:
             # Get user data
@@ -427,7 +482,7 @@ class Bank(commands.Cog):
 
             embed.set_footer(text="Use /deposit or /withdraw to manage your balance • /bank-history for transactions")
 
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
 
         except Exception as e:
             logger.error(f"Error in bank command: {e}")
