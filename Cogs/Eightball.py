@@ -13,7 +13,7 @@ class Eightball(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @app_commands.command(name="8ball", description="Ask the magic 8ball your yes/no questions for 50 Credits")
+    @app_commands.command(name="8ball", description="Ask the magic 8ball your yes/no questions")
     async def eightball(self, interaction: discord.Interaction, question: str):
         # Only work in guilds
         if not interaction.guild:
@@ -73,68 +73,68 @@ class Eightball(commands.Cog):
             "My psychic network is down... try again after midnight! 🌙"
         ]
 
-        # Use GuildUserDao for multi-server architecture
-        guild_user_dao = GuildUserDao()
-        cost = 50
+
+        # guild_user_dao = GuildUserDao()
+        # cost = 50
 
         # Get guild-specific user data
-        guild_user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild.id)
+        # guild_user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild.id)
 
-        if not guild_user:
-            await interaction.response.send_message(
-                "You need to be registered in this server first. Send a message to get started!", ephemeral=True)
-            return
+        # if not guild_user:
+        #     await interaction.response.send_message(
+        #         "You need to be registered in this server first. Send a message to get started!", ephemeral=True)
+        #     return
 
-        if guild_user.currency >= cost:
+        # if guild_user.currency >= cost:
 
-            eightball_response = random.choice(responses)
+        eightball_response = random.choice(responses)
 
-            # Create embed with enhanced visual appeal
-            embed = discord.Embed(
-                title=f"🎱 Magic 8-Ball",
-                description=f"**Question:** {question}\n\n**Answer:** {eightball_response}",
-                color=interaction.user.color if interaction.user.color.value != 0 else discord.Color.purple()
-            )
+        # Create embed with enhanced visual appeal
+        embed = discord.Embed(
+            title=f"🎱 Magic 8-Ball",
+            description=f"**Question:** {question}\n\n**Answer:** {eightball_response}",
+            color=interaction.user.color if interaction.user.color.value != 0 else discord.Color.purple()
+        )
 
-            # Add user info with their display name or nickname
-            user_display_name = interaction.user.display_name or interaction.user.name
-            embed.set_author(
-                name=f"{user_display_name} asks...",
-                icon_url=interaction.user.display_avatar.url
-            )
+        # Add user info with their display name or nickname
+        user_display_name = interaction.user.display_name or interaction.user.name
+        embed.set_author(
+            name=f"{user_display_name} asks...",
+            icon_url=interaction.user.display_avatar.url
+        )
 
-            embed.set_footer(text=f"-{cost} Credits • The 8-ball has spoken!")
+        embed.set_footer(text=f"The 8-ball has spoken!")
 
-            # Deduct currency and update guild user
-            guild_user.currency -= cost
-            guild_user_dao.update_guild_user(guild_user)
+        # # Deduct currency and update guild user
+        # guild_user.currency -= cost
+        # guild_user_dao.update_guild_user(guild_user)
 
-            await interaction.response.send_message(embed=embed)
-            logger.info(
-                f"{interaction.user.name} used /8ball command with question: {question} in guild {interaction.guild.name}")
+        await interaction.response.send_message(embed=embed)
+        logger.info(
+            f"{interaction.user.name} used /8ball command with question: {question} in guild {interaction.guild.name}")
 
-        else:
-            # Enhanced broke message with multiple variations
-            broke_messages = [
-                f"You're too broke to use the magic 8ball! <:OhGodMan:1200262332392157184>",
-                f"Insufficient funds! The 8-ball requires {cost} Credits, but you only have {guild_user.currency}! 💸",
-                f"The magic 8-ball says: 'Pay me first!' You need {cost - guild_user.currency} more Credits! 💰",
-                f"Error: Wallet.exe has stopped working! You need {cost} Credits! 🚫",
-                f"The spirits demand payment! {cost} Credits required! 👻💰"
-            ]
+        # else:
+        #     # Enhanced broke message with multiple variations
+        #     broke_messages = [
+        #         f"You're too broke to use the magic 8ball! <:OhGodMan:1200262332392157184>",
+        #         f"Insufficient funds! The 8-ball requires {cost} Credits, but you only have {guild_user.currency}! 💸",
+        #         f"The magic 8-ball says: 'Pay me first!' You need {cost - guild_user.currency} more Credits! 💰",
+        #         f"Error: Wallet.exe has stopped working! You need {cost} Credits! 🚫",
+        #         f"The spirits demand payment! {cost} Credits required! 👻💰"
+        #     ]
+        #
+        #     broke_response = random.choice(broke_messages)
 
-            broke_response = random.choice(broke_messages)
-
-            embed = discord.Embed(
-                title="💸 Insufficient Credits",
-                description=broke_response,
-                color=discord.Color.red()
-            )
-            embed.set_footer(text=f"You have {guild_user.currency} Credits • Need {cost} Credits")
-
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            logger.info(
-                f"{interaction.user.name} tried to use /8ball but had insufficient credits ({guild_user.currency}/{cost}) in guild {interaction.guild.name}")
+            # embed = discord.Embed(
+            #     title="💸 Insufficient Credits",
+            #     description=broke_response,
+            #     color=discord.Color.red()
+            # )
+            # embed.set_footer(text=f"You have {guild_user.currency} Credits • Need {cost} Credits")
+            #
+            # await interaction.response.send_message(embed=embed, ephemeral=True)
+            # logger.info(
+            #     f"{interaction.user.name} tried to use /8ball but had insufficient credits ({guild_user.currency}/{cost}) in guild {interaction.guild.name}")
 
 
 async def setup(bot: commands.Bot):

@@ -377,118 +377,118 @@ class AIControls(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @discord.app_commands.command(name="ai-model", description="Set the AI model for this server")
-    @discord.app_commands.describe(model="AI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo, etc.)")
-    @discord.app_commands.default_permissions(manage_guild=True)
-    async def ai_model(self, interaction: discord.Interaction, model: str):
-        """Set AI model using new settings structure"""
-        # Only work in guilds
-        if not interaction.guild:
-            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
-            return
-        # List of valid models
-        valid_models = ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo']
+    # @discord.app_commands.command(name="ai-model", description="Set the AI model for this server")
+    # @discord.app_commands.describe(model="AI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo, etc.)")
+    # @discord.app_commands.default_permissions(manage_guild=True)
+    # async def ai_model(self, interaction: discord.Interaction, model: str):
+    #     """Set AI model using new settings structure"""
+    #     # Only work in guilds
+    #     if not interaction.guild:
+    #         await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+    #         return
+    #     # List of valid models
+    #     valid_models = ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo']
+    #
+    #     if model not in valid_models:
+    #         embed = discord.Embed(
+    #             title="🚫 Invalid Model",
+    #             description=f"Invalid model. Valid options: {', '.join(valid_models)}",
+    #             color=discord.Color.red()
+    #         )
+    #         await interaction.response.send_message(embed=embed)
+    #         return
+    #
+    #     success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, model=model)
+    #
+    #     if success:
+    #         embed = discord.Embed(
+    #             title="🤖 Model Updated",
+    #             description=f"AI model set to {model}",
+    #             color=discord.Color.green()
+    #         )
+    #     else:
+    #         embed = discord.Embed(
+    #             title="🚫 Error",
+    #             description="Failed to update AI model.",
+    #             color=discord.Color.red()
+    #         )
+    #
+    #     await interaction.response.send_message(embed=embed)
 
-        if model not in valid_models:
-            embed = discord.Embed(
-                title="🚫 Invalid Model",
-                description=f"Invalid model. Valid options: {', '.join(valid_models)}",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed)
-            return
+    # @discord.app_commands.command(name="ai-limit", description="Set daily AI usage limit for this server")
+    # @discord.app_commands.describe(
+    #     limit="Daily usage limit (1-100)"
+    # )
+    # @discord.app_commands.default_permissions(manage_guild=True)
+    # async def ai_limit(self, interaction: discord.Interaction, limit: int):
+    #     """Set daily AI limit using new settings structure"""
+    #     # Only work in guilds
+    #     if not interaction.guild:
+    #         await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+    #         return
+    #     if not 1 <= limit <= 100:
+    #         embed = discord.Embed(
+    #             title="🚫 Invalid Limit",
+    #             description="Daily limit must be between 1 and 100.",
+    #             color=discord.Color.red()
+    #         )
+    #         await interaction.response.send_message(embed=embed)
+    #         return
+    #
+    #     success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, daily_limit=limit)
+    #
+    #     if success:
+    #         embed = discord.Embed(
+    #             title="📊 Limit Updated",
+    #             description=f"Daily AI usage limit set to {limit}",
+    #             color=discord.Color.green()
+    #         )
+    #     else:
+    #         embed = discord.Embed(
+    #             title="🚫 Error",
+    #             description="Failed to update daily limit.",
+    #             color=discord.Color.red()
+    #         )
+    #
+    #     await interaction.response.send_message(embed=embed)
 
-        success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, model=model)
-
-        if success:
-            embed = discord.Embed(
-                title="🤖 Model Updated",
-                description=f"AI model set to {model}",
-                color=discord.Color.green()
-            )
-        else:
-            embed = discord.Embed(
-                title="🚫 Error",
-                description="Failed to update AI model.",
-                color=discord.Color.red()
-            )
-
-        await interaction.response.send_message(embed=embed)
-
-    @discord.app_commands.command(name="ai-limit", description="Set daily AI usage limit for this server")
-    @discord.app_commands.describe(
-        limit="Daily usage limit (1-100)"
-    )
-    @discord.app_commands.default_permissions(manage_guild=True)
-    async def ai_limit(self, interaction: discord.Interaction, limit: int):
-        """Set daily AI limit using new settings structure"""
-        # Only work in guilds
-        if not interaction.guild:
-            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
-            return
-        if not 1 <= limit <= 100:
-            embed = discord.Embed(
-                title="🚫 Invalid Limit",
-                description="Daily limit must be between 1 and 100.",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed)
-            return
-
-        success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, daily_limit=limit)
-
-        if success:
-            embed = discord.Embed(
-                title="📊 Limit Updated",
-                description=f"Daily AI usage limit set to {limit}",
-                color=discord.Color.green()
-            )
-        else:
-            embed = discord.Embed(
-                title="🚫 Error",
-                description="Failed to update daily limit.",
-                color=discord.Color.red()
-            )
-
-        await interaction.response.send_message(embed=embed)
-
-    @discord.app_commands.command(name="ai-instructions", description="Set custom instructions for the AI")
-    @discord.app_commands.describe(
-        instructions="Custom instructions for AI behavior (max 500 characters)"
-    )
-    @discord.app_commands.default_permissions(manage_guild=True)
-    async def ai_instructions(self, interaction: discord.Interaction, instructions: str):
-        """Set AI instructions using new settings structure"""
-        # Only work in guilds
-        if not interaction.guild:
-            await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
-            return
-        if len(instructions) > 500:
-            embed = discord.Embed(
-                title="🚫 Instructions Too Long",
-                description="Instructions must be 500 characters or less.",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed)
-            return
-
-        success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, instructions=instructions)
-
-        if success:
-            embed = discord.Embed(
-                title="📝 Instructions Updated",
-                description=f"Custom instructions set: {instructions[:100]}..." if len(
-                    instructions) > 100 else f"Custom instructions set: {instructions}",
-                color=discord.Color.green()
-            )
-        else:
-            embed = discord.Embed(
-                title="🚫 Error",
-                description="Failed to update AI instructions.",
-                color=discord.Color.red()
-            )
-
-        await interaction.response.send_message(embed=embed)
+    # @discord.app_commands.command(name="ai-instructions", description="Set custom instructions for the AI")
+    # @discord.app_commands.describe(
+    #     instructions="Custom instructions for AI behavior (max 500 characters)"
+    # )
+    # @discord.app_commands.default_permissions(manage_guild=True)
+    # async def ai_instructions(self, interaction: discord.Interaction, instructions: str):
+    #     """Set AI instructions using new settings structure"""
+    #     # Only work in guilds
+    #     if not interaction.guild:
+    #         await interaction.response.send_message("This command can only be used in servers.", ephemeral=True)
+    #         return
+    #     if len(instructions) > 500:
+    #         embed = discord.Embed(
+    #             title="🚫 Instructions Too Long",
+    #             description="Instructions must be 500 characters or less.",
+    #             color=discord.Color.red()
+    #         )
+    #         await interaction.response.send_message(embed=embed)
+    #         return
+    #
+    #     success = self.chatgpt.update_guild_ai_settings(interaction.guild.id, instructions=instructions)
+    #
+    #     if success:
+    #         embed = discord.Embed(
+    #             title="📝 Instructions Updated",
+    #             description=f"Custom instructions set: {instructions[:100]}..." if len(
+    #                 instructions) > 100 else f"Custom instructions set: {instructions}",
+    #             color=discord.Color.green()
+    #         )
+    #     else:
+    #         embed = discord.Embed(
+    #             title="🚫 Error",
+    #             description="Failed to update AI instructions.",
+    #             color=discord.Color.red()
+    #         )
+    #
+    #     await interaction.response.send_message(embed=embed)
 
 
     @discord.app_commands.command(name="ai-clear", description="Clear conversation history for this server")

@@ -22,14 +22,14 @@ class Bot(commands.Bot):
         super().__init__(command_prefix =commands.when_mentioned_or('!'),intents=discord.Intents().all())
         self.cogslist = [
             "Cogs.Admin_Start_Lotto",
-            "Cogs.RipAudio",
+            # "Cogs.RipAudio",
             "Cogs.ReminderCommand",
             "Cogs.Bank",
             "Cogs.Avatar",
             # "Cogs.RPG",
             # "Cogs.Admin_Jail",
             # "Cogs.Admin_Jail_Release",
-            "Cogs.Admin_Stats",
+            # "Cogs.Admin_Stats",
             # "Cogs.DeleteAiThread",
             "Cogs.Slots",
             "Cogs.Blackjack",
@@ -39,7 +39,7 @@ class Bot(commands.Bot):
             # "Cogs.Roll_Dice",
             # "Cogs.Bailout",
             # "Cogs.Jail_Message",
-            "Cogs.Admin_Give",
+            # "Cogs.Admin_Give",
             # "Cogs.Color", # fix this soon
             "Cogs.Giphy",
             "Cogs.Deathroll",
@@ -100,7 +100,7 @@ class Bot(commands.Bot):
         invDao = InviteDao()
         invDao.create_table()
 
-        await self.change_presence(activity=discord.CustomActivity('clankin\' my clanker!'))
+        await self.change_presence(activity=discord.CustomActivity('/help • acosmibot.com'))
 
 
     # def giphy_search(self, search_term):
