@@ -21,9 +21,43 @@ async def start_task(bot):
     await twitch_live_check_task(bot)
 
 
+async def _initialize_announcement_cache(bot):
+    """Initialize the announcement cache from database on startup.
+
+    This prevents duplicate announcements after bot restarts by loading
+    currently active streams from the database.
+    """
+    dao = TwitchAnnouncementDao()
+
+    try:
+        # Get all announcements where stream hasn't ended yet
+        # (stream_ended_at IS NULL means still live)
+        cursor = dao.db.mydb.cursor()
+        cursor.execute("""
+            SELECT DISTINCT guild_id, streamer_username
+            FROM TwitchAnnouncements
+            WHERE stream_ended_at IS NULL
+        """)
+        active_announcements = cursor.fetchall()
+        cursor.close()
+
+        async with _announcements_lock:
+            for guild_id, streamer_username in active_announcements:
+                if guild_id not in _posted_announcements:
+                    _posted_announcements[guild_id] = {}
+                _posted_announcements[guild_id][streamer_username] = True
+
+        logger.info(f"Initialized Twitch announcement cache with {len(active_announcements)} active streams")
+    except Exception as e:
+        logger.error(f"Error initializing Twitch announcement cache: {e}", exc_info=True)
+
+
 async def twitch_live_check_task(bot):
     """Monitor Twitch streamers and post announcements when they go live."""
     await bot.wait_until_ready()
+
+    # Initialize cache from database on startup to prevent duplicate announcements
+    await _initialize_announcement_cache(bot)
 
     while not bot.is_closed():
         logger.debug('Running twitch_live_check_task')
