@@ -58,13 +58,19 @@ async def _check_guild_streaming_status(guild):
     roles_removed = 0
 
     # Check all members with the Streamer/Streamers role
-    for member in guild.members:
-        if streamer_role not in member.roles:
-            continue
+    # Use cached members which include presence data from gateway events
+    streamer_members = [
+        member for member in guild.members
+        if streamer_role in member.roles
+    ]
 
+    for member in streamer_members:
         members_processed += 1
 
         try:
+            # Use cached member data which includes presence updates from gateway
+            # (Presence Intent provides real-time status and activity data)
+
             # Check if member is currently streaming
             is_streaming = _is_member_streaming(member)
 
@@ -72,19 +78,17 @@ async def _check_guild_streaming_status(guild):
                 if live_now_role not in member.roles:
                     await member.add_roles(live_now_role, reason="Started streaming")
                     roles_added += 1
-                    logger.info(f'Guild {guild.name}: Added "Live Now" role to {member.display_name}')
-                else:
-                    logger.debug(f'Guild {guild.name}: {member.display_name} is streaming and already has the role')
+                    logger.info(f'Guild {guild.name}: Added "Live Now" role to {member.display_name} (ID: {member.id})')
             else:
                 if live_now_role in member.roles:
                     await member.remove_roles(live_now_role, reason="Stopped streaming")
                     roles_removed += 1
-                    logger.info(f'Guild {guild.name}: Removed "Live Now" role from {member.display_name}')
+                    logger.info(f'Guild {guild.name}: Removed "Live Now" role from {member.display_name} (ID: {member.id})')
 
         except discord.HTTPException as e:
-            logger.error(f'Guild {guild.name}: Failed to update roles for {member.display_name}: {e}')
+            logger.error(f'Guild {guild.name}: Failed to update member {member.id} ({member.display_name}): {e}')
         except Exception as e:
-            logger.error(f'Guild {guild.name}: Unexpected error processing {member.display_name}: {e}')
+            logger.error(f'Guild {guild.name}: Unexpected error processing member {member.id} ({member.display_name}): {e}')
 
     if members_processed > 0:
         logger.debug(f'Guild {guild.name}: Processed {members_processed} streamers, '
@@ -120,34 +124,3 @@ async def _get_streaming_details(member):
         'url': activity.url,
         'game': activity.game if hasattr(activity, 'game') else None
     }
-
-
-# import discord
-# import logging
-# logger = logging.getLogger(__name__)
-#
-# async def start_task(bot):
-#     """Entry point function that the task manager expects."""
-#     await check_streaming_members_task(bot)
-#
-# async def check_streaming_members_task(bot):
-#     live_now_role_name = "Live Now"
-#     streamer_role_name = "Streamer"
-#     live_now_role = discord.utils.get(bot.guilds[0].roles, name=live_now_role_name)
-#     streamer_role = discord.utils.get(bot.guilds[0].roles, name=streamer_role_name)
-#     for guild in bot.guilds:
-#         for member in guild.members:
-#             if streamer_role in member.roles:
-#                 streaming_activities = [activity for activity in member.activities if
-#                                         isinstance(activity, discord.Streaming)]
-#
-#                 if streaming_activities:
-#                     if live_now_role not in member.roles:
-#                         logger.info(f'{member.display_name} is streaming')
-#                         await member.add_roles(live_now_role)
-#                     else:
-#                         logger.info(f'{member.display_name} is streaming and already has the role')
-#                 else:
-#                     if live_now_role in member.roles:
-#                         logger.info(f'{member.display_name} is not streaming')
-#                         await member.remove_roles(live_now_role)

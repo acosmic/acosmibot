@@ -44,7 +44,7 @@ class On_Guild_Join(commands.Cog):
             await self._add_guild_members(guild, guild_user_dao, user_dao)
 
             # Send welcome message to a general channel if possible
-            await self._send_welcome_message(guild)
+            # await self._send_welcome_message(guild)
 
             logger.info(f"Successfully processed guild join for {guild.name}")
 
