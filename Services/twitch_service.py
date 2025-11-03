@@ -4,6 +4,7 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 load_dotenv()
 
@@ -17,11 +18,6 @@ class TwitchService:
         self._access_token: Optional[str] = None
         self.logger = logging.getLogger(__name__)
 
-        self.streamer_mapping = {
-            266745647447670786: 'Bingo1',
-            110637665128325120: 'Acosmic',
-            912980670979129346: 'Soft',
-        }
 
     async def _fetch_new_token(self, session: aiohttp.ClientSession) -> str:
         try:
@@ -86,17 +82,84 @@ class TwitchService:
         params = [("user_login", u) for u in usernames]
         return await self._make_api_request(session, "streams", params)
 
-    async def get_tracked_streamers_status(self, session: aiohttp.ClientSession) -> Dict[int, Dict[str, Any]]:
-        usernames = list(self.streamer_mapping.values())
-        streams_data = await self.get_multiple_streams(session, usernames)
-        live_streamers = {s["user_login"].lower(): s for s in streams_data.get("data", [])}
+    async def get_recent_vods(
+        self,
+        session: aiohttp.ClientSession,
+        username: str,
+        limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Get recent VODs for a user.
 
-        result = {}
-        for discord_id, username in self.streamer_mapping.items():
-            stream_info = live_streamers.get(username.lower())
-            result[discord_id] = {
-                "username": username,
-                "is_live": bool(stream_info),
-                "stream_data": stream_info
-            }
-        return result
+        Args:
+            session: aiohttp session
+            username: Twitch username
+            limit: Number of VODs to fetch (default: 5)
+
+        Returns:
+            List of VOD data dictionaries
+        """
+        # First get user ID
+        user_data = await self.get_user_info(session, username)
+        if not user_data:
+            return []
+
+        user_id = user_data['id']
+
+        # Get VODs
+        data = await self._make_api_request(session, "videos", [
+            ("user_id", user_id),
+            ("type", "archive"),
+            ("first", str(limit))
+        ])
+
+        return data.get("data", [])
+
+    async def find_vod_for_stream(
+        self,
+        session: aiohttp.ClientSession,
+        username: str,
+        stream_started_at: datetime
+    ) -> Optional[str]:
+        """
+        Find VOD matching a specific stream start time.
+
+        Args:
+            session: aiohttp session
+            username: Twitch username
+            stream_started_at: When the stream started (datetime object)
+
+        Returns:
+            VOD URL if found, None otherwise
+        """
+        vods = await self.get_recent_vods(session, username, limit=10)
+
+        for vod in vods:
+            # Parse VOD created_at timestamp
+            vod_created = datetime.strptime(vod['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+
+            # VODs are created when stream starts, allow 5 minute tolerance
+            time_diff = abs((vod_created - stream_started_at).total_seconds())
+
+            if time_diff < 300:  # Within 5 minutes
+                return vod['url']
+
+        return None
+
+    async def validate_username(
+        self,
+        session: aiohttp.ClientSession,
+        username: str
+    ) -> bool:
+        """
+        Validate that a Twitch username exists.
+
+        Args:
+            session: aiohttp session
+            username: Twitch username to validate
+
+        Returns:
+            True if username exists, False otherwise
+        """
+        user_data = await self.get_user_info(session, username)
+        return user_data is not None
