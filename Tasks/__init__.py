@@ -16,7 +16,7 @@ __all__ = [
     "daily_reward_task",
     "streaming_monitor_task",
     "twitch_live_task",
-    "twitch_vod_checker_task",
+    "twitch_vod_checker",
     "lottery_end_task",
     "check_reminders_task",
     "currency_reconciliation_task",

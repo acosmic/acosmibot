@@ -123,21 +123,30 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
     ) -> List[Dict[str, Any]]:
         """
         Get announcements that need VOD checking.
+        Implements smart backoff:
+        - Attempts 0-2: Check every 5 minutes
+        - Attempts 3-5: Check every 15 minutes
+        - Attempts >= 6: Stop checking
 
         Args:
             hours_threshold: Only check streams that ended within this many hours
 
         Returns:
-            List of announcement dictionaries
+            List of announcement dictionaries with vod_check_attempts included
         """
         sql = """
             SELECT id, guild_id, streamer_username, message_id, channel_id,
-                   stream_started_at, stream_ended_at
+                   stream_started_at, stream_ended_at, vod_check_attempts
             FROM TwitchAnnouncements
             WHERE vod_url IS NULL
             AND stream_ended_at IS NOT NULL
             AND stream_ended_at > NOW() - INTERVAL %s HOUR
-            AND (vod_checked_at IS NULL OR vod_checked_at < NOW() - INTERVAL 5 MINUTE)
+            AND vod_check_attempts < 6
+            AND (
+                (vod_check_attempts < 3 AND (vod_checked_at IS NULL OR vod_checked_at < NOW() - INTERVAL 5 MINUTE))
+                OR
+                (vod_check_attempts >= 3 AND vod_checked_at < NOW() - INTERVAL 15 MINUTE)
+            )
             ORDER BY stream_ended_at DESC
         """
         try:
@@ -154,7 +163,8 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
                     'message_id': row[3],
                     'channel_id': row[4],
                     'stream_started_at': row[5],
-                    'stream_ended_at': row[6]
+                    'stream_ended_at': row[6],
+                    'vod_check_attempts': row[7]
                 })
             return announcements
         except Exception as e:
@@ -188,6 +198,7 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
     def mark_vod_checked(self, announcement_id: int) -> bool:
         """
         Mark announcement as checked for VOD (even if none found).
+        Increments vod_check_attempts counter to track retry count.
 
         Args:
             announcement_id: ID of the announcement
@@ -195,7 +206,12 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
         Returns:
             bool: True if updated successfully
         """
-        sql = "UPDATE TwitchAnnouncements SET vod_checked_at = NOW() WHERE id = %s"
+        sql = """
+            UPDATE TwitchAnnouncements
+            SET vod_checked_at = NOW(),
+                vod_check_attempts = vod_check_attempts + 1
+            WHERE id = %s
+        """
         try:
             self.execute_query(sql, (announcement_id,), commit=True)
             return True
