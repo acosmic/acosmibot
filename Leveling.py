@@ -18,7 +18,7 @@ class LevelingSystem:
 
         # Default configuration
         self.default_config = {
-            "enabled": True,
+            "enabled": True,  # Deprecated - always true (stats always tracked)
             "exp_per_message": 10,
             "exp_cooldown_seconds": 3,
             "level_up_announcements": True,
@@ -104,7 +104,12 @@ class LevelingSystem:
         self.user_cooldowns[cooldown_key] = datetime.now()
 
     async def process_message_exp(self, message):
-        """Process experience gain from a message"""
+        """
+        Process message counting and experience gain from a message.
+
+        Message counting happens ALWAYS (independent of leveling toggle).
+        Exp/leveling only processes when leveling is enabled.
+        """
         # Skip bots
         if message.author.bot:
             return
@@ -118,14 +123,6 @@ class LevelingSystem:
 
         # Get leveling configuration
         config = self.get_leveling_config(guild_id)
-
-        # Skip if leveling is disabled
-        if not config["enabled"]:
-            return
-
-        # Check cooldown
-        if self.is_user_on_cooldown(user_id, guild_id, config["exp_cooldown_seconds"]):
-            return
 
         try:
             # Get DAOs
@@ -143,6 +140,23 @@ class LevelingSystem:
             if not global_user:
                 return
 
+            # === ALWAYS UPDATE MESSAGE COUNTS AND ACTIVITY ===
+            guild_user.messages_sent += 1
+            guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            global_user.total_messages += 1
+            global_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # === ALWAYS PROCESS EXP AND LEVELS (stats always tracked) ===
+            # Note: leveling.enabled is deprecated - stats are always tracked now
+            # Announcements and roles are controlled by separate toggles
+
+            # Check cooldown (but still save message count above even if on cooldown)
+            if self.is_user_on_cooldown(user_id, guild_id, config["exp_cooldown_seconds"]):
+                # Save the message count even though exp is not awarded due to cooldown
+                guild_user_dao.update_guild_user(guild_user)
+                user_dao.update_user(global_user)
+                return
+
             # Calculate old level
             old_level = self.calculate_level_from_exp(guild_user.exp)
 
@@ -158,15 +172,9 @@ class LevelingSystem:
             # Add experience
             guild_user.exp += exp_gained
             guild_user.exp_gained += exp_gained
-            guild_user.messages_sent += 1
 
-            # Update last_active timestamp
-            guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # Update global stats
+            # Update global exp
             global_user.global_exp += exp_gained
-            global_user.total_messages += 1
-            global_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # Calculate new level
             new_level = self.calculate_level_from_exp(guild_user.exp)

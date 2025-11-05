@@ -1,3 +1,18 @@
+"""
+DEPRECATED: This task has been replaced by unified_stats_reconciliation_task.py
+
+The new task reconciles:
+- total_currency (guild + bank)
+- total_messages
+- total_reactions
+- global_exp & global_level
+
+And runs every 6 hours instead of twice daily.
+
+This file is kept for reference only and is no longer loaded by the bot.
+Date deprecated: 2025-11-04
+"""
+
 import asyncio
 from datetime import datetime
 import logging

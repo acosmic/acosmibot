@@ -8,9 +8,12 @@ from .twitch_live_task import twitch_live_check_task
 from .twitch_vod_checker import twitch_vod_checker_task
 from .lottery_end_task import lottery_end_task
 from .check_reminders_task import check_reminders_task
-from .currency_reconciliation_task import currency_reconciliation_task
+from .unified_stats_reconciliation_task import unified_stats_reconciliation_task
 from .bank_interest_task import bank_interest_task
 from .portal_manager import check_expired_portals
+
+# Deprecated: currency_reconciliation_task (replaced by unified_stats_reconciliation_task)
+# from .currency_reconciliation_task import currency_reconciliation_task
 
 __all__ = [
     "daily_reward_task",
@@ -19,7 +22,7 @@ __all__ = [
     "twitch_vod_checker",
     "lottery_end_task",
     "check_reminders_task",
-    "currency_reconciliation_task",
+    "unified_stats_reconciliation_task",
     "bank_interest_task",
     "portal_manager"
 ]

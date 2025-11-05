@@ -53,7 +53,10 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
         streamer_username: str,
         message_id: int,
         channel_id: int,
-        stream_started_at: datetime
+        stream_started_at: datetime,
+        initial_viewer_count: Optional[int] = None,
+        stream_title: Optional[str] = None,
+        game_name: Optional[str] = None
     ) -> Optional[int]:
         """
         Create a new announcement record.
@@ -64,19 +67,24 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
             message_id: Discord message ID of the announcement
             channel_id: Discord channel ID where announcement was posted
             stream_started_at: When the stream started
+            initial_viewer_count: Viewer count at time of announcement
+            stream_title: Title of the stream
+            game_name: Game/category being streamed
 
         Returns:
             int: ID of the created announcement, or None on error
         """
         sql = """
             INSERT INTO TwitchAnnouncements
-            (guild_id, streamer_username, message_id, channel_id, stream_started_at)
-            VALUES (%s, %s, %s, %s, %s)
+            (guild_id, streamer_username, message_id, channel_id, stream_started_at,
+             initial_viewer_count, stream_title, game_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         try:
             self.execute_query(
                 sql,
-                (guild_id, streamer_username, message_id, channel_id, stream_started_at),
+                (guild_id, streamer_username, message_id, channel_id, stream_started_at,
+                 initial_viewer_count, stream_title, game_name),
                 commit=True
             )
             # Get the last inserted ID
@@ -89,20 +97,30 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
             logger.error(f"Error creating announcement: {e}")
             return None
 
-    def mark_stream_offline(self, guild_id: int, streamer_username: str) -> bool:
+    def mark_stream_offline(
+        self,
+        guild_id: int,
+        streamer_username: str,
+        final_viewer_count: Optional[int] = None,
+        stream_duration_seconds: Optional[int] = None
+    ) -> bool:
         """
         Mark the most recent stream as offline for a streamer in a guild.
 
         Args:
             guild_id: Discord guild ID
             streamer_username: Twitch username
+            final_viewer_count: Viewer count when stream ended
+            stream_duration_seconds: Duration of the stream in seconds
 
         Returns:
             bool: True if updated successfully
         """
         sql = """
             UPDATE TwitchAnnouncements
-            SET stream_ended_at = NOW()
+            SET stream_ended_at = NOW(),
+                final_viewer_count = %s,
+                stream_duration_seconds = %s
             WHERE guild_id = %s
             AND streamer_username = %s
             AND stream_ended_at IS NULL
@@ -110,7 +128,11 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
             LIMIT 1
         """
         try:
-            self.execute_query(sql, (guild_id, streamer_username), commit=True)
+            self.execute_query(
+                sql,
+                (final_viewer_count, stream_duration_seconds, guild_id, streamer_username),
+                commit=True
+            )
             logger.debug(f"Marked stream offline: {streamer_username} in guild {guild_id}")
             return True
         except Exception as e:
@@ -283,3 +305,109 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
         except Exception as e:
             logger.error(f"Error cleaning up old announcements: {e}")
             return False
+
+    def get_announcements_needing_status_update(self) -> List[Dict[str, Any]]:
+        """
+        Get announcements for streams that need status updates (20+ minute check).
+        Returns streams that:
+        - Are still online (stream_ended_at IS NULL)
+        - Have been live for >20 minutes
+        - Have NOT been checked in last 20 minutes
+
+        Returns:
+            List of announcement dictionaries
+        """
+        sql = """
+            SELECT id, guild_id, streamer_username, message_id, channel_id,
+                   stream_started_at, initial_viewer_count
+            FROM TwitchAnnouncements
+            WHERE stream_ended_at IS NULL
+            AND stream_started_at < NOW() - INTERVAL 20 MINUTE
+            AND (last_status_check_at IS NULL OR last_status_check_at < NOW() - INTERVAL 20 MINUTE)
+            ORDER BY stream_started_at ASC
+        """
+        try:
+            results = self.execute_query(sql)
+            if not results:
+                return []
+
+            announcements = []
+            for row in results:
+                announcements.append({
+                    'id': row[0],
+                    'guild_id': row[1],
+                    'streamer_username': row[2],
+                    'message_id': row[3],
+                    'channel_id': row[4],
+                    'stream_started_at': row[5],
+                    'initial_viewer_count': row[6]
+                })
+            return announcements
+        except Exception as e:
+            logger.error(f"Error getting announcements needing status update: {e}")
+            return []
+
+    def update_last_status_check(self, announcement_id: int) -> bool:
+        """
+        Update the last_status_check_at timestamp for an announcement.
+
+        Args:
+            announcement_id: ID of the announcement
+
+        Returns:
+            bool: True if updated successfully
+        """
+        sql = """
+            UPDATE TwitchAnnouncements
+            SET last_status_check_at = NOW()
+            WHERE id = %s
+        """
+        try:
+            self.execute_query(sql, (announcement_id,), commit=True)
+            return True
+        except Exception as e:
+            logger.error(f"Error updating last status check: {e}")
+            return False
+
+    def get_announcement_by_id(self, announcement_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get announcement by ID.
+
+        Args:
+            announcement_id: ID of the announcement
+
+        Returns:
+            Announcement dictionary or None
+        """
+        sql = """
+            SELECT id, guild_id, streamer_username, message_id, channel_id,
+                   stream_started_at, stream_ended_at, vod_url, initial_viewer_count,
+                   final_viewer_count, stream_duration_seconds, stream_title, game_name
+            FROM TwitchAnnouncements
+            WHERE id = %s
+            LIMIT 1
+        """
+        try:
+            results = self.execute_query(sql, (announcement_id,))
+            if not results or len(results) == 0:
+                return None
+
+            row = results[0]
+            return {
+                'id': row[0],
+                'guild_id': row[1],
+                'streamer_username': row[2],
+                'message_id': row[3],
+                'channel_id': row[4],
+                'stream_started_at': row[5],
+                'stream_ended_at': row[6],
+                'vod_url': row[7],
+                'initial_viewer_count': row[8],
+                'final_viewer_count': row[9],
+                'stream_duration_seconds': row[10],
+                'stream_title': row[11],
+                'game_name': row[12]
+            }
+        except Exception as e:
+            logger.error(f"Error getting announcement by ID: {e}")
+            return None
