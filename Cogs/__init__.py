@@ -40,6 +40,7 @@ __all__ = [
     "AIControls",
     "PortalCommands",
     "PortalMessageListener",
+    "ReactionRoles",
     # "ActivityDiagnostic",
     # "RipAudio",
     # "Burn",
