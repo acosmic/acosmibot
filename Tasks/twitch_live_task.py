@@ -388,7 +388,6 @@ async def _edit_announcement_on_stream_end(
         ended_ts = int(stream_end_time.replace(tzinfo=pytz.utc).timestamp())
 
         # Add stream end metadata fields
-        embed.add_field(name="Started", value=f"<t:{started_ts}:F>", inline=False)
         embed.add_field(name="Ended", value=f"<t:{ended_ts}:F>", inline=False)
         embed.add_field(name="Duration", value=_format_duration(duration_seconds), inline=False)
 

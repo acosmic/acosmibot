@@ -140,14 +140,6 @@ class On_Message(commands.Cog):
                                                                  ['daily-rewards', 'daily', 'rewards', 'bot-updates',
                                                                   'general'])
 
-        # Get guild-specific roles
-        inmate_role = discord.utils.get(message.guild.roles, name='Inmate')
-
-        # Skip processing if user is in jail
-        if inmate_role and inmate_role in message.author.roles:
-            logger.info(f'{message.author} is an inmate in {message.guild.name} - skipped processing')
-            return
-
         # Get or create guild user and global user
         guild_user_dao = GuildUserDao()
         user_dao = UserDao()
@@ -157,12 +149,12 @@ class On_Message(commands.Cog):
 
         if current_guild_user is None:
             # Failed to get/create guild user - log error and return
-            print(f"Failed to get/create guild user for {message.author.name}")
+            logger.error(f"Failed to get/create guild user for {message.author.name} in guild {message.guild.name}")
             return
 
         if current_user is None:
             # Failed to get/create global user - log error and return
-            print(f"Failed to get/create global user for {message.author.name}")
+            logger.error(f"Failed to get/create global user for {message.author.name}")
             return
 
         logger.info(f'Processing message from {message.author} in {message.guild.name}')

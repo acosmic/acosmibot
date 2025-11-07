@@ -6,6 +6,7 @@ Reconciles all global user statistics from guild-specific data.
 Runs every 6 hours to keep stats synchronized.
 
 Reconciles:
+- Missing Users: Creates User records for orphaned GuildUsers and Games records
 - total_messages: Sum of messages_sent across all active guilds
 - total_reactions: Sum of reactions_sent across all active guilds
 - global_exp & global_level: Sum of exp across guilds with level recalculation
@@ -16,7 +17,9 @@ This replaces the old currency_reconciliation_task.py with a more comprehensive 
 
 import asyncio
 import logging
+from datetime import datetime
 from Dao.UserDao import UserDao
+from Entities.User import User
 from logger import AppLogger
 
 logger = AppLogger(__name__).get_logger()
@@ -56,6 +59,7 @@ async def reconcile_all_stats():
 
     user_dao = UserDao()
     stats = {
+        'missing_users_created': 0,
         'total_messages': 0,
         'total_reactions': 0,
         'global_exp': 0,
@@ -63,6 +67,9 @@ async def reconcile_all_stats():
     }
 
     try:
+        # 0. Create missing users from orphaned GuildUsers and Games records
+        stats['missing_users_created'] = await create_missing_users(user_dao)
+
         # 1. Reconcile total_messages
         stats['total_messages'] = await reconcile_total_messages(user_dao)
 
@@ -78,6 +85,7 @@ async def reconcile_all_stats():
         # Log summary
         logger.info(
             f"=== Stats reconciliation complete ===\n"
+            f"  - Missing users created: {stats['missing_users_created']}\n"
             f"  - Messages corrected: {stats['total_messages']} users\n"
             f"  - Reactions corrected: {stats['total_reactions']} users\n"
             f"  - Exp/Level corrected: {stats['global_exp']} users\n"
@@ -86,6 +94,98 @@ async def reconcile_all_stats():
 
     except Exception as e:
         logger.error(f"Error during stats reconciliation: {e}", exc_info=True)
+
+
+async def create_missing_users(user_dao: UserDao) -> int:
+    """
+    Create User records for any orphaned users in GuildUsers or Games tables.
+    This ensures all users with activity have corresponding User table entries.
+
+    Returns:
+        Number of users created
+    """
+    created_count = 0
+
+    try:
+        # Find user IDs in GuildUsers that don't exist in Users
+        sql_guild_users = """
+            SELECT DISTINCT gu.user_id
+            FROM GuildUsers gu
+            LEFT JOIN Users u ON gu.user_id = u.id
+            WHERE u.id IS NULL
+        """
+
+        # Find user IDs in Games that don't exist in Users
+        sql_games = """
+            SELECT DISTINCT g.user_id
+            FROM Games g
+            LEFT JOIN Users u ON g.user_id = u.id
+            WHERE u.id IS NULL
+        """
+
+        # Execute queries to get missing user IDs
+        cursor = user_dao.db.mydb.cursor()
+
+        cursor.execute(sql_guild_users)
+        guild_user_ids = [row[0] for row in cursor.fetchall()]
+
+        cursor.execute(sql_games)
+        games_user_ids = [row[0] for row in cursor.fetchall()]
+
+        cursor.close()
+
+        # Combine and deduplicate
+        missing_user_ids = set(guild_user_ids) | set(games_user_ids)
+
+        if not missing_user_ids:
+            logger.info("No missing users found")
+            return 0
+
+        logger.info(f"Found {len(missing_user_ids)} users missing from Users table")
+
+        # Create User records for each missing user ID
+        formatted_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        users_to_create = []
+
+        for user_id in missing_user_ids:
+            # Create a minimal User record with default values
+            # We use the user_id as a placeholder for discord_username
+            new_user = User(
+                id=user_id,
+                discord_username=f"user_{user_id}",  # Placeholder username
+                global_name=None,
+                avatar_url=None,
+                is_bot=False,
+                global_exp=0,
+                global_level=0,
+                total_currency=0,
+                bank_balance=0,
+                daily_transfer_amount=0,
+                last_transfer_reset=None,
+                total_messages=0,
+                total_reactions=0,
+                account_created=formatted_date,
+                first_seen=formatted_date,
+                last_seen=formatted_date,
+                privacy_settings=None,
+                global_settings=None
+            )
+            users_to_create.append(new_user)
+
+        # Bulk upsert the users
+        if users_to_create:
+            success = user_dao.bulk_upsert_users(users_to_create)
+            if success:
+                created_count = len(users_to_create)
+                logger.info(f"Successfully created {created_count} missing user records")
+            else:
+                logger.error(f"Failed to create {len(users_to_create)} missing user records")
+
+        return created_count
+
+    except Exception as e:
+        logger.error(f"Error creating missing users: {e}", exc_info=True)
+        return 0
 
 
 async def reconcile_total_messages(user_dao: UserDao) -> int:
