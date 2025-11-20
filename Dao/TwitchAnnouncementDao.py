@@ -88,7 +88,7 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
                 commit=True
             )
             # Get the last inserted ID
-            cursor = self.db.mydb.cursor()
+            cursor = self.connection.cursor()
             cursor.execute("SELECT LAST_INSERT_ID()")
             result = cursor.fetchone()
             cursor.close()

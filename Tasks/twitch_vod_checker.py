@@ -37,72 +37,76 @@ async def check_for_vods(bot):
     guild_dao = GuildDao()
     tw = TwitchService()
 
-    # Get announcements that need VOD checking
-    announcements = dao.get_announcements_needing_vod_check(hours_threshold=48)
+    try:
+        # Get announcements that need VOD checking
+        announcements = dao.get_announcements_needing_vod_check(hours_threshold=48)
 
-    if not announcements:
-        logger.debug('No announcements need VOD checking')
-        return
+        if not announcements:
+            logger.debug('No announcements need VOD checking')
+            return
 
-    logger.info(f'Checking {len(announcements)} announcements for VODs')
+        logger.info(f'Checking {len(announcements)} announcements for VODs')
 
-    async with aiohttp.ClientSession() as session:
-        for ann in announcements:
-            try:
-                attempt_count = ann.get('vod_check_attempts', 0)
+        async with aiohttp.ClientSession() as session:
+            for ann in announcements:
+                try:
+                    attempt_count = ann.get('vod_check_attempts', 0)
 
-                # Check if guild has VOD detection enabled
-                settings = guild_dao.get_guild_settings(ann['guild_id'])
-                if not settings:
-                    continue
+                    # Check if guild has VOD detection enabled
+                    settings = guild_dao.get_guild_settings(ann['guild_id'])
+                    if not settings:
+                        continue
 
-                vod_settings = settings.get('twitch', {}).get('vod_settings', {})
-                if not vod_settings.get('enabled'):
-                    # VOD detection disabled for this guild, mark as checked to avoid re-checking
-                    dao.mark_vod_checked(ann['id'])
-                    continue
+                    vod_settings = settings.get('twitch', {}).get('vod_settings', {})
+                    if not vod_settings.get('enabled'):
+                        # VOD detection disabled for this guild, mark as checked to avoid re-checking
+                        dao.mark_vod_checked(ann['id'])
+                        continue
 
-                # Check if VOD checking is disabled for this specific streamer
-                tracked_streamers = settings.get('twitch', {}).get('tracked_streamers', [])
-                streamer_config = next(
-                    (s for s in tracked_streamers if s.get('username') == ann['streamer_username']),
-                    {}
-                )
-                if streamer_config.get('skip_vod_check', False):
-                    logger.info(f"Skipping VOD check for {ann['streamer_username']} (skip_vod_check enabled)")
-                    dao.mark_vod_checked(ann['id'])
-                    continue
+                    # Check if VOD checking is disabled for this specific streamer
+                    tracked_streamers = settings.get('twitch', {}).get('tracked_streamers', [])
+                    streamer_config = next(
+                        (s for s in tracked_streamers if s.get('username') == ann['streamer_username']),
+                        {}
+                    )
+                    if streamer_config.get('skip_vod_check', False):
+                        logger.info(f"Skipping VOD check for {ann['streamer_username']} (skip_vod_check enabled)")
+                        dao.mark_vod_checked(ann['id'])
+                        continue
 
-                # Check for VOD
-                vod_url = await tw.find_vod_for_stream(
-                    session,
-                    ann['streamer_username'],
-                    ann['stream_started_at']
-                )
+                    # Check for VOD
+                    vod_url = await tw.find_vod_for_stream(
+                        session,
+                        ann['streamer_username'],
+                        ann['stream_started_at']
+                    )
 
-                if vod_url:
-                    logger.info(f"Found VOD for {ann['streamer_username']} in guild {ann['guild_id']}: {vod_url} (attempt {attempt_count + 1})")
+                    if vod_url:
+                        logger.info(f"Found VOD for {ann['streamer_username']} in guild {ann['guild_id']}: {vod_url} (attempt {attempt_count + 1})")
 
-                    # Update database
-                    dao.update_vod_info(ann['id'], vod_url)
+                        # Update database
+                        dao.update_vod_info(ann['id'], vod_url)
 
-                    # Edit Discord message if enabled
-                    if vod_settings.get('edit_message_when_vod_available', True):
-                        await edit_announcement_with_vod(bot, ann, vod_url, vod_settings)
-                else:
-                    # No VOD found yet, mark as checked to avoid immediate re-check
-                    dao.mark_vod_checked(ann['id'])
+                        # Edit Discord message if enabled
+                        if vod_settings.get('edit_message_when_vod_available', True):
+                            await edit_announcement_with_vod(bot, ann, vod_url, vod_settings)
+                    else:
+                        # No VOD found yet, mark as checked to avoid immediate re-check
+                        dao.mark_vod_checked(ann['id'])
 
-                    # Smart logging based on attempt count
-                    if attempt_count < 3:
-                        logger.debug(f"No VOD found yet for {ann['streamer_username']} in guild {ann['guild_id']} (attempt {attempt_count + 1}/6)")
-                    elif attempt_count == 3:
-                        logger.info(f"Still checking for VOD: {ann['streamer_username']} in guild {ann['guild_id']} (attempt {attempt_count + 1}/6)")
-                    elif attempt_count >= 5:
-                        logger.warning(f"No VOD found after {attempt_count + 1} attempts for {ann['streamer_username']} in guild {ann['guild_id']} - VODs may be disabled for this channel")
+                        # Smart logging based on attempt count
+                        if attempt_count < 3:
+                            logger.debug(f"No VOD found yet for {ann['streamer_username']} in guild {ann['guild_id']} (attempt {attempt_count + 1}/6)")
+                        elif attempt_count == 3:
+                            logger.info(f"Still checking for VOD: {ann['streamer_username']} in guild {ann['guild_id']} (attempt {attempt_count + 1}/6)")
+                        elif attempt_count >= 5:
+                            logger.warning(f"No VOD found after {attempt_count + 1} attempts for {ann['streamer_username']} in guild {ann['guild_id']} - VODs may be disabled for this channel")
 
-            except Exception as e:
-                logger.error(f"Error checking VOD for announcement {ann['id']}: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"Error checking VOD for announcement {ann['id']}: {e}", exc_info=True)
+    finally:
+        dao.close()
+        guild_dao.close()
 
 
 async def edit_announcement_with_vod(bot, announcement, vod_url, vod_settings):
@@ -145,7 +149,7 @@ async def edit_announcement_with_vod(bot, announcement, vod_url, vod_settings):
         )
         vod_text = vod_suffix.replace('{vod_url}', vod_url)
 
-        embed.add_field(name="📺 VOD", value=vod_text, inline=False)
+        embed.add_field(name="", value=vod_text, inline=False)
 
         # Add stream metadata fields if available
         if announcement.get('stream_duration_seconds'):

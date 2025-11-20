@@ -10,10 +10,10 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from Dao.GuildUserDao import GuildUserDao
 from Dao.UserDao import UserDao
-from Dao.GuildDao import GuildDao
 from Entities.GuildUser import GuildUser
 from Entities.User import User
 from logger import AppLogger
+from models.settings_manager import SettingsManager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -92,23 +92,18 @@ class On_Message(commands.Cog):
         }
 
         try:
-            guild_dao = GuildDao()
-            guild = guild_dao.get_guild(guild_id)
+            # Use singleton SettingsManager to get guild settings
+            settings_manager = SettingsManager.get_instance()
+            guild_settings = settings_manager.get_guild_settings(str(guild_id))
 
-            if not guild or not guild.settings:
-                return default_config
+            # Extract daily announcements settings from the guild settings object
+            leveling_config = {
+                "enabled": guild_settings.leveling.enabled,
+                "daily_announcements_enabled": guild_settings.leveling.daily_announcements_enabled,
+                "daily_announcement_channel_id": guild_settings.leveling.daily_announcement_channel_id
+            }
 
-            # Parse settings JSON
-            settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
-
-            # Get leveling settings or return default
-            leveling_settings = settings.get("leveling", {})
-
-            # Merge with defaults
-            config = default_config.copy()
-            config.update(leveling_settings)
-
-            return config
+            return leveling_config
 
         except Exception as e:
             logger.error(f"Error getting leveling config for guild {guild_id}: {e}")

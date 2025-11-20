@@ -63,9 +63,9 @@ async def _process_daily_interest(bot):
     """
     import json
 
+    global_settings_dao = GlobalSettingsDao()
+    guild_dao = GuildDao()
     try:
-        global_settings_dao = GlobalSettingsDao()
-
         # Get global interest settings
         interest_enabled_str = global_settings_dao.get_setting_value('economy.interest_enabled')
         interest_enabled = interest_enabled_str == 'true' if interest_enabled_str else False
@@ -87,7 +87,6 @@ async def _process_daily_interest(bot):
         # Convert percentage to decimal (0.5% -> 0.005)
         interest_rate = interest_rate_percent / 100
 
-        guild_dao = GuildDao()
         guilds = guild_dao.get_all_guilds()
 
         if not guilds:
@@ -123,6 +122,9 @@ async def _process_daily_interest(bot):
     except Exception as e:
         logger.error(f'Error in daily interest processing: {e}')
         raise
+    finally:
+        global_settings_dao.close()
+        guild_dao.close()
 
 
 async def _process_weekly_interest(bot):
@@ -132,9 +134,9 @@ async def _process_weekly_interest(bot):
     """
     import json
 
+    global_settings_dao = GlobalSettingsDao()
+    guild_dao = GuildDao()
     try:
-        global_settings_dao = GlobalSettingsDao()
-
         # Get global interest settings
         interest_enabled_str = global_settings_dao.get_setting_value('economy.interest_enabled')
         interest_enabled = interest_enabled_str == 'true' if interest_enabled_str else False
@@ -156,7 +158,6 @@ async def _process_weekly_interest(bot):
         # Convert percentage to decimal (0.5% -> 0.005)
         interest_rate = interest_rate_percent / 100
 
-        guild_dao = GuildDao()
         guilds = guild_dao.get_all_guilds()
 
         if not guilds:
@@ -192,6 +193,9 @@ async def _process_weekly_interest(bot):
     except Exception as e:
         logger.error(f'Error in weekly interest processing: {e}')
         raise
+    finally:
+        global_settings_dao.close()
+        guild_dao.close()
 
 
 async def _apply_interest(guild_id: int, interest_rate: float, interval: str) -> int:
@@ -206,10 +210,9 @@ async def _apply_interest(guild_id: int, interest_rate: float, interval: str) ->
     Returns:
         Number of users processed
     """
+    user_dao = UserDao()
+    bank_dao = BankTransactionDao()
     try:
-        user_dao = UserDao()
-        bank_dao = BankTransactionDao()
-
         # Get all users with positive bank balance
         sql = """
             SELECT id, bank_balance
@@ -275,3 +278,6 @@ async def _apply_interest(guild_id: int, interest_rate: float, interval: str) ->
     except Exception as e:
         logger.error(f'Error in apply_interest: {e}')
         return 0
+    finally:
+        user_dao.close()
+        bank_dao.close()

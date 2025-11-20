@@ -841,7 +841,7 @@ class GuildUserDao(BaseDao[GuildUser]):
             bank_dao.add_transaction(new_transaction)
 
             # Commit all changes atomically
-            self.db.mydb.commit()
+            self.connection.commit()
 
             self.logger.info(
                 f"User {user_id} deposited {amount:,} (fee: {fee:,}, net: {net_deposit:,}) "
@@ -859,7 +859,7 @@ class GuildUserDao(BaseDao[GuildUser]):
             }
 
         except Exception as e:
-            self.db.mydb.rollback()
+            self.connection.rollback()
             self.logger.error(f"Error transferring to bank for user {user_id} in guild {guild_id}: {e}")
             return {'success': False, 'message': f'Transaction failed: {str(e)}'}
 
@@ -946,7 +946,7 @@ class GuildUserDao(BaseDao[GuildUser]):
             bank_dao.add_transaction(new_transaction)
 
             # Commit all changes atomically
-            self.db.mydb.commit()
+            self.connection.commit()
 
             self.logger.info(
                 f"User {user_id} withdrew {amount:,} (fee: {fee:,}) "
@@ -963,6 +963,6 @@ class GuildUserDao(BaseDao[GuildUser]):
             }
 
         except Exception as e:
-            self.db.mydb.rollback()
+            self.connection.rollback()
             self.logger.error(f"Error transferring from bank for user {user_id} in guild {guild_id}: {e}")
             return {'success': False, 'message': f'Transaction failed: {str(e)}'}

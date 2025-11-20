@@ -5,6 +5,9 @@ from discord.ext import commands
 from logger import AppLogger
 from Tasks.task_manager import register_tasks
 from Cogs import __all__ as enabled_cogs
+from models.settings_manager import SettingsManager
+from Dao.GuildDao import GuildDao
+from database import Database
 
 
 logger = AppLogger(__name__).get_logger()
@@ -30,6 +33,16 @@ class Bot(commands.Bot):
         logger.error(f"Command error in {ctx.guild.name if ctx.guild else 'DM'}: {error}")
 
     async def setup_hook(self):
+        # Initialize SettingsManager singleton on bot startup
+        try:
+            guild_dao = GuildDao()
+            SettingsManager(guild_dao)
+            guild_dao.close()  # Close the DAO after setup
+            logger.info("SettingsManager singleton initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize SettingsManager: {e}")
+            raise
+
         register_tasks(self)
         for cog_name in enabled_cogs:
             ext = f"Cogs.{cog_name}"
@@ -39,6 +52,16 @@ class Bot(commands.Bot):
                     logger.info(f'{ext} loaded')
             except Exception as e:
                 logger.error(f'Failed to load {ext}: {e}')
+
+    async def close(self):
+        """Close the bot and clean up database connections"""
+        logger.info("Bot shutting down, closing database connection pools...")
+        try:
+            Database.close_all_pools()
+            logger.info("Database connection pools closed successfully")
+        except Exception as e:
+            logger.error(f"Error closing database pools: {e}")
+        await super().close()
 
     async def on_ready(self):
         logger.info(f'Logged on as {self.user}!')

@@ -9,12 +9,12 @@ from logger import AppLogger
 
 
 logger = AppLogger(__name__).get_logger()
-portal_dao = CrossServerPortalDao()
 
 
 @tasks.loop(seconds=10)
 async def check_expired_portals(bot):
     """Check for expired portals and close them"""
+    portal_dao = CrossServerPortalDao()
     try:
         expired_portals = portal_dao.get_expired_portals()
 
@@ -65,6 +65,8 @@ async def check_expired_portals(bot):
 
     except Exception as e:
         logger.error(f"Error in check_expired_portals task: {e}")
+    finally:
+        portal_dao.close()
 
 
 @check_expired_portals.before_loop

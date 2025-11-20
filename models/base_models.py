@@ -296,6 +296,43 @@ class CrossServerPortalSettings(BaseModel):
         }
 
 
+class InstagramEmbedSettings(BaseModel):
+    """Instagram embed configuration for a guild"""
+    enabled: bool = True
+    show_captions: bool = True
+    show_engagement: bool = True
+    show_author: bool = True
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "enabled": True,
+                "show_captions": True,
+                "show_engagement": True,
+                "show_author": True
+            }
+        }
+
+
+class BetterEmbedsSettings(BaseModel):
+    """Better embeds configuration for various link types"""
+    enabled: bool = True
+    instagram: InstagramEmbedSettings = Field(default_factory=InstagramEmbedSettings)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "enabled": True,
+                "instagram": {
+                    "enabled": True,
+                    "show_captions": True,
+                    "show_engagement": True,
+                    "show_author": True
+                }
+            }
+        }
+
+
 class GuildSettings(BaseModel):
     """Complete guild settings structure"""
     leveling: LevelingSettings = Field(default_factory=LevelingSettings)
@@ -303,6 +340,7 @@ class GuildSettings(BaseModel):
     ai: AISettings = Field(default_factory=AISettings)
     games: GamesSettings = Field(default_factory=GamesSettings)
     cross_server_portal: CrossServerPortalSettings = Field(default_factory=CrossServerPortalSettings)
+    better_embeds: BetterEmbedsSettings = Field(default_factory=BetterEmbedsSettings)
 
     class Config:
         extra = "allow"

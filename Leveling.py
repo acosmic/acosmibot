@@ -34,22 +34,25 @@ class LevelingSystem:
         """Get leveling configuration from guild settings"""
         try:
             guild_dao = GuildDao()
-            guild = guild_dao.get_guild(guild_id)
+            try:
+                guild = guild_dao.get_guild(guild_id)
 
-            if not guild or not guild.settings:
-                return self.default_config
+                if not guild or not guild.settings:
+                    return self.default_config
 
-            # Parse settings JSON
-            settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
+                # Parse settings JSON
+                settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
 
-            # Get leveling settings or return default
-            leveling_settings = settings.get("leveling", {})
+                # Get leveling settings or return default
+                leveling_settings = settings.get("leveling", {})
 
-            # Merge with defaults
-            config = self.default_config.copy()
-            config.update(leveling_settings)
+                # Merge with defaults
+                config = self.default_config.copy()
+                config.update(leveling_settings)
 
-            return config
+                return config
+            finally:
+                guild_dao.close()
 
         except Exception as e:
             logger.error(f"Error getting leveling config: {e}")
@@ -124,6 +127,8 @@ class LevelingSystem:
         # Get leveling configuration
         config = self.get_leveling_config(guild_id)
 
+        guild_user_dao = None
+        user_dao = None
         try:
             # Get DAOs
             guild_user_dao = GuildUserDao()
@@ -204,9 +209,22 @@ class LevelingSystem:
 
         except Exception as e:
             logger.error(f"Error processing message exp for user {user_id} in guild {guild_id}: {e}")
+        finally:
+            # Close DAOs to return connections to pool
+            if guild_user_dao:
+                try:
+                    guild_user_dao.close()
+                except Exception as e:
+                    logger.warning(f"Error closing guild_user_dao: {e}")
+            if user_dao:
+                try:
+                    user_dao.close()
+                except Exception as e:
+                    logger.warning(f"Error closing user_dao: {e}")
 
     async def handle_level_up(self, message, guild_user, old_level, new_level, config):
         """Handle level up event"""
+        guild_user_dao = None
         try:
             user = message.author
             guild = message.guild
@@ -221,13 +239,16 @@ class LevelingSystem:
 
             # Update currency with global sync
             guild_user_dao = GuildUserDao()
-            guild_user_dao.update_currency_with_global_sync(
-                user.id,
-                guild.id,
-                calculated_reward
-            )
-            # Refresh guild_user object to reflect updated currency
-            guild_user = guild_user_dao.get_guild_user(user.id, guild.id)
+            try:
+                guild_user_dao.update_currency_with_global_sync(
+                    user.id,
+                    guild.id,
+                    calculated_reward
+                )
+                # Refresh guild_user object to reflect updated currency
+                guild_user = guild_user_dao.get_guild_user(user.id, guild.id)
+            finally:
+                guild_user_dao.close()
 
             # Send level up announcement if enabled
             if config["level_up_announcements"]:
@@ -272,6 +293,7 @@ class LevelingSystem:
 
     async def handle_role_assignment(self, message, guild_user, new_level):
         """Handle automatic role assignment based on level"""
+        guild_dao = None
         try:
             guild = message.guild
             user = message.author
@@ -279,13 +301,16 @@ class LevelingSystem:
 
             # Get guild settings for role configuration
             guild_dao = GuildDao()
-            guild_obj = guild_dao.get_guild(guild_id)
+            try:
+                guild_obj = guild_dao.get_guild(guild_id)
 
-            if not guild_obj or not guild_obj.settings:
-                return
+                if not guild_obj or not guild_obj.settings:
+                    return
 
-            settings = json.loads(guild_obj.settings) if isinstance(guild_obj.settings, str) else guild_obj.settings
-            roles_config = settings.get("roles", {})
+                settings = json.loads(guild_obj.settings) if isinstance(guild_obj.settings, str) else guild_obj.settings
+                roles_config = settings.get("roles", {})
+            finally:
+                guild_dao.close()
 
             # Skip if roles system is disabled
             if not roles_config.get("enabled", False):
@@ -386,6 +411,7 @@ class LevelingSystem:
 
     async def check_and_apply_missing_roles(self, message, guild_user, current_level):
         """Check if user is missing any roles for their current level and apply them"""
+        guild_dao = None
         try:
             guild = message.guild
             user = message.author
@@ -393,13 +419,16 @@ class LevelingSystem:
 
             # Get guild settings for role configuration
             guild_dao = GuildDao()
-            guild_obj = guild_dao.get_guild(guild_id)
+            try:
+                guild_obj = guild_dao.get_guild(guild_id)
 
-            if not guild_obj or not guild_obj.settings:
-                return
+                if not guild_obj or not guild_obj.settings:
+                    return
 
-            settings = json.loads(guild_obj.settings) if isinstance(guild_obj.settings, str) else guild_obj.settings
-            roles_config = settings.get("roles", {})
+                settings = json.loads(guild_obj.settings) if isinstance(guild_obj.settings, str) else guild_obj.settings
+                roles_config = settings.get("roles", {})
+            finally:
+                guild_dao.close()
 
             # Skip if roles system is disabled
             if not roles_config.get("enabled", False):

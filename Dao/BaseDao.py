@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional, TypeVar, Generic, Type, Union, Tuple
-from database import Database
+from database import Database, get_database
 from Entities.BaseEntity import BaseEntity
 from dotenv import load_dotenv
 import os
@@ -35,11 +35,28 @@ class BaseDao(Generic[T]):
         self.db_password = os.getenv('db_password')
         self.db_name = os.getenv('db_name')
 
-        # Use provided database connection or create a new one
-        self.db = db or Database(self.db_host, self.db_user, self.db_password, self.db_name)
+        # Use provided database connection or get the global singleton
+        if db:
+            self.db = db
+        else:
+            self.db = get_database(self.db_host, self.db_user, self.db_password, self.db_name)
 
         # Set up logging
         self.logger = logging.getLogger(__name__)
+
+        # LAZY CONNECTION: Don't acquire connection at init time
+        # This prevents connection leaks from persistent DAO instances
+        # Connections will be acquired per-query and released immediately
+        self.connection = None
+
+    def __enter__(self):
+        """Context manager entry - allows using DAOs with 'with' statement"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures connection is always closed"""
+        self.close()
+        return False  # Don't suppress exceptions
 
     from mysql.connector.errors import OperationalError, InterfaceError
 
@@ -47,6 +64,9 @@ class BaseDao(Generic[T]):
         Optional[List[tuple]], bool, Tuple[Optional[List[tuple]], Optional[List]]]:
         """
         Execute a SQL query with error handling and connection recovery.
+
+        IMPORTANT: Uses per-query connection acquisition to prevent connection leaks.
+        Connection is acquired from pool, used for the query, then immediately released.
 
         Args:
             query (str): SQL query with placeholders
@@ -59,26 +79,27 @@ class BaseDao(Generic[T]):
             If return_description=True, returns tuple of (results, description)
         """
         max_retries = 2
+        connection = None
+        cursor = None
 
         for attempt in range(max_retries + 1):
-            cursor = None
             try:
-                # Check if connection is still alive
-                if not self.db.mydb.is_connected():
-                    self.logger.info("Database connection lost, attempting to reconnect...")
-                    self._reconnect()
+                # Acquire connection from pool for this query
+                connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+                if not connection:
+                    raise MySQLError("Failed to get connection from pool")
 
-                # Create a fresh cursor for each query to avoid stale state
-                cursor = self.db.mydb.cursor()
+                # Create cursor
+                cursor = connection.cursor()
 
-                # Log the query for debugging
+                # Execute query
                 if params:
                     cursor.execute(query, params)
                 else:
                     cursor.execute(query)
 
                 if commit:
-                    self.db.mydb.commit()
+                    connection.commit()
                     return True  # Return True for successful commit
                 else:
                     results = cursor.fetchall()
@@ -95,15 +116,12 @@ class BaseDao(Generic[T]):
                 # Check if it's a connection error that we can retry
                 if err.errno in (2006, 2013, 2014) and attempt < max_retries:  # Connection lost errors
                     self.logger.info(f"Connection error detected, retrying... (attempt {attempt + 1})")
-                    try:
-                        self._reconnect()
-                        continue
-                    except Exception as reconnect_err:
-                        self.logger.error(f"Failed to reconnect: {reconnect_err}")
+                    continue
 
                 if commit:
                     try:
-                        self.db.mydb.rollback()
+                        if connection:
+                            connection.rollback()
                     except:
                         pass
                 if return_description:
@@ -111,10 +129,15 @@ class BaseDao(Generic[T]):
                 return False if commit else None
 
             finally:
-                # Always close the cursor after use
+                # Always close cursor and return connection to pool
                 if cursor:
                     try:
                         cursor.close()
+                    except:
+                        pass
+                if connection:
+                    try:
+                        connection.close()  # Returns to pool
                     except:
                         pass
 
@@ -126,6 +149,9 @@ class BaseDao(Generic[T]):
     def execute_many(self, query: str, params_list: List[tuple], commit: bool = False) -> bool:
         """
         Execute a SQL query with multiple parameter sets (bulk operation).
+
+        IMPORTANT: Uses per-query connection acquisition to prevent connection leaks.
+        Connection is acquired from pool, used for the query, then immediately released.
 
         Args:
             query (str): SQL query with placeholders
@@ -139,23 +165,24 @@ class BaseDao(Generic[T]):
             return True
 
         max_retries = 2
+        connection = None
+        cursor = None
 
         for attempt in range(max_retries + 1):
-            cursor = None
             try:
-                # Check if connection is still alive
-                if not self.db.mydb.is_connected():
-                    self.logger.info("Database connection lost, attempting to reconnect...")
-                    self._reconnect()
+                # Acquire connection from pool for this query
+                connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+                if not connection:
+                    raise MySQLError("Failed to get connection from pool")
 
-                # Create a fresh cursor for each query to avoid stale state
-                cursor = self.db.mydb.cursor()
+                # Create cursor
+                cursor = connection.cursor()
 
                 # Execute many with all parameter sets
                 cursor.executemany(query, params_list)
 
                 if commit:
-                    self.db.mydb.commit()
+                    connection.commit()
                     return True
                 else:
                     return True
@@ -168,24 +195,26 @@ class BaseDao(Generic[T]):
                 # Check if it's a connection error that we can retry
                 if err.errno in (2006, 2013, 2014) and attempt < max_retries:  # Connection lost errors
                     self.logger.info(f"Connection error detected, retrying... (attempt {attempt + 1})")
-                    try:
-                        self._reconnect()
-                        continue
-                    except Exception as reconnect_err:
-                        self.logger.error(f"Failed to reconnect: {reconnect_err}")
+                    continue
 
                 if commit:
                     try:
-                        self.db.mydb.rollback()
+                        if connection:
+                            connection.rollback()
                     except:
                         pass
                 return False
 
             finally:
-                # Always close the cursor after use
+                # Always close cursor and return connection to pool
                 if cursor:
                     try:
                         cursor.close()
+                    except:
+                        pass
+                if connection:
+                    try:
+                        connection.close()  # Returns to pool
                     except:
                         pass
 
@@ -193,29 +222,11 @@ class BaseDao(Generic[T]):
         return False
 
     def _reconnect(self):
-        """Reconnect to the database"""
-        try:
-            if hasattr(self.db, 'mydb') and self.db.mydb.is_connected():
-                self.db.mydb.close()
-
-            # Recreate the connection
-            import mysql.connector
-            self.db.mydb = mysql.connector.connect(
-                host=self.db.db_host,
-                user=self.db.db_user,
-                password=self.db.db_password,
-                database=self.db.db_name,
-                autocommit=False,
-                connect_timeout=10,
-                use_unicode=True,
-                charset='utf8mb4'
-            )
-            self.db.mycursor = self.db.mydb.cursor()
-            self.logger.info("Database reconnection successful")
-
-        except Exception as e:
-            self.logger.error(f"Failed to reconnect to database: {e}")
-            raise
+        """
+        Legacy method - no longer needed with per-query connection acquisition.
+        Kept for backward compatibility but does nothing.
+        """
+        pass
 
     def get_last_insert_id(self) -> Optional[int]:
         """Get the last inserted ID"""
@@ -363,9 +374,8 @@ class BaseDao(Generic[T]):
 
     def close(self) -> None:
         """
-        Close the database connection.
+        Close method - no longer needed with per-query connection acquisition.
+        Kept for backward compatibility but does nothing since connections
+        are now acquired per-query and released immediately after use.
         """
-        try:
-            self.db.close_connection()
-        except Exception as e:
-            self.logger.error(f"Error closing database connection: {e}")
+        pass

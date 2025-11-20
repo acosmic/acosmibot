@@ -37,15 +37,17 @@ async def daily_reward_task(bot):
 async def _reset_daily_rewards_all_guilds(bot):
     """Reset daily rewards for all guilds the bot is in."""
     guild_user_dao = GuildUserDao()
+    try:
+        # Process all guilds the bot is connected to
+        for guild in bot.guilds:
+            try:
+                logger.info(f'Processing daily reset for guild: {guild.name} (ID: {guild.id})')
+                await _reset_daily_rewards_for_guild(guild_user_dao, guild)
 
-    # Process all guilds the bot is connected to
-    for guild in bot.guilds:
-        try:
-            logger.info(f'Processing daily reset for guild: {guild.name} (ID: {guild.id})')
-            await _reset_daily_rewards_for_guild(guild_user_dao, guild)
-
-        except Exception as e:
-            logger.error(f'Error processing guild {guild.name} (ID: {guild.id}): {e}')
+            except Exception as e:
+                logger.error(f'Error processing guild {guild.name} (ID: {guild.id}): {e}')
+    finally:
+        guild_user_dao.close()
 
 
 async def _reset_daily_rewards_for_guild(guild_user_dao: GuildUserDao, guild):
@@ -107,8 +109,8 @@ def _get_leveling_config(guild_id):
         "enabled": True
     }
 
+    guild_dao = GuildDao()
     try:
-        guild_dao = GuildDao()
         guild = guild_dao.get_guild(guild_id)
 
         if not guild or not guild.settings:
@@ -129,6 +131,8 @@ def _get_leveling_config(guild_id):
     except Exception as e:
         logger.error(f"Error getting leveling config for guild {guild_id}: {e}")
         return default_config
+    finally:
+        guild_dao.close()
 
 
 # import asyncio

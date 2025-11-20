@@ -33,31 +33,33 @@ async def lottery_end_task(bot):
 async def _process_all_guild_lotteries(bot):
     """Process lottery events for all guilds."""
     le_dao = LotteryEventDao()
+    try:
+        # Get all current lottery events across all guilds
+        current_lotteries = le_dao.get_all_current_events()
 
-    # Get all current lottery events across all guilds
-    current_lotteries = le_dao.get_all_current_events()
+        if not current_lotteries:
+            logger.info('No active lottery events found')
+            return
 
-    if not current_lotteries:
-        logger.info('No active lottery events found')
-        return
+        for lottery_event in current_lotteries:
+            try:
+                guild = bot.get_guild(lottery_event.guild_id)
+                if not guild:
+                    logger.warning(f'Guild {lottery_event.guild_id} not found, skipping lottery {lottery_event.id}')
+                    continue
 
-    for lottery_event in current_lotteries:
-        try:
-            guild = bot.get_guild(lottery_event.guild_id)
-            if not guild:
-                logger.warning(f'Guild {lottery_event.guild_id} not found, skipping lottery {lottery_event.id}')
-                continue
+                # Now we can simply get the channel by ID
+                channel = guild.get_channel(lottery_event.channel_id)
+                if not channel:
+                    logger.warning(f'Channel {lottery_event.channel_id} not found in guild {guild.name}, skipping lottery')
+                    continue
 
-            # Now we can simply get the channel by ID
-            channel = guild.get_channel(lottery_event.channel_id)
-            if not channel:
-                logger.warning(f'Channel {lottery_event.channel_id} not found in guild {guild.name}, skipping lottery')
-                continue
+                await _process_lottery_event(lottery_event, guild, channel)
 
-            await _process_lottery_event(lottery_event, guild, channel)
-
-        except Exception as e:
-            logger.error(f'Error processing lottery {lottery_event.id} in guild {lottery_event.guild_id}: {e}')
+            except Exception as e:
+                logger.error(f'Error processing lottery {lottery_event.id} in guild {lottery_event.guild_id}: {e}')
+    finally:
+        le_dao.close()
 
 
 async def _process_lottery_event(lottery_event, guild, channel):
@@ -75,13 +77,12 @@ async def _end_lottery(lottery_event, guild, channel):
     """End a lottery event and select a winner."""
     logger.info(f'Guild {guild.name}: Ending lottery event {lottery_event.id}')
 
+    # Get all required DAOs
+    le_dao = LotteryEventDao()
+    guild_dao = GuildDao()  # Use GuildDao instead of VaultDao
+    guild_user_dao = GuildUserDao()  # Need this for winner's currency
+    lp_dao = LotteryParticipantDao()
     try:
-        # Get all required DAOs
-        le_dao = LotteryEventDao()
-        guild_dao = GuildDao()  # Use GuildDao instead of VaultDao
-        guild_user_dao = GuildUserDao()  # Need this for winner's currency
-        lp_dao = LotteryParticipantDao()
-
         # Get lottery credits from guild vault
         lottery_credits = guild_dao.get_vault_currency(guild.id)
 
@@ -130,6 +131,11 @@ async def _end_lottery(lottery_event, guild, channel):
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error ending lottery {lottery_event.id}: {e}')
+    finally:
+        le_dao.close()
+        guild_dao.close()
+        guild_user_dao.close()
+        lp_dao.close()
 
 
 async def _update_lottery_records(lottery_event, winner_guild_user, lottery_credits, le_dao, guild_user_dao, guild_dao,

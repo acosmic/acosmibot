@@ -42,41 +42,44 @@ class Give(commands.Cog):
         try:
             guild_user_dao = GuildUserDao()
 
-            # Get or create guild users (currency is guild-specific)
-            giving_user = guild_user_dao.get_or_create_guild_user_from_discord(interaction.user, interaction.guild.id)
-            target_user = guild_user_dao.get_or_create_guild_user_from_discord(target, interaction.guild.id)
+            try:
+                # Get or create guild users (currency is guild-specific)
+                giving_user = guild_user_dao.get_or_create_guild_user_from_discord(interaction.user, interaction.guild.id)
+                target_user = guild_user_dao.get_or_create_guild_user_from_discord(target, interaction.guild.id)
 
-            if not giving_user or not target_user:
-                await interaction.response.send_message("Failed to get user data.", ephemeral=True)
-                return
+                if not giving_user or not target_user:
+                    await interaction.response.send_message("Failed to get user data.", ephemeral=True)
+                    return
 
-            # Check if giver has enough credits
-            if amount > giving_user.currency:
+                # Check if giver has enough credits
+                if amount > giving_user.currency:
+                    await interaction.response.send_message(
+                        f"{interaction.user.name}, your heart is bigger than your wallet. "
+                        f"You don't have {amount:,.0f} Credits to give. "
+                        f"(You have {giving_user.currency:,.0f}) "
+                        f"<:FeelsBigSad:1199734765230768139>"
+                    )
+                    logger.info(
+                        f"{interaction.user.name} tried to give {amount:,.0f} Credits to {target.name} but didn't have enough Credits.")
+                    return
+
+                # Perform the transfer with global sync
+                guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -amount)
+                guild_user_dao.update_currency_with_global_sync(target.id, interaction.guild.id, amount)
+
+                # Update local objects for display
+                giving_user.currency -= amount
+                target_user.currency += amount
+
                 await interaction.response.send_message(
-                    f"{interaction.user.name}, your heart is bigger than your wallet. "
-                    f"You don't have {amount:,.0f} Credits to give. "
-                    f"(You have {giving_user.currency:,.0f}) "
-                    f"<:FeelsBigSad:1199734765230768139>"
+                    f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>\n'
+                    f'*{interaction.user.name} now has {giving_user.currency:,.0f} credits.*'
                 )
+
                 logger.info(
-                    f"{interaction.user.name} tried to give {amount:,.0f} Credits to {target.name} but didn't have enough Credits.")
-                return
-
-            # Perform the transfer with global sync
-            guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -amount)
-            guild_user_dao.update_currency_with_global_sync(target.id, interaction.guild.id, amount)
-
-            # Update local objects for display
-            giving_user.currency -= amount
-            target_user.currency += amount
-
-            await interaction.response.send_message(
-                f'### {interaction.user.name} has given {target.mention} {amount:,.0f} credits! <:PepePimp:1200268145693302854>\n'
-                f'*{interaction.user.name} now has {giving_user.currency:,.0f} credits.*'
-            )
-
-            logger.info(
-                f"{interaction.user.name} gave {target.name} {amount:,.0f} Credits in {interaction.guild.name}.")
+                    f"{interaction.user.name} gave {target.name} {amount:,.0f} Credits in {interaction.guild.name}.")
+            finally:
+                guild_user_dao.close()
 
         except Exception as e:
             logger.error(f'/give command error - giver: {interaction.user.name}, target: {target.name} - {e}')

@@ -94,6 +94,8 @@ async def reconcile_all_stats():
 
     except Exception as e:
         logger.error(f"Error during stats reconciliation: {e}", exc_info=True)
+    finally:
+        user_dao.close()
 
 
 async def create_missing_users(user_dao: UserDao) -> int:
@@ -124,7 +126,7 @@ async def create_missing_users(user_dao: UserDao) -> int:
         """
 
         # Execute queries to get missing user IDs
-        cursor = user_dao.db.mydb.cursor()
+        cursor = user_dao.connection.cursor()
 
         cursor.execute(sql_guild_users)
         guild_user_ids = [row[0] for row in cursor.fetchall()]
@@ -210,9 +212,9 @@ async def reconcile_total_messages(user_dao: UserDao) -> int:
 
     try:
         # Use direct database access to get rowcount
-        cursor = user_dao.db.mydb.cursor()
+        cursor = user_dao.connection.cursor()
         cursor.execute(sql)
-        user_dao.db.mydb.commit()
+        user_dao.connection.commit()
         affected = cursor.rowcount
         cursor.close()
         logger.info(f"Reconciled total_messages for {affected} users")
@@ -244,9 +246,9 @@ async def reconcile_total_reactions(user_dao: UserDao) -> int:
 
     try:
         # Use direct database access to get rowcount
-        cursor = user_dao.db.mydb.cursor()
+        cursor = user_dao.connection.cursor()
         cursor.execute(sql)
-        user_dao.db.mydb.commit()
+        user_dao.connection.commit()
         affected = cursor.rowcount
         cursor.close()
         logger.info(f"Reconciled total_reactions for {affected} users")
@@ -283,9 +285,9 @@ async def reconcile_global_exp(user_dao: UserDao) -> int:
 
     try:
         # Use direct database access to get rowcount
-        cursor = user_dao.db.mydb.cursor()
+        cursor = user_dao.connection.cursor()
         cursor.execute(sql)
-        user_dao.db.mydb.commit()
+        user_dao.connection.commit()
         affected = cursor.rowcount
         cursor.close()
         logger.info(f"Reconciled global_exp and global_level for {affected} users")
@@ -318,9 +320,9 @@ async def reconcile_total_currency(user_dao: UserDao) -> int:
 
     try:
         # Use direct database access to get rowcount
-        cursor = user_dao.db.mydb.cursor()
+        cursor = user_dao.connection.cursor()
         cursor.execute(sql)
-        user_dao.db.mydb.commit()
+        user_dao.connection.commit()
         affected = cursor.rowcount
         cursor.close()
         logger.info(f"Reconciled total_currency for {affected} users")

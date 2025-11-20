@@ -53,9 +53,8 @@ async def _reconcile_total_currency():
     Reconcile Users.total_currency with the sum of GuildUsers.currency.
     This ensures global currency totals are accurate.
     """
+    user_dao = UserDao()
     try:
-        user_dao = UserDao()
-
         # First, get count of users that need reconciliation (for logging)
         check_sql = """
             SELECT COUNT(*) as count
@@ -97,3 +96,5 @@ async def _reconcile_total_currency():
     except Exception as e:
         logger.error(f'Error reconciling total currency: {e}')
         raise
+    finally:
+        user_dao.close()

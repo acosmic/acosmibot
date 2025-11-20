@@ -41,6 +41,7 @@ __all__ = [
     "PortalCommands",
     "PortalMessageListener",
     "ReactionRoles",
+    # "InstagramEmbed",  # Disabled - instagrapi blocked by Instagram API. Plan to migrate to official Graph API + oEmbed
     # "ActivityDiagnostic",
     # "RipAudio",
     # "Burn",

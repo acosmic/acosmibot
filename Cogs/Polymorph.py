@@ -29,16 +29,16 @@ class Polymorph(commands.Cog):
 
 
 
-        # # Check if target is the server owner
-        # if target.id == interaction.guild.owner_id:
-        #     await interaction.response.send_message("You cannot polymorph the server owner! 👑", ephemeral=True)
-        #     return
-
-        # Check if target has higher permissions
-        if target.top_role >= interaction.user.top_role and interaction.user.id != interaction.guild.owner_id:
-            await interaction.response.send_message("You cannot polymorph someone with equal or higher permissions!",
-                                                    ephemeral=True)
+        # Check if target is the server owner
+        if target.id == interaction.guild.owner_id:
+            await interaction.response.send_message("You cannot polymorph the server owner! 👑", ephemeral=True)
             return
+
+        # # Check if target has higher permissions
+        # if target.top_role >= interaction.user.top_role and interaction.user.id != interaction.guild.owner_id:
+        #     await interaction.response.send_message("You cannot polymorph someone with equal or higher permissions!",
+        #                                             ephemeral=True)
+        #     return
 
         guild_user_dao = GuildUserDao()
         guild_dao = GuildDao()

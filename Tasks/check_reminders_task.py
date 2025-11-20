@@ -18,13 +18,11 @@ async def check_reminders_task(bot):
     await bot.wait_until_ready()
     logger.info("=== REMINDER TASK: Bot is ready, starting reminder loop ===")
 
-    reminder_dao = ReminderDao()
-    logger.info("=== REMINDER TASK: ReminderDao initialized ===")
-
     iteration = 0
     while not bot.is_closed():
         # iteration += 1
         # logger.info(f'=== REMINDER TASK: Iteration {iteration} - Checking for due reminders ===')
+        reminder_dao = ReminderDao()
         try:
             due_reminders = reminder_dao.get_due_reminders()
             # logger.info(f'=== REMINDER TASK: Found {len(due_reminders)} due reminder(s) ===')
@@ -110,6 +108,8 @@ async def check_reminders_task(bot):
 
         except Exception as e:
             logger.error(f"❌ CRITICAL ERROR in reminder check task: {e}", exc_info=True)
+        finally:
+            reminder_dao.close()
 
         # Check every 30 seconds
         # logger.debug(f"=== REMINDER TASK: Sleeping for 30 seconds (iteration {iteration} complete) ===")

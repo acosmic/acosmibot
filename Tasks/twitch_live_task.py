@@ -32,14 +32,11 @@ async def _initialize_announcement_cache(bot):
     try:
         # Get all announcements where stream hasn't ended yet
         # (stream_ended_at IS NULL means still live)
-        cursor = dao.db.mydb.cursor()
-        cursor.execute("""
+        active_announcements = dao.execute_query("""
             SELECT DISTINCT guild_id, streamer_username
             FROM TwitchAnnouncements
             WHERE stream_ended_at IS NULL
         """)
-        active_announcements = cursor.fetchall()
-        cursor.close()
 
         async with _announcements_lock:
             for guild_id, streamer_username in active_announcements:
@@ -50,6 +47,8 @@ async def _initialize_announcement_cache(bot):
         logger.info(f"Initialized Twitch announcement cache with {len(active_announcements)} active streams")
     except Exception as e:
         logger.error(f"Error initializing Twitch announcement cache: {e}", exc_info=True)
+    finally:
+        dao.close()
 
 
 async def twitch_live_check_task(bot):
@@ -88,49 +87,52 @@ async def _check_guild_twitch_streams(guild, tw):
     """Check Twitch streams for a specific guild."""
     # Get guild settings
     guild_dao = GuildDao()
-    settings = guild_dao.get_guild_settings(guild.id)
+    try:
+        settings = guild_dao.get_guild_settings(guild.id)
 
-    # Check if Twitch notifications are enabled
-    if not settings or not settings.get('twitch', {}).get('enabled'):
-        return
+        # Check if Twitch notifications are enabled
+        if not settings or not settings.get('twitch', {}).get('enabled'):
+            return
 
-    # Get announcement channel
-    channel_id = settings.get('twitch', {}).get('announcement_channel_id')
-    if not channel_id:
-        logger.debug(f'Guild {guild.name}: Twitch enabled but no announcement channel configured')
-        return
+        # Get announcement channel
+        channel_id = settings.get('twitch', {}).get('announcement_channel_id')
+        if not channel_id:
+            logger.debug(f'Guild {guild.name}: Twitch enabled but no announcement channel configured')
+            return
 
-    channel = guild.get_channel(int(channel_id))
-    if not channel:
-        logger.warning(f'Guild {guild.name}: Twitch announcement channel {channel_id} not found')
-        return
+        channel = guild.get_channel(int(channel_id))
+        if not channel:
+            logger.warning(f'Guild {guild.name}: Twitch announcement channel {channel_id} not found')
+            return
 
-    # Get tracked streamers
-    tracked_streamers = settings.get('twitch', {}).get('tracked_streamers', [])
-    if not tracked_streamers:
-        logger.debug(f'Guild {guild.name}: No Twitch streamers configured')
-        return
+        # Get tracked streamers
+        tracked_streamers = settings.get('twitch', {}).get('tracked_streamers', [])
+        if not tracked_streamers:
+            logger.debug(f'Guild {guild.name}: No Twitch streamers configured')
+            return
 
-    guild_id = guild.id
+        guild_id = guild.id
 
-    async with _announcements_lock:
-        if guild_id not in _posted_announcements:
-            _posted_announcements[guild_id] = {}
+        async with _announcements_lock:
+            if guild_id not in _posted_announcements:
+                _posted_announcements[guild_id] = {}
 
-    # Check each streamer
-    tasks = [
-        _check_streamer_status(
-            streamer_config['twitch_username'],
-            streamer_config,
-            guild,
-            channel,
-            tw,
-            settings
-        )
-        for streamer_config in tracked_streamers
-        if streamer_config.get('twitch_username')
-    ]
-    await asyncio.gather(*tasks, return_exceptions=True)
+        # Check each streamer
+        tasks = [
+            _check_streamer_status(
+                streamer_config['twitch_username'],
+                streamer_config,
+                guild,
+                channel,
+                tw,
+                settings
+            )
+            for streamer_config in tracked_streamers
+            if streamer_config.get('twitch_username')
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
+    finally:
+        guild_dao.close()
 
 
 async def _check_streamer_status(streamer_username, streamer_config, guild, channel, tw, settings):
@@ -164,55 +166,55 @@ async def _check_streamer_status(streamer_username, streamer_config, guild, chan
                 if already_posted:
                     # Stream went offline - edit the embed and mark offline
                     dao = TwitchAnnouncementDao()
+                    try:
+                        # Fetch the announcement from database
+                        results = dao.execute_query("""
+                            SELECT id, message_id, channel_id, stream_started_at
+                            FROM TwitchAnnouncements
+                            WHERE guild_id = %s
+                            AND streamer_username = %s
+                            AND stream_ended_at IS NULL
+                            ORDER BY stream_started_at DESC
+                            LIMIT 1
+                        """, (guild_id, streamer_username))
+                        announcement = results[0] if results else None
 
-                    # Fetch the announcement from database
-                    cursor = dao.db.mydb.cursor()
-                    cursor.execute("""
-                        SELECT id, message_id, channel_id, stream_started_at
-                        FROM TwitchAnnouncements
-                        WHERE guild_id = %s
-                        AND streamer_username = %s
-                        AND stream_ended_at IS NULL
-                        ORDER BY stream_started_at DESC
-                        LIMIT 1
-                    """, (guild_id, streamer_username))
-                    announcement = cursor.fetchone()
-                    cursor.close()
+                        if announcement:
+                            announcement_id, message_id, announcement_channel_id, stream_started_at = announcement
 
-                    if announcement:
-                        announcement_id, message_id, announcement_channel_id, stream_started_at = announcement
+                            # Calculate stream duration
+                            stream_end_time = datetime.utcnow()
+                            duration_seconds = int((stream_end_time - stream_started_at).total_seconds())
 
-                        # Calculate stream duration
-                        stream_end_time = datetime.utcnow()
-                        duration_seconds = int((stream_end_time - stream_started_at).total_seconds())
+                            # Try to get final viewer count from last API call
+                            final_viewer_count = None
+                            try:
+                                async with aiohttp.ClientSession() as session:
+                                    stream_data = await tw.get_stream_info(session, streamer_username)
+                                    if stream_data.get('data') and len(stream_data['data']) > 0:
+                                        final_viewer_count = stream_data['data'][0].get('viewer_count')
+                            except Exception as e:
+                                logger.debug(f'Guild {guild.name}: Could not fetch final viewer count: {e}')
 
-                        # Try to get final viewer count from last API call
-                        final_viewer_count = None
-                        try:
-                            async with aiohttp.ClientSession() as session:
-                                stream_data = await tw.get_stream_info(session, streamer_username)
-                                if stream_data.get('data') and len(stream_data['data']) > 0:
-                                    final_viewer_count = stream_data['data'][0].get('viewer_count')
-                        except Exception as e:
-                            logger.debug(f'Guild {guild.name}: Could not fetch final viewer count: {e}')
+                            # Edit the announcement message
+                            await _edit_announcement_on_stream_end(
+                                guild,
+                                announcement_channel_id,
+                                message_id,
+                                stream_started_at,
+                                stream_end_time,
+                                duration_seconds,
+                                final_viewer_count
+                            )
 
-                        # Edit the announcement message
-                        await _edit_announcement_on_stream_end(
-                            guild,
-                            announcement_channel_id,
-                            message_id,
-                            stream_started_at,
-                            stream_end_time,
-                            duration_seconds,
-                            final_viewer_count
-                        )
+                            # Update database with end info
+                            dao.mark_stream_offline(guild_id, streamer_username, final_viewer_count, duration_seconds)
 
-                        # Update database with end info
-                        dao.mark_stream_offline(guild_id, streamer_username, final_viewer_count, duration_seconds)
-
-                    async with _announcements_lock:
-                        _posted_announcements[guild_id][streamer_username] = False
-                    logger.debug(f'Guild {guild.name}: {streamer_username} went offline, edited announcement')
+                        async with _announcements_lock:
+                            _posted_announcements[guild_id][streamer_username] = False
+                        logger.debug(f'Guild {guild.name}: {streamer_username} went offline, edited announcement')
+                    finally:
+                        dao.close()
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error checking {streamer_username}: {e}', exc_info=True)
@@ -315,19 +317,22 @@ async def _post_live_announcement(streamer_username, streamer_config, guild, cha
 
         # Store in database for VOD tracking
         dao = TwitchAnnouncementDao()
-        stream_started_dt = datetime.strptime(stream_start_time, "%Y-%m-%dT%H:%M:%SZ")
-        dao.create_announcement(
-            guild.id,
-            streamer_username,
-            message.id,
-            channel.id,
-            stream_started_dt,
-            initial_viewer_count=viewer_count,
-            stream_title=stream_title,
-            game_name=game_name
-        )
+        try:
+            stream_started_dt = datetime.strptime(stream_start_time, "%Y-%m-%dT%H:%M:%SZ")
+            dao.create_announcement(
+                guild.id,
+                streamer_username,
+                message.id,
+                channel.id,
+                stream_started_dt,
+                initial_viewer_count=viewer_count,
+                stream_title=stream_title,
+                game_name=game_name
+            )
 
-        logger.info(f'Guild {guild.name}: Posted announcement for {streamer_username} (message {message.id})')
+            logger.info(f'Guild {guild.name}: Posted announcement for {streamer_username} (message {message.id})')
+        finally:
+            dao.close()
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error posting announcement for {streamer_username}: {e}', exc_info=True)
@@ -405,6 +410,7 @@ async def _edit_announcement_on_stream_end(
 
 async def _check_stream_status_updates(bot):
     """Check and update viewer counts for streams live >20 minutes."""
+    dao = None
     try:
         dao = TwitchAnnouncementDao()
         announcements = dao.get_announcements_needing_status_update()
@@ -455,6 +461,12 @@ async def _check_stream_status_updates(bot):
 
     except Exception as e:
         logger.error(f'Error in _check_stream_status_updates: {e}', exc_info=True)
+    finally:
+        if dao:
+            try:
+                dao.close()
+            except Exception as e:
+                logger.warning(f'Error closing DAO: {e}')
 
 
 async def _update_announcement_viewer_count(
