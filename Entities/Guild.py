@@ -23,7 +23,9 @@ class Guild(BaseEntity):
             ai_enabled: bool = True,
             ai_thread_id: Optional[str] = None,
             ai_temperature: float = 1.0,
-            ai_personality_traits: Optional[Dict[str, Any]] = None
+            ai_personality_traits: Optional[Dict[str, Any]] = None,
+            subscription_tier: str = 'free',
+            subscription_status: str = 'active'
     ) -> None:
         self.id = id
         self.name = name
@@ -38,6 +40,8 @@ class Guild(BaseEntity):
         self.ai_thread_id = ai_thread_id
         self.ai_temperature = ai_temperature
         self.ai_personality_traits = ai_personality_traits or {"humor_level": "high", "sarcasm_level": "medium", "nerd_level": "high", "friendliness": "high"}
+        self.subscription_tier = subscription_tier
+        self.subscription_status = subscription_status
 
     @property
     def id(self) -> int:
@@ -142,3 +146,19 @@ class Guild(BaseEntity):
     @last_active.setter
     def last_active(self, value: Union[str, datetime]) -> None:
         self._last_active = value
+
+    @property
+    def subscription_tier(self) -> str:
+        return self._subscription_tier
+
+    @subscription_tier.setter
+    def subscription_tier(self, value: str) -> None:
+        self._subscription_tier = value
+
+    @property
+    def subscription_status(self) -> str:
+        return self._subscription_status
+
+    @subscription_status.setter
+    def subscription_status(self, value: str) -> None:
+        self._subscription_status = value

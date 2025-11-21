@@ -4,11 +4,20 @@ import httpx
 import openai
 import os
 import json
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 from logger import AppLogger
 from Dao.GuildDao import GuildDao
 from datetime import datetime, time, timedelta
 from typing import Dict, Any, Optional, List
+
+# Add utils to path for premium checker
+current_dir = Path(__file__).parent.parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
+from utils.premium_checker import PremiumChecker
 
 logger = AppLogger(__name__).get_logger()
 
@@ -186,11 +195,8 @@ class OpenAIClient:
         Returns:
             tuple[bool, int, int]: (can_use, current_usage, daily_limit)
         """
-        ai_settings = self.get_guild_ai_settings(guild_id)
-        if not ai_settings:
-            return False, 0, 0
-
-        daily_limit = ai_settings.get('daily_limit', 20)
+        # Use tier-based daily limit (Free: 20, Premium: 100)
+        daily_limit = PremiumChecker.get_ai_daily_limit(guild_id)
         current_usage = self.usage_tracker.get_daily_usage(guild_id)
 
         can_use = current_usage < daily_limit
@@ -235,6 +241,13 @@ class OpenAIClient:
 
             # Get model from settings (default to gpt-4o-mini if not specified)
             model = ai_settings.get('model', 'gpt-4o-mini')
+
+            # Validate model access based on subscription tier
+            can_use_model, error_msg = PremiumChecker.can_use_ai_model(guild_id, model)
+            if not can_use_model:
+                # Fallback to free tier model
+                logger.warning(f"Guild {guild_id} attempted to use {model} without premium. Falling back to gpt-3.5-turbo")
+                model = 'gpt-3.5-turbo'
 
             # Get correct parameters for this model
             model_params = self.get_model_params(model)

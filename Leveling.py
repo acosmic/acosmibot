@@ -7,6 +7,15 @@ from datetime import datetime, timedelta
 from logger import AppLogger
 import json
 import math
+import sys
+from pathlib import Path
+
+# Add utils to path for premium checker
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
+from utils.premium_checker import PremiumChecker
 
 logger = AppLogger(__name__).get_logger()
 
@@ -173,6 +182,10 @@ class LevelingSystem:
             streak_multiplier = config["streak_multiplier"]
             bonus_exp = streak * streak_multiplier
             exp_gained = math.ceil((base_exp * bonus_exp) + base_exp)
+
+            # Apply premium XP multiplier (1.0x free, 1.2x premium = 20% boost)
+            premium_multiplier = PremiumChecker.get_xp_multiplier(message.guild.id)
+            exp_gained = math.ceil(exp_gained * premium_multiplier)
 
             # Add experience
             guild_user.exp += exp_gained
