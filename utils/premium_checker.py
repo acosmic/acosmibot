@@ -37,6 +37,7 @@ class PremiumChecker:
             'image_generation': False,
             'image_monthly_limit': 0,
             'image_analysis': False,  # Image analysis blocked
+            'image_analysis_monthly_limit': 0,
 
             # Economy
             'xp_multiplier': 1.0,
@@ -62,6 +63,7 @@ class PremiumChecker:
             'image_generation': True,
             'image_monthly_limit': 50,
             'image_analysis': True,  # Image analysis enabled
+            'image_analysis_monthly_limit': 100,
 
             # Economy
             'xp_multiplier': 1.2,  # 20% bonus
@@ -90,14 +92,20 @@ class PremiumChecker:
                 query = "SELECT subscription_tier FROM Guilds WHERE id = %s"
                 results = dao.execute_query(query, (int(guild_id),))
 
-                # execute_query returns a list of dicts, get first result
+                # execute_query returns a list of dicts OR tuples, handle both
                 if results and len(results) > 0:
                     result = results[0]
-                    if result.get('subscription_tier'):
-                        return result['subscription_tier']
+                    # Handle dict result
+                    if isinstance(result, dict):
+                        if result.get('subscription_tier'):
+                            return result['subscription_tier']
+                    # Handle tuple result
+                    elif isinstance(result, tuple):
+                        if result[0]:
+                            return result[0]
                 return 'free'
         except Exception as e:
-            logger.error(f"Error getting guild tier for {guild_id}: {e}")
+            logger.error(f"Error getting guild tier for {guild_id}: {e}", exc_info=True)
             return 'free'  # Default to free on error
 
     @staticmethod
@@ -306,6 +314,85 @@ class PremiumChecker:
                 f"❌ **Image Generation** requires **Premium** subscription!\n"
                 f"Upgrade at https://acosmibot.com/premium"
             )
+        return True, ""
+
+    @staticmethod
+    def can_analyze_images(guild_id: int) -> Tuple[bool, str]:
+        """
+        Check if guild can analyze images
+
+        Args:
+            guild_id: Discord guild ID
+
+        Returns:
+            Tuple of (can_analyze: bool, message: str)
+        """
+        if not PremiumChecker.has_feature(guild_id, 'image_analysis'):
+            return False, (
+                f"❌ **Image Analysis** requires **Premium** subscription!\n"
+                f"Upgrade at https://acosmibot.com/premium"
+            )
+        return True, ""
+
+    @staticmethod
+    def check_image_generation_limit(guild_id: int, current_month_count: int) -> Tuple[bool, str]:
+        """
+        Check if guild can generate more images this month
+
+        Args:
+            guild_id: Discord guild ID
+            current_month_count: Number of images generated this month
+
+        Returns:
+            Tuple of (can_generate: bool, message: str)
+        """
+        tier = PremiumChecker.get_guild_tier(guild_id)
+        monthly_limit = PremiumChecker.TIER_LIMITS[tier]['image_monthly_limit']
+
+        if monthly_limit == 0:
+            return False, (
+                f"❌ **Image Generation** requires **Premium** subscription!\n"
+                f"Upgrade at https://acosmibot.com/premium"
+            )
+
+        if current_month_count >= monthly_limit:
+            return False, (
+                f"❌ Monthly image generation limit reached ({current_month_count}/{monthly_limit}).\n"
+                f"Limit resets at the beginning of next month."
+            )
+
+        return True, ""
+
+    @staticmethod
+    def check_image_analysis_limit(guild_id: int, current_month_count: int) -> Tuple[bool, str]:
+        """
+        Check if guild can analyze more images this month
+
+        Args:
+            guild_id: Discord guild ID
+            current_month_count: Number of images analyzed this month
+
+        Returns:
+            Tuple of (can_analyze: bool, message: str)
+        """
+        tier = PremiumChecker.get_guild_tier(guild_id)
+
+        # Check if feature is enabled for this tier
+        if not PremiumChecker.TIER_LIMITS[tier]['image_analysis']:
+            return False, (
+                f"❌ **Image Analysis** requires **Premium** subscription!\n"
+                f"Upgrade at https://acosmibot.com/premium"
+            )
+
+        # Check monthly limit
+        monthly_limit = PremiumChecker.TIER_LIMITS[tier]['image_analysis_monthly_limit']
+
+        if current_month_count >= monthly_limit:
+            return False, (
+                f"❌ Monthly image analysis limit reached ({current_month_count}/{monthly_limit}).\n"
+                f"Limit resets at the beginning of next month."
+            )
+
         return True, ""
 
     @staticmethod

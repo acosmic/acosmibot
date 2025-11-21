@@ -776,40 +776,47 @@ class GuildUserDao(BaseDao[GuildUser]):
         from Dao.BankTransactionDao import BankTransactionDao
         from Dao.GuildDao import GuildDao
 
+        # Get a connection for the atomic transaction
+        connection = None
+        cursor = None
+
         try:
-            user_dao = UserDao()
-            bank_dao = BankTransactionDao()
-            guild_dao = GuildDao()
+            # Validate inputs first
+            with UserDao() as user_dao:
+                guild_user = self.get_guild_user(user_id, guild_id)
+                if not guild_user:
+                    return {'success': False, 'message': 'Guild user not found'}
 
-            # Get current balances
-            guild_user = self.get_guild_user(user_id, guild_id)
-            if not guild_user:
-                return {'success': False, 'message': 'Guild user not found'}
+                user = user_dao.get_user(user_id)
+                if not user:
+                    return {'success': False, 'message': 'User not found'}
 
-            user = user_dao.get_user(user_id)
-            if not user:
-                return {'success': False, 'message': 'User not found'}
+                # Validate sufficient funds
+                if guild_user.currency < amount:
+                    return {
+                        'success': False,
+                        'message': f'Insufficient funds. You have {guild_user.currency:,} credits in this server.'
+                    }
 
-            # Validate sufficient funds
-            if guild_user.currency < amount:
-                return {
-                    'success': False,
-                    'message': f'Insufficient funds. You have {guild_user.currency:,} credits in this server.'
-                }
+                # Calculate net deposit (after fee)
+                net_deposit = amount - fee
+                balance_before = user.bank_balance
+                balance_after = balance_before + net_deposit
 
-            # Calculate net deposit (after fee)
-            net_deposit = amount - fee
-            balance_before = user.bank_balance
-            balance_after = balance_before + net_deposit
+            # Start atomic transaction with dedicated connection
+            connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+            if not connection:
+                return {'success': False, 'message': 'Failed to get database connection'}
 
-            # Start atomic transaction
+            cursor = connection.cursor()
+
             # 1. Deduct from guild wallet
             guild_sql = """
                 UPDATE GuildUsers
                 SET currency = currency - %s
                 WHERE user_id = %s AND guild_id = %s
             """
-            self.execute_query(guild_sql, (amount, user_id, guild_id), commit=False)
+            cursor.execute(guild_sql, (amount, user_id, guild_id))
 
             # 2. Add to bank balance
             bank_sql = """
@@ -817,7 +824,7 @@ class GuildUserDao(BaseDao[GuildUser]):
                 SET bank_balance = bank_balance + %s
                 WHERE id = %s
             """
-            self.execute_query(bank_sql, (net_deposit, user_id), commit=False)
+            cursor.execute(bank_sql, (net_deposit, user_id))
 
             # 3. If fee exists, add to guild vault
             if fee > 0:
@@ -826,8 +833,9 @@ class GuildUserDao(BaseDao[GuildUser]):
                     SET vault_currency = vault_currency + %s
                     WHERE id = %s
                 """
-                self.execute_query(vault_sql, (fee, guild_id), commit=False)
+                cursor.execute(vault_sql, (fee, guild_id))
 
+            # 4. Log transaction
             new_transaction = BankTransaction(
                 user_id=user_id,
                 guild_id=guild_id,
@@ -837,11 +845,12 @@ class GuildUserDao(BaseDao[GuildUser]):
                 balance_before=balance_before,
                 balance_after=balance_after,
                 timestamp=datetime.now())
-            # 4. Log transaction
-            bank_dao.add_transaction(new_transaction)
+
+            with BankTransactionDao() as bank_dao:
+                bank_dao.add_transaction(new_transaction)
 
             # Commit all changes atomically
-            self.connection.commit()
+            connection.commit()
 
             self.logger.info(
                 f"User {user_id} deposited {amount:,} (fee: {fee:,}, net: {net_deposit:,}) "
@@ -859,9 +868,26 @@ class GuildUserDao(BaseDao[GuildUser]):
             }
 
         except Exception as e:
-            self.connection.rollback()
+            if connection:
+                try:
+                    connection.rollback()
+                except:
+                    pass
             self.logger.error(f"Error transferring to bank for user {user_id} in guild {guild_id}: {e}")
             return {'success': False, 'message': f'Transaction failed: {str(e)}'}
+
+        finally:
+            # Clean up cursor and connection
+            if cursor:
+                try:
+                    cursor.close()
+                except:
+                    pass
+            if connection:
+                try:
+                    connection.close()  # Returns to pool
+                except:
+                    pass
 
     def transfer_from_bank(self, user_id: int, guild_id: int, amount: int, fee: int = 0) -> Dict[str, Any]:
         """
@@ -881,40 +907,47 @@ class GuildUserDao(BaseDao[GuildUser]):
         from Dao.BankTransactionDao import BankTransactionDao
         from Dao.GuildDao import GuildDao
 
+        # Get a connection for the atomic transaction
+        connection = None
+        cursor = None
+
         try:
-            user_dao = UserDao()
-            bank_dao = BankTransactionDao()
-            guild_dao = GuildDao()
+            # Validate inputs first
+            with UserDao() as user_dao:
+                user = user_dao.get_user(user_id)
+                if not user:
+                    return {'success': False, 'message': 'User not found'}
 
-            # Get current balances
-            user = user_dao.get_user(user_id)
-            if not user:
-                return {'success': False, 'message': 'User not found'}
+                guild_user = self.get_guild_user(user_id, guild_id)
+                if not guild_user:
+                    return {'success': False, 'message': 'Guild user not found'}
 
-            guild_user = self.get_guild_user(user_id, guild_id)
-            if not guild_user:
-                return {'success': False, 'message': 'Guild user not found'}
+                # Validate sufficient bank funds (need to cover amount + fee from bank)
+                total_needed = amount + fee
+                if user.bank_balance < total_needed:
+                    return {
+                        'success': False,
+                        'message': f'Insufficient bank balance. You need {total_needed:,} credits but have {user.bank_balance:,}.'
+                    }
 
-            # Validate sufficient bank funds (need to cover amount + fee from bank)
-            total_needed = amount + fee
-            if user.bank_balance < total_needed:
-                return {
-                    'success': False,
-                    'message': f'Insufficient bank balance. You need {total_needed:,} credits but have {user.bank_balance:,}.'
-                }
+                # Calculate amounts
+                balance_before = user.bank_balance
+                balance_after = balance_before - total_needed
 
-            # Calculate amounts
-            balance_before = user.bank_balance
-            balance_after = balance_before - total_needed
+            # Start atomic transaction with dedicated connection
+            connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+            if not connection:
+                return {'success': False, 'message': 'Failed to get database connection'}
 
-            # Start atomic transaction
+            cursor = connection.cursor()
+
             # 1. Deduct from bank (amount + fee)
             bank_sql = """
                 UPDATE Users
                 SET bank_balance = bank_balance - %s
                 WHERE id = %s
             """
-            self.execute_query(bank_sql, (total_needed, user_id), commit=False)
+            cursor.execute(bank_sql, (total_needed, user_id))
 
             # 2. Add amount to guild wallet
             guild_sql = """
@@ -922,7 +955,7 @@ class GuildUserDao(BaseDao[GuildUser]):
                 SET currency = currency + %s
                 WHERE user_id = %s AND guild_id = %s
             """
-            self.execute_query(guild_sql, (amount, user_id, guild_id), commit=False)
+            cursor.execute(guild_sql, (amount, user_id, guild_id))
 
             # 3. If fee exists, add to guild vault
             if fee > 0:
@@ -931,22 +964,24 @@ class GuildUserDao(BaseDao[GuildUser]):
                     SET vault_currency = vault_currency + %s
                     WHERE id = %s
                 """
-                self.execute_query(vault_sql, (fee, guild_id), commit=False)
+                cursor.execute(vault_sql, (fee, guild_id))
 
+            # 4. Log transaction
             new_transaction = BankTransaction(
                 user_id=user_id,
                 guild_id=guild_id,
-                transaction_type= "withdraw",
+                transaction_type="withdraw",
                 amount=amount,
                 fee=fee,
                 balance_before=balance_before,
                 balance_after=balance_after,
                 timestamp=datetime.now())
-            # 4. Log transaction
-            bank_dao.add_transaction(new_transaction)
+
+            with BankTransactionDao() as bank_dao:
+                bank_dao.add_transaction(new_transaction)
 
             # Commit all changes atomically
-            self.connection.commit()
+            connection.commit()
 
             self.logger.info(
                 f"User {user_id} withdrew {amount:,} (fee: {fee:,}) "
@@ -963,6 +998,23 @@ class GuildUserDao(BaseDao[GuildUser]):
             }
 
         except Exception as e:
-            self.connection.rollback()
+            if connection:
+                try:
+                    connection.rollback()
+                except:
+                    pass
             self.logger.error(f"Error transferring from bank for user {user_id} in guild {guild_id}: {e}")
             return {'success': False, 'message': f'Transaction failed: {str(e)}'}
+
+        finally:
+            # Clean up cursor and connection
+            if cursor:
+                try:
+                    cursor.close()
+                except:
+                    pass
+            if connection:
+                try:
+                    connection.close()  # Returns to pool
+                except:
+                    pass

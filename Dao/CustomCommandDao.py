@@ -13,7 +13,7 @@ class CustomCommandDao(BaseDao):
     """DAO for managing custom commands"""
 
     def __init__(self):
-        super().__init__()
+        super().__init__(table_name="CustomCommands", entity_class=CustomCommand)
         self.table_name = "CustomCommands"
 
     def create_command(
@@ -73,10 +73,10 @@ class CustomCommandDao(BaseDao):
     def get_by_id(self, command_id: int) -> Optional[CustomCommand]:
         """Get custom command by ID"""
         query = "SELECT * FROM CustomCommands WHERE id = %s"
-        result = self.execute_query(query, (command_id,), fetch_one=True)
+        results = self.execute_query(query, (command_id,))
 
-        if result:
-            return CustomCommand.from_dict(result)
+        if results and len(results) > 0:
+            return CustomCommand.from_dict(results[0])
         return None
 
     def get_guild_commands(
@@ -102,7 +102,7 @@ class CustomCommandDao(BaseDao):
 
         query += " ORDER BY created_at DESC"
 
-        results = self.execute_query(query, tuple(params), fetch_all=True)
+        results = self.execute_query(query, tuple(params))
 
         if results:
             # Return as dicts for easier API consumption
@@ -254,7 +254,7 @@ class CustomCommandDao(BaseDao):
             ORDER BY use_count DESC
             LIMIT %s
         """
-        results = self.execute_query(query, (str(guild_id), limit), fetch_all=True)
+        results = self.execute_query(query, (str(guild_id), limit))
 
         if results:
             return [CustomCommand.from_dict(row).to_dict() for row in results]

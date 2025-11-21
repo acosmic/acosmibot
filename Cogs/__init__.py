@@ -41,6 +41,7 @@ __all__ = [
     "PortalCommands",
     "PortalMessageListener",
     "ReactionRoles",
+    "CustomCommands",  # Premium feature: custom bot commands
     # "InstagramEmbed",  # Disabled - instagrapi blocked by Instagram API. Plan to migrate to official Graph API + oEmbed
     # "ActivityDiagnostic",
     # "RipAudio",

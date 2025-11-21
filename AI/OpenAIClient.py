@@ -9,8 +9,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from logger import AppLogger
 from Dao.GuildDao import GuildDao
+from Dao.AIImageDao import AIImageDao
+from Entities.AIImage import AIImage
 from datetime import datetime, time, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 # Add utils to path for premium checker
 current_dir = Path(__file__).parent.parent
@@ -24,39 +26,9 @@ logger = AppLogger(__name__).get_logger()
 load_dotenv()
 
 
-class AIUsageTracker:
-    """Tracks daily AI usage per guild"""
-
-    def __init__(self):
-        self.usage = {}  # {guild_id: {date: count}}
-
-    def get_daily_usage(self, guild_id: int) -> int:
-        """Get today's usage count for a guild"""
-        today = datetime.now().strftime("%Y-%m-%d")
-        return self.usage.get(guild_id, {}).get(today, 0)
-
-    def increment_usage(self, guild_id: int):
-        """Increment usage count for today"""
-        today = datetime.now().strftime("%Y-%m-%d")
-        if guild_id not in self.usage:
-            self.usage[guild_id] = {}
-        self.usage[guild_id][today] = self.usage[guild_id].get(today, 0) + 1
-
-    def cleanup_old_usage(self):
-        """Remove usage data older than 7 days"""
-        cutoff_date = datetime.now() - timedelta(days=7)
-        cutoff_str = cutoff_date.strftime("%Y-%m-%d")
-
-        for guild_id in self.usage:
-            self.usage[guild_id] = {
-                date: count for date, count in self.usage[guild_id].items()
-                if date >= cutoff_str
-            }
-
 class OpenAIClient:
     def __init__(self, api_key=None):
         # Initialize OpenAI client
-        self.usage_tracker = AIUsageTracker()
         self.client = openai.OpenAI(
             api_key=api_key or os.getenv('OPENAI_KEY'),
             timeout=60.0,  # 60 second timeout
@@ -195,15 +167,20 @@ class OpenAIClient:
         Returns:
             tuple[bool, int, int]: (can_use, current_usage, daily_limit)
         """
+        from Dao.AIUsageDao import AIUsageDao
+
         # Use tier-based daily limit (Free: 20, Premium: 100)
         daily_limit = PremiumChecker.get_ai_daily_limit(guild_id)
-        current_usage = self.usage_tracker.get_daily_usage(guild_id)
+
+        # Get current usage from database
+        with AIUsageDao() as dao:
+            current_usage = dao.get_daily_usage_count(str(guild_id), 'chat')
 
         can_use = current_usage < daily_limit
         return can_use, current_usage, daily_limit
 
     async def generate_chat_response(self, prompt: str, user_name: str, guild_id: int,
-                                         conversation_history: Optional[List[Dict]] = None) -> str:
+                                         user_id: int, conversation_history: Optional[List[Dict]] = None) -> str:
         """
         Generate a chat response using the new settings structure with updated API parameters.
 
@@ -211,6 +188,7 @@ class OpenAIClient:
             prompt (str): User's message
             user_name (str): Discord username
             guild_id (int): Discord guild ID
+            user_id (int): Discord user ID
             conversation_history (Optional[List[Dict]]): Previous conversation messages
 
         Returns:
@@ -265,15 +243,34 @@ class OpenAIClient:
             if response.choices and len(response.choices) > 0:
                 ai_response = response.choices[0].message.content.strip()
 
-                # Increment usage counter
-                self.usage_tracker.increment_usage(guild_id)
+                # Record usage in database
+                from Dao.AIUsageDao import AIUsageDao
+                tokens_used = 0
+                cost_usd = 0.0
 
-                # Log usage info
                 if hasattr(response, 'usage'):
+                    tokens_used = response.usage.total_tokens
+                    # Estimate cost based on model (rough estimates)
+                    if 'gpt-4' in model:
+                        cost_usd = (response.usage.prompt_tokens * 0.00003 + response.usage.completion_tokens * 0.00006)
+                    else:  # gpt-3.5-turbo
+                        cost_usd = (response.usage.prompt_tokens * 0.0000015 + response.usage.completion_tokens * 0.000002)
+
                     logger.info(f"Token usage - Prompt: {response.usage.prompt_tokens}, "
                                 f"Completion: {response.usage.completion_tokens}, "
-                                f"Total: {response.usage.total_tokens}")
+                                f"Total: {response.usage.total_tokens}, Cost: ${cost_usd:.6f}")
                     logger.info(f"Daily usage: {current_usage + 1}/{daily_limit}")
+
+                # Record in database
+                with AIUsageDao() as dao:
+                    dao.record_usage(
+                        guild_id=str(guild_id),
+                        user_id=str(user_id),
+                        usage_type='chat',
+                        model=model,
+                        tokens_used=tokens_used,
+                        cost_usd=cost_usd
+                    )
 
                 return ai_response
             else:
@@ -623,6 +620,219 @@ class OpenAIClient:
             logger.error(f"Error in content moderation: {e}")
             # If moderation fails, allow the content (fail-safe)
             return True
+
+    async def generate_image(
+        self,
+        guild_id: str,
+        user_id: str,
+        prompt: str,
+        size: str = "1024x1024",
+        quality: str = "standard"
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Generate an image using DALL-E 3.
+
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            prompt: Image generation prompt
+            size: Image size (1024x1024, 1792x1024, 1024x1792)
+            quality: Image quality (standard or hd)
+
+        Returns:
+            Tuple of (success, image_url, error_message)
+        """
+        try:
+            logger.info(f"Generating image for guild {guild_id}, user {user_id}: {prompt[:50]}...")
+
+            # Validate size
+            valid_sizes = ["1024x1024", "1792x1024", "1024x1792"]
+            if size not in valid_sizes:
+                return False, None, f"Invalid size. Must be one of: {', '.join(valid_sizes)}"
+
+            # Validate quality
+            if quality not in ["standard", "hd"]:
+                return False, None, "Invalid quality. Must be 'standard' or 'hd'"
+
+            # Generate image in thread to avoid blocking Discord heartbeat
+            import asyncio
+            response = await asyncio.to_thread(
+                self.client.images.generate,
+                model="dall-e-3",
+                prompt=prompt,
+                size=size,
+                quality=quality,
+                n=1
+            )
+
+            if response.data and len(response.data) > 0:
+                image_data = response.data[0]
+                image_url = image_data.url
+                revised_prompt = getattr(image_data, 'revised_prompt', None)
+
+                # Save to database
+                ai_image = AIImage(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    type='generation',
+                    prompt=prompt,
+                    image_url=image_url,
+                    revised_prompt=revised_prompt,
+                    model='dall-e-3',
+                    size=size,
+                    quality=quality,
+                    created_at=datetime.now()
+                )
+
+                with AIImageDao() as image_dao:
+                    image_dao.add_image(ai_image)
+
+                # Record usage in AIUsage table for tracking/limits
+                from Dao.AIUsageDao import AIUsageDao
+                cost_usd = 0.04 if quality == 'standard' else 0.08  # DALL-E 3 pricing
+                with AIUsageDao() as usage_dao:
+                    usage_dao.record_usage(
+                        guild_id=guild_id,
+                        user_id=user_id,
+                        usage_type='image_generation',
+                        model='dall-e-3',
+                        tokens_used=0,  # DALL-E doesn't use tokens
+                        cost_usd=cost_usd
+                    )
+
+                logger.info(f"Image generated successfully for guild {guild_id}, Cost: ${cost_usd}")
+                return True, image_url, revised_prompt
+
+            else:
+                logger.warning("No image data returned from DALL-E")
+                return False, None, "No image was generated"
+
+        except openai.RateLimitError as e:
+            logger.error(f"OpenAI rate limit for image generation: {e}")
+            return False, None, "Image generation is experiencing high demand. Please try again later."
+
+        except openai.BadRequestError as e:
+            logger.error(f"Bad request for image generation: {e}")
+            error_msg = str(e)
+            if "content_policy_violation" in error_msg.lower():
+                return False, None, "Your prompt was rejected by our content policy. Please try a different prompt."
+            return False, None, "Your request could not be processed. Please rephrase your prompt."
+
+        except openai.APIError as e:
+            logger.error(f"OpenAI API error for image generation: {e}")
+            return False, None, "Technical issue with image generation. Please try again."
+
+        except Exception as e:
+            logger.error(f"Error generating image: {e}", exc_info=True)
+            return False, None, "An unexpected error occurred while generating the image."
+
+    async def analyze_image(
+        self,
+        guild_id: str,
+        user_id: str,
+        image_url: str,
+        question: str = "What's in this image?"
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Analyze an image using GPT-4 Vision.
+
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            image_url: URL of the image to analyze
+            question: Question to ask about the image
+
+        Returns:
+            Tuple of (success, analysis_result, error_message)
+        """
+        try:
+            logger.info(f"Analyzing image for guild {guild_id}, user {user_id}: {question[:50]}...")
+
+            # Use GPT-4 Vision model in thread to avoid blocking Discord heartbeat
+            import asyncio
+            response = await asyncio.to_thread(
+                self.client.chat.completions.create,
+                model="gpt-4o",  # gpt-4o has vision capabilities
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": question
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": image_url
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=500
+            )
+
+            if response.choices and len(response.choices) > 0:
+                analysis_result = response.choices[0].message.content.strip()
+
+                # Save to database
+                ai_image = AIImage(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    type='analysis',
+                    prompt=question,
+                    image_url=image_url,
+                    analysis_result=analysis_result,
+                    model='gpt-4o',
+                    created_at=datetime.now()
+                )
+
+                with AIImageDao() as image_dao:
+                    image_dao.add_image(ai_image)
+
+                # Record usage in AIUsage table for tracking/limits
+                from Dao.AIUsageDao import AIUsageDao
+                tokens_used = 0
+                cost_usd = 0.0
+
+                if hasattr(response, 'usage'):
+                    tokens_used = response.usage.total_tokens
+                    # GPT-4o pricing (approximate)
+                    cost_usd = (response.usage.prompt_tokens * 0.000005 + response.usage.completion_tokens * 0.000015)
+
+                with AIUsageDao() as usage_dao:
+                    usage_dao.record_usage(
+                        guild_id=guild_id,
+                        user_id=user_id,
+                        usage_type='image_analysis',
+                        model='gpt-4o',
+                        tokens_used=tokens_used,
+                        cost_usd=cost_usd
+                    )
+
+                logger.info(f"Image analyzed successfully for guild {guild_id}, Tokens: {tokens_used}, Cost: ${cost_usd:.6f}")
+                return True, analysis_result, None
+
+            else:
+                logger.warning("No analysis returned from GPT-4 Vision")
+                return False, None, "No analysis was generated"
+
+        except openai.RateLimitError as e:
+            logger.error(f"OpenAI rate limit for image analysis: {e}")
+            return False, None, "Image analysis is experiencing high demand. Please try again later."
+
+        except openai.BadRequestError as e:
+            logger.error(f"Bad request for image analysis: {e}")
+            return False, None, "Could not analyze this image. Please ensure the URL is valid and accessible."
+
+        except openai.APIError as e:
+            logger.error(f"OpenAI API error for image analysis: {e}")
+            return False, None, "Technical issue with image analysis. Please try again."
+
+        except Exception as e:
+            logger.error(f"Error analyzing image: {e}", exc_info=True)
+            return False, None, "An unexpected error occurred while analyzing the image."
 
     @classmethod
     def OpenAIClient(cls):

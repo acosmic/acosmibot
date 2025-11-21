@@ -57,7 +57,6 @@ async def reconcile_all_stats():
     """
     logger.info("=== Starting unified stats reconciliation ===")
 
-    user_dao = UserDao()
     stats = {
         'missing_users_created': 0,
         'total_messages': 0,
@@ -67,20 +66,21 @@ async def reconcile_all_stats():
     }
 
     try:
-        # 0. Create missing users from orphaned GuildUsers and Games records
-        stats['missing_users_created'] = await create_missing_users(user_dao)
+        with UserDao() as user_dao:
+            # 0. Create missing users from orphaned GuildUsers and Games records
+            stats['missing_users_created'] = await create_missing_users(user_dao)
 
-        # 1. Reconcile total_messages
-        stats['total_messages'] = await reconcile_total_messages(user_dao)
+            # 1. Reconcile total_messages
+            stats['total_messages'] = await reconcile_total_messages(user_dao)
 
-        # 2. Reconcile total_reactions
-        stats['total_reactions'] = await reconcile_total_reactions(user_dao)
+            # 2. Reconcile total_reactions
+            stats['total_reactions'] = await reconcile_total_reactions(user_dao)
 
-        # 3. Reconcile global_exp and global_level
-        stats['global_exp'] = await reconcile_global_exp(user_dao)
+            # 3. Reconcile global_exp and global_level
+            stats['global_exp'] = await reconcile_global_exp(user_dao)
 
-        # 4. Reconcile total_currency (guild + bank)
-        stats['total_currency'] = await reconcile_total_currency(user_dao)
+            # 4. Reconcile total_currency (guild + bank)
+            stats['total_currency'] = await reconcile_total_currency(user_dao)
 
         # Log summary
         logger.info(
@@ -107,6 +107,8 @@ async def create_missing_users(user_dao: UserDao) -> int:
         Number of users created
     """
     created_count = 0
+    connection = None
+    cursor = None
 
     try:
         # Find user IDs in GuildUsers that don't exist in Users
@@ -125,16 +127,19 @@ async def create_missing_users(user_dao: UserDao) -> int:
             WHERE u.id IS NULL
         """
 
-        # Execute queries to get missing user IDs
-        cursor = user_dao.connection.cursor()
+        # Get connection and execute queries to get missing user IDs
+        connection = user_dao.db._get_pooled_connection(retries=3, retry_delay=0.05)
+        if not connection:
+            logger.error("Failed to get database connection")
+            return 0
+
+        cursor = connection.cursor()
 
         cursor.execute(sql_guild_users)
         guild_user_ids = [row[0] for row in cursor.fetchall()]
 
         cursor.execute(sql_games)
         games_user_ids = [row[0] for row in cursor.fetchall()]
-
-        cursor.close()
 
         # Combine and deduplicate
         missing_user_ids = set(guild_user_ids) | set(games_user_ids)
@@ -189,6 +194,19 @@ async def create_missing_users(user_dao: UserDao) -> int:
         logger.error(f"Error creating missing users: {e}", exc_info=True)
         return 0
 
+    finally:
+        # Clean up cursor and connection
+        if cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if connection:
+            try:
+                connection.close()  # Returns to pool
+            except:
+                pass
+
 
 async def reconcile_total_messages(user_dao: UserDao) -> int:
     """
@@ -210,18 +228,41 @@ async def reconcile_total_messages(user_dao: UserDao) -> int:
         AND u.total_messages != COALESCE(gu.total, 0)
     """
 
+    connection = None
+    cursor = None
+
     try:
-        # Use direct database access to get rowcount
-        cursor = user_dao.connection.cursor()
+        # Get connection for the update
+        connection = user_dao.db._get_pooled_connection(retries=3, retry_delay=0.05)
+        if not connection:
+            logger.error("Failed to get database connection")
+            return 0
+
+        cursor = connection.cursor()
         cursor.execute(sql)
-        user_dao.connection.commit()
+        connection.commit()
         affected = cursor.rowcount
-        cursor.close()
         logger.info(f"Reconciled total_messages for {affected} users")
         return affected
     except Exception as e:
+        if connection:
+            try:
+                connection.rollback()
+            except:
+                pass
         logger.error(f"Error reconciling total_messages: {e}")
         return 0
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if connection:
+            try:
+                connection.close()
+            except:
+                pass
 
 
 async def reconcile_total_reactions(user_dao: UserDao) -> int:
@@ -244,18 +285,40 @@ async def reconcile_total_reactions(user_dao: UserDao) -> int:
         AND u.total_reactions != COALESCE(gu.total, 0)
     """
 
+    connection = None
+    cursor = None
+
     try:
-        # Use direct database access to get rowcount
-        cursor = user_dao.connection.cursor()
+        connection = user_dao.db._get_pooled_connection(retries=3, retry_delay=0.05)
+        if not connection:
+            logger.error("Failed to get database connection")
+            return 0
+
+        cursor = connection.cursor()
         cursor.execute(sql)
-        user_dao.connection.commit()
+        connection.commit()
         affected = cursor.rowcount
-        cursor.close()
         logger.info(f"Reconciled total_reactions for {affected} users")
         return affected
     except Exception as e:
+        if connection:
+            try:
+                connection.rollback()
+            except:
+                pass
         logger.error(f"Error reconciling total_reactions: {e}")
         return 0
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if connection:
+            try:
+                connection.close()
+            except:
+                pass
 
 
 async def reconcile_global_exp(user_dao: UserDao) -> int:
@@ -283,18 +346,40 @@ async def reconcile_global_exp(user_dao: UserDao) -> int:
         )
     """
 
+    connection = None
+    cursor = None
+
     try:
-        # Use direct database access to get rowcount
-        cursor = user_dao.connection.cursor()
+        connection = user_dao.db._get_pooled_connection(retries=3, retry_delay=0.05)
+        if not connection:
+            logger.error("Failed to get database connection")
+            return 0
+
+        cursor = connection.cursor()
         cursor.execute(sql)
-        user_dao.connection.commit()
+        connection.commit()
         affected = cursor.rowcount
-        cursor.close()
         logger.info(f"Reconciled global_exp and global_level for {affected} users")
         return affected
     except Exception as e:
+        if connection:
+            try:
+                connection.rollback()
+            except:
+                pass
         logger.error(f"Error reconciling global_exp: {e}")
         return 0
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if connection:
+            try:
+                connection.close()
+            except:
+                pass
 
 
 async def reconcile_total_currency(user_dao: UserDao) -> int:
@@ -318,15 +403,37 @@ async def reconcile_total_currency(user_dao: UserDao) -> int:
         AND u.total_currency != (COALESCE(gu.total, 0) + u.bank_balance)
     """
 
+    connection = None
+    cursor = None
+
     try:
-        # Use direct database access to get rowcount
-        cursor = user_dao.connection.cursor()
+        connection = user_dao.db._get_pooled_connection(retries=3, retry_delay=0.05)
+        if not connection:
+            logger.error("Failed to get database connection")
+            return 0
+
+        cursor = connection.cursor()
         cursor.execute(sql)
-        user_dao.connection.commit()
+        connection.commit()
         affected = cursor.rowcount
-        cursor.close()
         logger.info(f"Reconciled total_currency for {affected} users")
         return affected
     except Exception as e:
+        if connection:
+            try:
+                connection.rollback()
+            except:
+                pass
         logger.error(f"Error reconciling total_currency: {e}")
         return 0
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if connection:
+            try:
+                connection.close()
+            except:
+                pass

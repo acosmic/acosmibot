@@ -13,8 +13,7 @@ class AIUsageDao(BaseDao):
     """DAO for tracking and querying AI usage"""
 
     def __init__(self):
-        super().__init__()
-        self.table_name = "AIUsage"
+        super().__init__(table_name='AIUsage', entity_class=AIUsage)
 
     def record_usage(
         self,
@@ -47,7 +46,7 @@ class AIUsageDao(BaseDao):
         params = (str(guild_id), str(user_id), usage_type, model, tokens_used, cost_usd)
 
         try:
-            result = self.execute_query(query, params, fetch=False)
+            result = self.execute_query(query, params)
             if result:
                 logger.debug(f"Recorded AI usage for guild {guild_id}, type: {usage_type}, model: {model}")
                 return result
@@ -78,10 +77,14 @@ class AIUsageDao(BaseDao):
             AND usage_type = %s
             AND DATE(timestamp) = CURDATE()
         """
-        result = self.execute_query(query, (str(guild_id), usage_type), fetch_one=True)
+        results = self.execute_query(query, (str(guild_id), usage_type))
 
-        if result:
-            return result['count'] or 0
+        if results and len(results) > 0:
+            result = results[0]
+            if isinstance(result, dict):
+                return result['count'] or 0
+            elif isinstance(result, tuple):
+                return result[0] or 0
         return 0
 
     def get_monthly_usage(
@@ -107,10 +110,14 @@ class AIUsageDao(BaseDao):
             AND YEAR(timestamp) = YEAR(CURDATE())
             AND MONTH(timestamp) = MONTH(CURDATE())
         """
-        result = self.execute_query(query, (str(guild_id), usage_type), fetch_one=True)
+        results = self.execute_query(query, (str(guild_id), usage_type))
 
-        if result:
-            return result['count'] or 0
+        if results and len(results) > 0:
+            result = results[0]
+            if isinstance(result, dict):
+                return result['count'] or 0
+            elif isinstance(result, tuple):
+                return result[0] or 0
         return 0
 
     def get_user_daily_usage(
@@ -128,10 +135,14 @@ class AIUsageDao(BaseDao):
             AND usage_type = %s
             AND DATE(timestamp) = CURDATE()
         """
-        result = self.execute_query(query, (str(guild_id), str(user_id), usage_type), fetch_one=True)
+        results = self.execute_query(query, (str(guild_id), str(user_id), usage_type))
 
-        if result:
-            return result['count'] or 0
+        if results and len(results) > 0:
+            result = results[0]
+            if isinstance(result, dict):
+                return result['count'] or 0
+            elif isinstance(result, tuple):
+                return result[0] or 0
         return 0
 
     def get_usage_stats(
@@ -156,7 +167,7 @@ class AIUsageDao(BaseDao):
             AND timestamp >= DATE_SUB(NOW(), INTERVAL %s DAY)
             GROUP BY usage_type
         """
-        results = self.execute_query(query, (str(guild_id), days), fetch_all=True)
+        results = self.execute_query(query, (str(guild_id), days))
 
         stats = {}
         if results:
@@ -187,7 +198,7 @@ class AIUsageDao(BaseDao):
             GROUP BY model
             ORDER BY usage_count DESC
         """
-        results = self.execute_query(query, (str(guild_id), days), fetch_all=True)
+        results = self.execute_query(query, (str(guild_id), days))
 
         if results:
             return [
@@ -237,7 +248,7 @@ class AIUsageDao(BaseDao):
         params = (str(guild_id), str(user_id), prompt, image_url, revised_prompt, size)
 
         try:
-            result = self.execute_query(query, params, fetch=False)
+            result = self.execute_query(query, params)
             if result:
                 logger.info(f"Recorded image generation for guild {guild_id}")
                 return result
@@ -258,7 +269,7 @@ class AIUsageDao(BaseDao):
             ORDER BY created_at DESC
             LIMIT %s
         """
-        results = self.execute_query(query, (str(guild_id), limit), fetch_all=True)
+        results = self.execute_query(query, (str(guild_id), limit))
 
         if results:
             return [dict(row) for row in results]
@@ -269,7 +280,7 @@ class AIUsageDao(BaseDao):
         query = "DELETE FROM AIUsage WHERE timestamp < DATE_SUB(NOW(), INTERVAL %s DAY)"
 
         try:
-            result = self.execute_query(query, (days,), fetch=False)
+            result = self.execute_query(query, (days,))
             logger.info(f"Deleted old AI usage records (older than {days} days)")
             return result or 0
         except Exception as e:
@@ -296,7 +307,7 @@ class AIUsageDao(BaseDao):
             ORDER BY total_usage DESC
             LIMIT %s
         """
-        results = self.execute_query(query, (str(guild_id), days, limit), fetch_all=True)
+        results = self.execute_query(query, (str(guild_id), days, limit))
 
         if results:
             return [dict(row) for row in results]
