@@ -46,10 +46,10 @@ class AIUsageDao(BaseDao):
         params = (str(guild_id), str(user_id), usage_type, model, tokens_used, cost_usd)
 
         try:
-            result = self.execute_query(query, params)
+            result = self.execute_query(query, params, commit=True)
             if result:
                 logger.debug(f"Recorded AI usage for guild {guild_id}, type: {usage_type}, model: {model}")
-                return result
+                return True
             return None
         except Exception as e:
             logger.error(f"Error recording AI usage for guild {guild_id}: {e}")
@@ -248,10 +248,10 @@ class AIUsageDao(BaseDao):
         params = (str(guild_id), str(user_id), prompt, image_url, revised_prompt, size)
 
         try:
-            result = self.execute_query(query, params)
+            result = self.execute_query(query, params, commit=True)
             if result:
                 logger.info(f"Recorded image generation for guild {guild_id}")
-                return result
+                return True
             return None
         except Exception as e:
             logger.error(f"Error recording image generation for guild {guild_id}: {e}")
@@ -280,9 +280,9 @@ class AIUsageDao(BaseDao):
         query = "DELETE FROM AIUsage WHERE timestamp < DATE_SUB(NOW(), INTERVAL %s DAY)"
 
         try:
-            result = self.execute_query(query, (days,))
+            result = self.execute_query(query, (days,), commit=True)
             logger.info(f"Deleted old AI usage records (older than {days} days)")
-            return result or 0
+            return 1 if result else 0
         except Exception as e:
             logger.error(f"Error deleting old AI usage records: {e}")
             return 0

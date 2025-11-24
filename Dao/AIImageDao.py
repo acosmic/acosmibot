@@ -256,12 +256,24 @@ class AIImageDao(BaseDao):
 
             if results:
                 for row in results:
-                    type_name = row['type']
+                    # Handle both dict and tuple results
+                    if isinstance(row, dict):
+                        type_name = row['type']
+                        count = row['count']
+                        unique_users = row['unique_users']
+                    elif isinstance(row, tuple):
+                        # tuple order: type, count, unique_users
+                        type_name = row[0]
+                        count = row[1]
+                        unique_users = row[2]
+                    else:
+                        continue
+
                     stats[type_name] = {
-                        'count': row['count'],
-                        'unique_users': row['unique_users']
+                        'count': count,
+                        'unique_users': unique_users
                     }
-                    stats['total'] += row['count']
+                    stats['total'] += count
 
             return stats
 

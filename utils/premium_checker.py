@@ -224,7 +224,7 @@ class PremiumChecker:
         tier = PremiumChecker.get_guild_tier(guild_id)
         max_streamers = PremiumChecker.TIER_LIMITS[tier]['twitch_streamers']
 
-        if current_count < max_streamers:
+        if current_count <= max_streamers:
             return True, ""
 
         if tier == 'free':
@@ -257,7 +257,7 @@ class PremiumChecker:
                 f"Upgrade at https://acosmibot.com/premium"
             )
 
-        if current_count < max_roles:
+        if current_count <= max_roles:
             return True, ""
 
         return False, f"❌ Premium tier allows up to {max_roles} reaction role messages. Delete one to create another."
@@ -283,7 +283,7 @@ class PremiumChecker:
                 f"Upgrade at https://acosmibot.com/premium"
             )
 
-        if current_count < max_commands:
+        if current_count <= max_commands:
             return True, ""
 
         return False, f"❌ Premium tier allows up to {max_commands} custom commands. Delete one to create another."

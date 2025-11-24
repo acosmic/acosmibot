@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 _global_database = None
 
 
-def get_database(db_host=None, db_user=None, db_password=None, db_name=None, pool_size=32):
+def get_database(db_host=None, db_user=None, db_password=None, db_name=None, pool_size=None):
     """
     Get the global database singleton instance.
 
@@ -21,7 +21,7 @@ def get_database(db_host=None, db_user=None, db_password=None, db_name=None, poo
         db_user: Database user (used only on first initialization)
         db_password: Database password (used only on first initialization)
         db_name: Database name (used only on first initialization)
-        pool_size: Pool size (used only on first initialization, max 32)
+        pool_size: Pool size (used only on first initialization, defaults to DB_POOL_SIZE env var or 10)
 
     Returns:
         The global Database singleton instance
@@ -29,6 +29,9 @@ def get_database(db_host=None, db_user=None, db_password=None, db_name=None, poo
     global _global_database
 
     if _global_database is None:
+        # Use env var DB_POOL_SIZE if pool_size not provided, default to 10 for API safety
+        if pool_size is None:
+            pool_size = int(os.getenv('DB_POOL_SIZE', '10'))
         _global_database = Database(db_host, db_user, db_password, db_name, pool_size=pool_size)
 
     return _global_database

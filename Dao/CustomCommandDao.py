@@ -220,10 +220,15 @@ class CustomCommandDao(BaseDao):
     def count_guild_commands(self, guild_id: str) -> int:
         """Count total commands for a guild"""
         query = "SELECT COUNT(*) as count FROM CustomCommands WHERE guild_id = %s"
-        result = self.execute_query(query, (str(guild_id),), fetch_one=True)
+        results = self.execute_query(query, (str(guild_id),))
 
-        if result:
-            return result['count'] or 0
+        if results and len(results) > 0:
+            result = results[0]
+            # Handle both dict and tuple results
+            if isinstance(result, dict):
+                return result['count'] or 0
+            elif isinstance(result, tuple):
+                return result[0] or 0
         return 0
 
     def disable_command(self, command_id: int, guild_id: str) -> bool:

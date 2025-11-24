@@ -67,19 +67,19 @@ class SubscriptionDao(BaseDao):
     def get_by_guild_id(self, guild_id: str) -> Optional[Subscription]:
         """Get subscription by guild ID"""
         query = "SELECT * FROM Subscriptions WHERE guild_id = %s"
-        result = self.execute_query(query, (str(guild_id),), fetch_one=True)
+        results = self.execute_query(query, (str(guild_id),))
 
-        if result:
-            return Subscription.from_dict(result)
+        if results and len(results) > 0:
+            return Subscription.from_dict(results[0])
         return None
 
     def get_by_stripe_subscription_id(self, stripe_subscription_id: str) -> Optional[Subscription]:
         """Get subscription by Stripe subscription ID"""
         query = "SELECT * FROM Subscriptions WHERE stripe_subscription_id = %s"
-        result = self.execute_query(query, (stripe_subscription_id,), fetch_one=True)
+        results = self.execute_query(query, (stripe_subscription_id,))
 
-        if result:
-            return Subscription.from_dict(result)
+        if results and len(results) > 0:
+            return Subscription.from_dict(results[0])
         return None
 
     def update_subscription(
