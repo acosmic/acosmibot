@@ -9,12 +9,11 @@ from logger import AppLogger
 logger = AppLogger(__name__).get_logger()
 
 
-class SubscriptionDao(BaseDao):
+class SubscriptionDao(BaseDao[Subscription]):
     """DAO for managing guild subscriptions"""
 
-    def __init__(self):
-        super().__init__()
-        self.table_name = "Subscriptions"
+    def __init__(self, db: Optional['Database'] = None):
+        super().__init__(Subscription, "Subscriptions", db)
 
     def create_subscription(
         self,
@@ -55,7 +54,7 @@ class SubscriptionDao(BaseDao):
         )
 
         try:
-            result = self.execute_query(query, params, fetch=False)
+            result = self.execute_query(query, params, commit=True)
             if result:
                 logger.info(f"Created subscription for guild {guild_id}, tier: {tier}")
                 return result
@@ -67,19 +66,25 @@ class SubscriptionDao(BaseDao):
     def get_by_guild_id(self, guild_id: str) -> Optional[Subscription]:
         """Get subscription by guild ID"""
         query = "SELECT * FROM Subscriptions WHERE guild_id = %s"
-        results = self.execute_query(query, (str(guild_id),))
+        results = self.execute_query(query, (str(guild_id),), return_description=True)
 
-        if results and len(results) > 0:
-            return Subscription.from_dict(results[0])
+        if results and results[0] and len(results[0]) > 0:
+            rows, description = results
+            columns = [col[0] for col in description]
+            row_dict = dict(zip(columns, rows[0]))
+            return Subscription.from_dict(row_dict)
         return None
 
     def get_by_stripe_subscription_id(self, stripe_subscription_id: str) -> Optional[Subscription]:
         """Get subscription by Stripe subscription ID"""
         query = "SELECT * FROM Subscriptions WHERE stripe_subscription_id = %s"
-        results = self.execute_query(query, (stripe_subscription_id,))
+        results = self.execute_query(query, (stripe_subscription_id,), return_description=True)
 
-        if results and len(results) > 0:
-            return Subscription.from_dict(results[0])
+        if results and results[0] and len(results[0]) > 0:
+            rows, description = results
+            columns = [col[0] for col in description]
+            row_dict = dict(zip(columns, rows[0]))
+            return Subscription.from_dict(row_dict)
         return None
 
     def update_subscription(
@@ -89,7 +94,8 @@ class SubscriptionDao(BaseDao):
         status: Optional[str] = None,
         current_period_start: Optional[datetime] = None,
         current_period_end: Optional[datetime] = None,
-        cancel_at_period_end: Optional[bool] = None
+        cancel_at_period_end: Optional[bool] = None,
+        cancel_at: Optional[datetime] = None
     ) -> bool:
         """
         Update subscription details
@@ -100,7 +106,8 @@ class SubscriptionDao(BaseDao):
             status: New status (optional)
             current_period_start: New period start (optional)
             current_period_end: New period end (optional)
-            cancel_at_period_end: Cancel at period end flag (optional)
+            cancel_at_period_end: Cancel at period end flag (optional, deprecated)
+            cancel_at: Timestamp when subscription will cancel (optional)
 
         Returns:
             True if successful, False otherwise
@@ -128,6 +135,10 @@ class SubscriptionDao(BaseDao):
             updates.append("cancel_at_period_end = %s")
             params.append(cancel_at_period_end)
 
+        if cancel_at is not None:
+            updates.append("cancel_at = %s")
+            params.append(cancel_at)
+
         if not updates:
             logger.warning(f"No updates provided for subscription {guild_id}")
             return False
@@ -138,7 +149,7 @@ class SubscriptionDao(BaseDao):
         query = f"UPDATE Subscriptions SET {', '.join(updates)} WHERE guild_id = %s"
 
         try:
-            self.execute_query(query, tuple(params), fetch=False)
+            self.execute_query(query, tuple(params), commit=True)
             logger.info(f"Updated subscription for guild {guild_id}")
             return True
         except Exception as e:
@@ -151,7 +162,8 @@ class SubscriptionDao(BaseDao):
         status: Optional[str] = None,
         current_period_start: Optional[datetime] = None,
         current_period_end: Optional[datetime] = None,
-        cancel_at_period_end: Optional[bool] = None
+        cancel_at_period_end: Optional[bool] = None,
+        cancel_at: Optional[datetime] = None
     ) -> bool:
         """
         Update subscription by Stripe subscription ID (used in webhooks)
@@ -178,6 +190,10 @@ class SubscriptionDao(BaseDao):
             updates.append("cancel_at_period_end = %s")
             params.append(cancel_at_period_end)
 
+        if cancel_at is not None:
+            updates.append("cancel_at = %s")
+            params.append(cancel_at)
+
         if not updates:
             return False
 
@@ -187,7 +203,8 @@ class SubscriptionDao(BaseDao):
         query = f"UPDATE Subscriptions SET {', '.join(updates)} WHERE stripe_subscription_id = %s"
 
         try:
-            self.execute_query(query, tuple(params), fetch=False)
+            logger.info(f"Executing update query: {query} with params: {tuple(params)}")
+            self.execute_query(query, tuple(params), commit=True)
             logger.info(f"Updated subscription {stripe_subscription_id}")
             return True
         except Exception as e:
@@ -235,7 +252,7 @@ class SubscriptionDao(BaseDao):
         query = "DELETE FROM Subscriptions WHERE guild_id = %s"
 
         try:
-            self.execute_query(query, (str(guild_id),), fetch=False)
+            self.execute_query(query, (str(guild_id),), commit=True)
             logger.info(f"Deleted subscription for guild {guild_id}")
             return True
         except Exception as e:

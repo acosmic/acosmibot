@@ -18,7 +18,8 @@ class Subscription(BaseEntity):
         current_period_end (datetime): End of current billing period
         stripe_subscription_id (str): Stripe subscription ID
         stripe_customer_id (str): Stripe customer ID
-        cancel_at_period_end (bool): Whether subscription cancels at period end
+        cancel_at_period_end (bool): Whether subscription cancels at period end (deprecated, use cancel_at)
+        cancel_at (datetime): Timestamp when subscription will be canceled (None if not scheduled)
         created_at (datetime): Record creation timestamp
         updated_at (datetime): Last update timestamp
     """
@@ -34,6 +35,7 @@ class Subscription(BaseEntity):
         stripe_subscription_id: Optional[str] = None,
         stripe_customer_id: Optional[str] = None,
         cancel_at_period_end: bool = False,
+        cancel_at: Optional[datetime] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None
     ):
@@ -46,6 +48,7 @@ class Subscription(BaseEntity):
         self.stripe_subscription_id = stripe_subscription_id
         self.stripe_customer_id = stripe_customer_id
         self.cancel_at_period_end = cancel_at_period_end
+        self.cancel_at = cancel_at
         self.created_at = created_at or datetime.now()
         self.updated_at = updated_at or datetime.now()
 
@@ -61,6 +64,7 @@ class Subscription(BaseEntity):
             'stripe_subscription_id': self.stripe_subscription_id,
             'stripe_customer_id': self.stripe_customer_id,
             'cancel_at_period_end': self.cancel_at_period_end,
+            'cancel_at': self.cancel_at.isoformat() if self.cancel_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -69,7 +73,7 @@ class Subscription(BaseEntity):
     def from_dict(cls, data: Dict[str, Any]) -> 'Subscription':
         """Create entity from dictionary (database row)"""
         # Convert datetime strings to datetime objects if needed
-        for date_field in ['current_period_start', 'current_period_end', 'created_at', 'updated_at']:
+        for date_field in ['current_period_start', 'current_period_end', 'cancel_at', 'created_at', 'updated_at']:
             if data.get(date_field) and isinstance(data[date_field], str):
                 data[date_field] = datetime.fromisoformat(data[date_field])
 
