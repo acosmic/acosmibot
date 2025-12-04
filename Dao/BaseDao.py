@@ -280,13 +280,69 @@ class BaseDao(Generic[T]):
         Returns:
             Optional[int]: Last insert ID for INSERT queries, True for UPDATE/DELETE, None on error
         """
-        result = self.execute_query(query, params, commit=True)
+        max_retries = 2
+        connection = None
+        cursor = None
+        is_insert = query.strip().upper().startswith('INSERT')
 
-        # If the query was successful and it's an INSERT, get the last insert ID
-        if result and query.strip().upper().startswith('INSERT'):
-            return self.get_last_insert_id()
+        for attempt in range(max_retries + 1):
+            try:
+                # Acquire connection from pool for this query
+                connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+                if not connection:
+                    raise MySQLError("Failed to get connection from pool")
 
-        return result
+                # Create cursor
+                cursor = connection.cursor()
+
+                # Execute query
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+
+                # Commit
+                connection.commit()
+
+                # For INSERT, get lastrowid from cursor (connection-specific)
+                if is_insert:
+                    last_id = cursor.lastrowid
+                    return last_id if last_id else None
+
+                return True  # Success for UPDATE/DELETE
+
+            except MySQLError as err:
+                self.logger.error(f"Database error in execute_write (attempt {attempt + 1}): {err}")
+                self.logger.error(f"Query: {query}")
+                self.logger.error(f"Params: {params}")
+
+                # Check if it's a connection error that we can retry
+                if err.errno in (2006, 2013, 2014) and attempt < max_retries:
+                    self.logger.info(f"Connection error detected, retrying... (attempt {attempt + 1})")
+                    continue
+
+                try:
+                    if connection:
+                        connection.rollback()
+                except:
+                    pass
+                return None
+
+            finally:
+                # Always close cursor and return connection to pool
+                if cursor:
+                    try:
+                        cursor.close()
+                    except:
+                        pass
+                if connection:
+                    try:
+                        connection.close()  # Returns to pool
+                    except:
+                        pass
+
+        # If we get here, all retries failed
+        return None
 
     def find_by_id(self, id_value: Any) -> Optional[T]:
         """

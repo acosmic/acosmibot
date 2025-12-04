@@ -61,7 +61,7 @@ class CustomCommandDao(BaseDao):
         )
 
         try:
-            result = self.execute_query(query, params, fetch=False)
+            result = self.execute_write(query, params)
             if result:
                 logger.info(f"Created custom command '{prefix}{command}' for guild {guild_id}")
                 return result
@@ -73,10 +73,12 @@ class CustomCommandDao(BaseDao):
     def get_by_id(self, command_id: int) -> Optional[CustomCommand]:
         """Get custom command by ID"""
         query = "SELECT * FROM CustomCommands WHERE id = %s"
-        results = self.execute_query(query, (command_id,))
+        results, description = self.execute_query(query, (command_id,), return_description=True)
 
-        if results and len(results) > 0:
-            return CustomCommand.from_dict(results[0])
+        if results and len(results) > 0 and description:
+            columns = [column[0] for column in description]
+            entity_dict = dict(zip(columns, results[0]))
+            return CustomCommand.from_dict(entity_dict)
         return None
 
     def get_guild_commands(
@@ -102,11 +104,12 @@ class CustomCommandDao(BaseDao):
 
         query += " ORDER BY created_at DESC"
 
-        results = self.execute_query(query, tuple(params))
+        results, description = self.execute_query(query, tuple(params), return_description=True)
 
-        if results:
+        if results and description:
+            columns = [column[0] for column in description]
             # Return as dicts for easier API consumption
-            return [CustomCommand.from_dict(row).to_dict() for row in results]
+            return [CustomCommand.from_dict(dict(zip(columns, row))).to_dict() for row in results]
         return []
 
     def get_command_by_command(
@@ -117,10 +120,12 @@ class CustomCommandDao(BaseDao):
     ) -> Optional[CustomCommand]:
         """Get command by guild ID, command word, and prefix"""
         query = "SELECT * FROM CustomCommands WHERE guild_id = %s AND command = %s AND prefix = %s"
-        result = self.execute_query(query, (str(guild_id), command, prefix), fetch_one=True)
+        results, description = self.execute_query(query, (str(guild_id), command, prefix), return_description=True)
 
-        if result:
-            return CustomCommand.from_dict(result)
+        if results and len(results) > 0 and description:
+            columns = [column[0] for column in description]
+            entity_dict = dict(zip(columns, results[0]))
+            return CustomCommand.from_dict(entity_dict)
         return None
 
     def update_command(
@@ -187,9 +192,9 @@ class CustomCommandDao(BaseDao):
         query = f"UPDATE CustomCommands SET {', '.join(updates)} WHERE id = %s AND guild_id = %s"
 
         try:
-            self.execute_query(query, tuple(params), fetch=False)
+            result = self.execute_write(query, tuple(params))
             logger.info(f"Updated custom command {command_id}")
-            return True
+            return bool(result)
         except Exception as e:
             logger.error(f"Error updating custom command {command_id}: {e}")
             return False
@@ -199,9 +204,9 @@ class CustomCommandDao(BaseDao):
         query = "DELETE FROM CustomCommands WHERE id = %s AND guild_id = %s"
 
         try:
-            self.execute_query(query, (command_id, str(guild_id)), fetch=False)
+            result = self.execute_write(query, (command_id, str(guild_id)))
             logger.info(f"Deleted custom command {command_id}")
-            return True
+            return bool(result)
         except Exception as e:
             logger.error(f"Error deleting custom command {command_id}: {e}")
             return False
@@ -211,8 +216,8 @@ class CustomCommandDao(BaseDao):
         query = "UPDATE CustomCommands SET use_count = use_count + 1 WHERE id = %s"
 
         try:
-            self.execute_query(query, (command_id,), fetch=False)
-            return True
+            result = self.execute_write(query, (command_id,))
+            return bool(result)
         except Exception as e:
             logger.error(f"Error incrementing use count for command {command_id}: {e}")
             return False
@@ -244,9 +249,9 @@ class CustomCommandDao(BaseDao):
         query = "DELETE FROM CustomCommands WHERE guild_id = %s"
 
         try:
-            self.execute_query(query, (str(guild_id),), fetch=False)
+            result = self.execute_write(query, (str(guild_id),))
             logger.info(f"Deleted all custom commands for guild {guild_id}")
-            return True
+            return bool(result)
         except Exception as e:
             logger.error(f"Error deleting all commands for guild {guild_id}: {e}")
             return False
@@ -259,8 +264,9 @@ class CustomCommandDao(BaseDao):
             ORDER BY use_count DESC
             LIMIT %s
         """
-        results = self.execute_query(query, (str(guild_id), limit))
+        results, description = self.execute_query(query, (str(guild_id), limit), return_description=True)
 
-        if results:
-            return [CustomCommand.from_dict(row).to_dict() for row in results]
+        if results and description:
+            columns = [column[0] for column in description]
+            return [CustomCommand.from_dict(dict(zip(columns, row))).to_dict() for row in results]
         return []

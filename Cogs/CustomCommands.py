@@ -61,11 +61,11 @@ class CustomCommands(commands.Cog):
         """
         content = message.content.strip()
 
-        # Get all enabled custom commands for this guild
+        # Get all enabled custom commands for this guild (fresh from database)
         commands_list = self.manager.get_guild_commands(
             guild_id=message.guild.id,
             enabled_only=True,
-            use_cache=True
+            use_cache=False  # Always fetch fresh to support real-time updates
         )
 
         if not commands_list:
@@ -152,13 +152,13 @@ class CustomCommands(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """
-        When bot joins a guild, pre-load custom commands into cache
+        When bot joins a guild, log the event
+        (No pre-loading needed since commands are fetched fresh from DB on each message)
 
         Args:
             guild: Discord guild object
         """
-        logger.info(f"Pre-loading custom commands for new guild: {guild.name} (ID: {guild.id})")
-        self.manager.get_guild_commands(guild.id, enabled_only=False, use_cache=False)
+        logger.info(f"Bot joined guild: {guild.name} (ID: {guild.id})")
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):

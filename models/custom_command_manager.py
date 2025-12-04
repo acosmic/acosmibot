@@ -27,7 +27,7 @@ class CustomCommandManager:
         self,
         guild_id: int,
         enabled_only: bool = True,
-        use_cache: bool = True
+        use_cache: bool = False
     ) -> List[CustomCommand]:
         """
         Get all custom commands for a guild
@@ -35,7 +35,7 @@ class CustomCommandManager:
         Args:
             guild_id: Discord guild ID
             enabled_only: If True, only return enabled commands
-            use_cache: If True, use cached data if available
+            use_cache: If True, use cached data if available (default: False for real-time updates)
 
         Returns:
             List of CustomCommand entities
