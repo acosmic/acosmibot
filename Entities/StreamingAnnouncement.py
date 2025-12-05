@@ -1,0 +1,249 @@
+#! /usr/bin/python3.10
+from Entities.BaseEntity import BaseEntity
+from typing import Optional, Literal
+from datetime import datetime
+
+
+Platform = Literal['twitch', 'youtube']
+
+
+class StreamingAnnouncement(BaseEntity):
+    """
+    Entity representing a multi-platform live stream announcement.
+    Supports Twitch and YouTube streaming.
+    """
+
+    def __init__(
+        self,
+        id: Optional[int] = None,
+        platform: Optional[Platform] = None,
+        guild_id: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        message_id: Optional[int] = None,
+        streamer_username: Optional[str] = None,
+        streamer_id: Optional[str] = None,
+        stream_id: Optional[str] = None,
+        stream_title: Optional[str] = None,
+        game_name: Optional[str] = None,
+        stream_started_at: Optional[datetime] = None,
+        stream_ended_at: Optional[datetime] = None,
+        initial_viewer_count: Optional[int] = None,
+        final_viewer_count: Optional[int] = None,
+        stream_duration_seconds: Optional[int] = None,
+        last_status_check_at: Optional[datetime] = None,
+        vod_url: Optional[str] = None,
+        vod_checked_at: Optional[datetime] = None,
+        vod_check_attempts: int = 0,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None
+    ):
+        self._id = id
+        self._platform = platform
+        self._guild_id = guild_id
+        self._channel_id = channel_id
+        self._message_id = message_id
+        self._streamer_username = streamer_username
+        self._streamer_id = streamer_id
+        self._stream_id = stream_id
+        self._stream_title = stream_title
+        self._game_name = game_name
+        self._stream_started_at = stream_started_at
+        self._stream_ended_at = stream_ended_at
+        self._initial_viewer_count = initial_viewer_count
+        self._final_viewer_count = final_viewer_count
+        self._stream_duration_seconds = stream_duration_seconds
+        self._last_status_check_at = last_status_check_at
+        self._vod_url = vod_url
+        self._vod_checked_at = vod_checked_at
+        self._vod_check_attempts = vod_check_attempts
+        self._created_at = created_at
+        self._updated_at = updated_at
+
+    # Platform
+    @property
+    def platform(self) -> Optional[str]:
+        return self._platform
+
+    @platform.setter
+    def platform(self, value: str):
+        self._platform = value
+
+    # ID
+    @property
+    def id(self) -> Optional[int]:
+        return self._id
+
+    @id.setter
+    def id(self, value: int):
+        self._id = value
+
+    # Guild ID
+    @property
+    def guild_id(self) -> Optional[int]:
+        return self._guild_id
+
+    @guild_id.setter
+    def guild_id(self, value: int):
+        self._guild_id = value
+
+    # Channel ID
+    @property
+    def channel_id(self) -> Optional[int]:
+        return self._channel_id
+
+    @channel_id.setter
+    def channel_id(self, value: int):
+        self._channel_id = value
+
+    # Message ID
+    @property
+    def message_id(self) -> Optional[int]:
+        return self._message_id
+
+    @message_id.setter
+    def message_id(self, value: int):
+        self._message_id = value
+
+    # Streamer Username
+    @property
+    def streamer_username(self) -> Optional[str]:
+        return self._streamer_username
+
+    @streamer_username.setter
+    def streamer_username(self, value: str):
+        self._streamer_username = value
+
+    # Streamer ID (platform-specific: Twitch user_id, YouTube channel_id)
+    @property
+    def streamer_id(self) -> Optional[str]:
+        return self._streamer_id
+
+    @streamer_id.setter
+    def streamer_id(self, value: str):
+        self._streamer_id = value
+
+    # Stream ID (platform-specific: Twitch stream_id, YouTube video_id)
+    @property
+    def stream_id(self) -> Optional[str]:
+        return self._stream_id
+
+    @stream_id.setter
+    def stream_id(self, value: str):
+        self._stream_id = value
+
+    # Stream Title
+    @property
+    def stream_title(self) -> Optional[str]:
+        return self._stream_title
+
+    @stream_title.setter
+    def stream_title(self, value: str):
+        self._stream_title = value
+
+    # Game Name
+    @property
+    def game_name(self) -> Optional[str]:
+        return self._game_name
+
+    @game_name.setter
+    def game_name(self, value: str):
+        self._game_name = value
+
+    # Stream Started At
+    @property
+    def stream_started_at(self) -> Optional[datetime]:
+        return self._stream_started_at
+
+    @stream_started_at.setter
+    def stream_started_at(self, value: datetime):
+        self._stream_started_at = value
+
+    # Stream Ended At
+    @property
+    def stream_ended_at(self) -> Optional[datetime]:
+        return self._stream_ended_at
+
+    @stream_ended_at.setter
+    def stream_ended_at(self, value: datetime):
+        self._stream_ended_at = value
+
+    # Initial Viewer Count
+    @property
+    def initial_viewer_count(self) -> Optional[int]:
+        return self._initial_viewer_count
+
+    @initial_viewer_count.setter
+    def initial_viewer_count(self, value: int):
+        self._initial_viewer_count = value
+
+    # Final Viewer Count
+    @property
+    def final_viewer_count(self) -> Optional[int]:
+        return self._final_viewer_count
+
+    @final_viewer_count.setter
+    def final_viewer_count(self, value: int):
+        self._final_viewer_count = value
+
+    # Stream Duration Seconds
+    @property
+    def stream_duration_seconds(self) -> Optional[int]:
+        return self._stream_duration_seconds
+
+    @stream_duration_seconds.setter
+    def stream_duration_seconds(self, value: int):
+        self._stream_duration_seconds = value
+
+    # Last Status Check At
+    @property
+    def last_status_check_at(self) -> Optional[datetime]:
+        return self._last_status_check_at
+
+    @last_status_check_at.setter
+    def last_status_check_at(self, value: datetime):
+        self._last_status_check_at = value
+
+    # VOD URL
+    @property
+    def vod_url(self) -> Optional[str]:
+        return self._vod_url
+
+    @vod_url.setter
+    def vod_url(self, value: str):
+        self._vod_url = value
+
+    # VOD Checked At
+    @property
+    def vod_checked_at(self) -> Optional[datetime]:
+        return self._vod_checked_at
+
+    @vod_checked_at.setter
+    def vod_checked_at(self, value: datetime):
+        self._vod_checked_at = value
+
+    # VOD Check Attempts
+    @property
+    def vod_check_attempts(self) -> int:
+        return self._vod_check_attempts
+
+    @vod_check_attempts.setter
+    def vod_check_attempts(self, value: int):
+        self._vod_check_attempts = value
+
+    # Created At
+    @property
+    def created_at(self) -> Optional[datetime]:
+        return self._created_at
+
+    @created_at.setter
+    def created_at(self, value: datetime):
+        self._created_at = value
+
+    # Updated At
+    @property
+    def updated_at(self) -> Optional[datetime]:
+        return self._updated_at
+
+    @updated_at.setter
+    def updated_at(self, value: datetime):
+        self._updated_at = value

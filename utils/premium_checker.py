@@ -22,8 +22,9 @@ class PremiumChecker:
     # Tier limit definitions
     TIER_LIMITS = {
         'free': {
-            # Twitch
+            # Streaming (platform-specific limits)
             'twitch_streamers': 1,
+            'youtube_streamers': 1,
 
             # Reaction Roles
             'reaction_roles': 1,  # Allow 1 reaction role message
@@ -48,8 +49,9 @@ class PremiumChecker:
             'custom_level_up_message': False,
         },
         'premium': {
-            # Twitch
+            # Streaming (platform-specific limits)
             'twitch_streamers': 5,
+            'youtube_streamers': 5,
 
             # Reaction Roles
             'reaction_roles': 10,
@@ -210,31 +212,80 @@ class PremiumChecker:
         return PremiumChecker.TIER_LIMITS[tier]['ai_models']
 
     @staticmethod
-    def check_twitch_limit(guild_id: int, current_count: int) -> Tuple[bool, str]:
+    def check_streaming_limit(guild_id: int, platform: str, current_count: int) -> Tuple[bool, str]:
         """
-        Check if guild can add more Twitch streamers
+        Check if guild can add more streamers for specific platform
+
+        NOTE: Limits are SEPARATE per platform (1 Twitch + 1 YouTube = valid on free tier)
 
         Args:
             guild_id: Discord guild ID
-            current_count: Current number of tracked streamers
+            platform: 'twitch' or 'youtube'
+            current_count: Current number of tracked streamers for this platform
 
         Returns:
             Tuple of (can_add: bool, message: str)
         """
         tier = PremiumChecker.get_guild_tier(guild_id)
-        max_streamers = PremiumChecker.TIER_LIMITS[tier]['twitch_streamers']
+        limit_key = f'{platform}_streamers'
+        max_streamers = PremiumChecker.TIER_LIMITS[tier].get(limit_key, 0)
+
+        if max_streamers == 0:
+            return False, (
+                f"❌ **{platform.capitalize()} streaming** is not available in your tier.\n"
+                f"https://acosmibot.com/premium"
+            )
 
         if current_count <= max_streamers:
             return True, ""
 
+        platform_display = platform.capitalize()
         if tier == 'free':
             return False, (
-                f"❌ Free tier allows **{max_streamers} streamer** only.\n"
-                f"Upgrade to **Premium** for **5 streamers**!\n"
+                f"❌ Free tier allows **{max_streamers} {platform_display} streamer** only.\n"
+                f"Upgrade to **Premium** for **5 {platform_display} streamers**!\n"
                 f"https://acosmibot.com/premium"
             )
         else:
-            return False, f"❌ Premium tier allows up to {max_streamers} streamers. Remove one to add another."
+            return False, (
+                f"❌ Premium tier allows up to {max_streamers} {platform_display} streamers. "
+                f"Remove one to add another."
+            )
+
+    @staticmethod
+    def count_streamers_by_platform(guild_settings: dict, platform: str) -> int:
+        """
+        Count tracked streamers for specific platform from guild settings
+
+        Args:
+            guild_settings: Full guild settings dict
+            platform: 'twitch' or 'youtube'
+
+        Returns:
+            Number of tracked streamers for the platform
+        """
+        from utils.settings_migrator import get_streaming_settings
+
+        streaming_settings = get_streaming_settings(guild_settings)
+        tracked_streamers = streaming_settings.get('tracked_streamers', [])
+
+        return sum(1 for s in tracked_streamers if s.get('platform') == platform)
+
+    @staticmethod
+    def check_twitch_limit(guild_id: int, current_count: int) -> Tuple[bool, str]:
+        """
+        DEPRECATED: Use check_streaming_limit(guild_id, 'twitch', current_count) instead
+
+        Check if guild can add more Twitch streamers
+
+        Args:
+            guild_id: Discord guild ID
+            current_count: Current number of tracked Twitch streamers
+
+        Returns:
+            Tuple of (can_add: bool, message: str)
+        """
+        return PremiumChecker.check_streaming_limit(guild_id, 'twitch', current_count)
 
     @staticmethod
     def check_reaction_role_limit(guild_id: int, current_count: int) -> Tuple[bool, str]:

@@ -23,106 +23,70 @@ class Slots(commands.Cog):
         super().__init__()
         self.bot = bot
 
-        # Default configuration
-        # NOTE: multipliers, min_bet, max_bet, and bet_options will eventually
-        # be moved to global config. Only 'enabled' and 'symbols' remain guild-specific.
-        self.default_config = {
-            "enabled": True,
-            "symbols": ["🍒", "🍋", "🍊", "🍇", "🍎", "🍌", "⭐", "🔔", "💎", "🎰", "🍀", "❤️"],
-            "match_two_multiplier": 2,
-            "match_three_multiplier": 10,
-            "min_bet": 100,
-            "max_bet": 25000,
-            "bet_options": [100, 1000, 5000, 10000, 25000]
-        }
+        # Default symbols
+        self.default_symbols = ["🍒", "🍋", "🍊", "🍇", "🍎", "🍌", "⭐", "🔔", "💎", "🎰", "🍀", "❤️"]
 
-        # Global config defaults (to be replaced with database reads in future)
-        self.global_defaults = {
-            "match_two_multiplier": 2,
-            "match_three_multiplier": 10,
-            "min_bet": 100,
-            "max_bet": 25000,
-            "bet_options": [100, 1000, 5000, 10000, 25000]
-        }
+        # Global hardcoded configuration (for fairness in leaderboards)
+        # These values are the same for all guilds and cannot be customized
+        self.MATCH_TWO_MULTIPLIER = 2
+        self.MATCH_THREE_MULTIPLIER = 10
+        self.MIN_BET = 100
+        self.MAX_BET = 25000
+        self.BET_OPTIONS = [100, 1000, 5000, 10000, 25000]
 
     def get_slots_config(self, guild_id):
-        """Get slots configuration from guild settings"""
+        """Get slots configuration - only enabled/symbols from DB, rest hardcoded"""
         try:
             guild_dao = GuildDao()
             guild = guild_dao.get_guild(guild_id)
 
-            if not guild or not guild.settings:
-                return self.default_config
+            # Default values
+            enabled = True
+            symbols = self.default_symbols
 
-            # Parse settings JSON
-            settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
+            if guild and guild.settings:
+                # Parse settings JSON
+                settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
 
-            # Get games settings
-            games_settings = settings.get("games", {})
+                # Get games settings
+                games_settings = settings.get("games", {})
 
-            # Check parent games toggle FIRST
-            if not games_settings.get("enabled", False):
-                # Return disabled config if parent toggle is off
-                disabled_config = self.default_config.copy()
-                disabled_config["enabled"] = False
-                return disabled_config
+                # Check parent games toggle FIRST
+                if not games_settings.get("enabled", False):
+                    enabled = False
+                else:
+                    # Get slots-specific config
+                    slots_config = games_settings.get("slots-config", {})
+                    enabled = slots_config.get("enabled", True)
+                    symbols = slots_config.get("symbols", self.default_symbols)
 
-            # Get slots-specific config
-            slots_config = games_settings.get("slots-config", {})
-
-            # Merge with defaults
-            config = self.default_config.copy()
-            config.update(slots_config)
-
-            return config
+            # Return config with hardcoded bet values
+            return {
+                "enabled": enabled,
+                "symbols": symbols,
+                # Hardcoded values (cannot be customized per guild)
+                "match_two_multiplier": self.MATCH_TWO_MULTIPLIER,
+                "match_three_multiplier": self.MATCH_THREE_MULTIPLIER,
+                "min_bet": self.MIN_BET,
+                "max_bet": self.MAX_BET,
+                "bet_options": self.BET_OPTIONS
+            }
 
         except Exception as e:
             logger.error(f"Error getting slots config: {e}")
-            return self.default_config
-
-    async def bet_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[
-        app_commands.Choice[int]]:
-        """Provide bet options based on guild configuration"""
-        try:
-            config = self.get_slots_config(interaction.guild.id)
-            bet_options = config.get("bet_options", [10, 100, 200, 300, 500, 1000, 2000])
-
-            # Filter options based on current input
-            if current:
-                try:
-                    current_int = int(current)
-                    filtered_options = [opt for opt in bet_options if str(opt).startswith(str(current_int))]
-                except ValueError:
-                    filtered_options = bet_options
-            else:
-                filtered_options = bet_options
-
-            # Return as choices, limited to 25 (Discord limit)
-            choices = [
-                app_commands.Choice(name=f"{option:,} credits", value=option)
-                for option in filtered_options[:25]
-            ]
-
-            return choices
-
-        except Exception as e:
-            logger.error(f"Error in bet autocomplete: {e}")
-            # Return default options on error
-            return [
-                app_commands.Choice(name="10 credits", value=10),
-                app_commands.Choice(name="100 credits", value=100),
-                app_commands.Choice(name="200 credits", value=200),
-                app_commands.Choice(name="300 credits", value=300),
-                app_commands.Choice(name="500 credits", value=500),
-                app_commands.Choice(name="1,000 credits", value=1000),
-                app_commands.Choice(name="2,000 credits", value=2000)
-            ]
-
-    # In your Slots command file, update the slots method:
+            # Return defaults on error
+            return {
+                "enabled": True,
+                "symbols": self.default_symbols,
+                "match_two_multiplier": self.MATCH_TWO_MULTIPLIER,
+                "match_three_multiplier": self.MATCH_THREE_MULTIPLIER,
+                "min_bet": self.MIN_BET,
+                "max_bet": self.MAX_BET,
+                "bet_options": self.BET_OPTIONS
+            }
 
     @app_commands.command(name="slots", description="Play a simple slots game")
-    @app_commands.describe(bet="Choose your bet amount")
-    @app_commands.autocomplete(bet=bet_autocomplete)
+    @app_commands.describe(bet="Bet amount (100 - 25,000 credits)")
     async def slots(self, interaction: discord.Interaction, bet: int):
         # Only work in guilds
         if not interaction.guild:
@@ -153,20 +117,13 @@ class Slots(commands.Cog):
         # Validate bet amount
         cost = abs(bet)
 
-        # Check if bet is in allowed options
-        allowed_bets = config.get("bet_options", [10, 100, 200, 300, 500, 1000, 2000])
-        if cost not in allowed_bets:
-            bet_list = ", ".join([f"{b:,}" for b in allowed_bets])
-            await interaction.response.send_message(f"Invalid bet amount. Allowed bets: {bet_list} credits.",
-                                                    ephemeral=True)
+        # Check min and max bet (any amount between 100 and 25,000)
+        if cost < self.MIN_BET:
+            await interaction.response.send_message(f"Minimum bet is {self.MIN_BET:,} credits.", ephemeral=True)
             return
 
-        if cost < config["min_bet"]:
-            await interaction.response.send_message(f"Minimum bet is {config['min_bet']:,} credits.", ephemeral=True)
-            return
-
-        if cost > config["max_bet"]:
-            await interaction.response.send_message(f"Maximum bet is {config['max_bet']:,} credits.", ephemeral=True)
+        if cost > self.MAX_BET:
+            await interaction.response.send_message(f"Maximum bet is {self.MAX_BET:,} credits.", ephemeral=True)
             return
 
         if current_guild_user.currency < cost:
@@ -189,14 +146,14 @@ class Slots(commands.Cog):
         # Check for wins
         if slot1 == slot2 == slot3:
             # Three of a kind - jackpot
-            amount_won = cost * config["match_three_multiplier"]
+            amount_won = cost * self.MATCH_THREE_MULTIPLIER
             game_result = "win"
             embed.description = f"# 🎰 JACKPOT! 🎰\n\n{result}\n\n{interaction.user.mention} won {amount_won:,} credits!"
             embed.color = discord.Color.gold()
 
         elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
             # Two matching - small win
-            amount_won = cost * config["match_two_multiplier"]
+            amount_won = cost * self.MATCH_TWO_MULTIPLIER
             game_result = "win"
             embed.description = f"# 🎰 Nice! 🎰\n\n{result}\n\n{interaction.user.mention} won {amount_won:,} credits!"
             embed.color = discord.Color.green()
