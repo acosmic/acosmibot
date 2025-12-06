@@ -11,6 +11,7 @@ __all__ = [
     "Bank",
     "Avatar",
     "Slots",
+    # "Slot5",
     "Blackjack",
     "Giphy",
     "Deathroll",

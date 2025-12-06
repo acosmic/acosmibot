@@ -135,34 +135,22 @@ async def edit_announcement_with_vod(bot, announcement, vod_url, vod_settings):
         # Edit embed
         embed = message.embeds[0]
 
-        # Update title to indicate stream ended
+        # Update title to indicate stream ended (if not already updated)
         if embed.title and "is live" in embed.title.lower():
             embed.title = embed.title.replace("is live", "was live").replace("🔴", "📺")
 
-        # Update embed color to indicate ended stream (gray)
-        embed.color = 0x808080
+        # Update embed color to indicate ended stream (gray) (if not already updated)
+        if embed.color != discord.Color(0x808080):
+            embed.color = 0x808080
 
-        # Add or append VOD link as a field
+        # Add VOD link as a field with special formatting
         vod_suffix = vod_settings.get(
             'vod_message_suffix',
-            "[Watch VOD]({vod_url})"
+            "🔵 **VOD Available:** [Watch Recording]({vod_url})"
         )
         vod_text = vod_suffix.replace('{vod_url}', vod_url)
 
         embed.add_field(name="", value=vod_text, inline=False)
-
-        # Add stream metadata fields if available
-        if announcement.get('stream_duration_seconds'):
-            from Tasks.twitch_live_task import _format_duration
-            duration_str = _format_duration(announcement['stream_duration_seconds'])
-            embed.add_field(name="Duration", value=duration_str, inline=False)
-
-        if announcement.get('final_viewer_count') is not None:
-            embed.add_field(
-                name="Final Viewers",
-                value=f"{announcement['final_viewer_count']:,}",
-                inline=False
-            )
 
         # Edit the message
         await message.edit(embed=embed)

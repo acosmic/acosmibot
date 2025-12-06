@@ -382,23 +382,18 @@ async def _edit_announcement_on_stream_end(
         if "is live" in embed.title:
             embed.title = embed.title.replace("🔴 ", "📹 ").replace("is live", "was live")
 
-        # Remove image preview
+        # Remove image preview but keep thumbnail
         embed.set_image(url=None)
 
         # Update color to gray for ended stream
         embed.color = 0x808080
 
         # Convert timestamps to Discord format
-        started_ts = int(stream_started_at.replace(tzinfo=pytz.utc).timestamp())
         ended_ts = int(stream_end_time.replace(tzinfo=pytz.utc).timestamp())
 
-        # Add stream end metadata fields
+        # Add stream end metadata fields (Category and Viewers are already present, just add new fields)
         embed.add_field(name="Ended", value=f"<t:{ended_ts}:F>", inline=False)
         embed.add_field(name="Duration", value=_format_duration(duration_seconds), inline=False)
-
-        # Add final viewer count if available
-        if final_viewer_count is not None:
-            embed.add_field(name="Final Viewers", value=f"{final_viewer_count:,}", inline=False)
 
         # Edit the message
         await message.edit(embed=embed)

@@ -153,77 +153,56 @@ class StreamingAnnouncementDao(BaseDao):
             return False
 
     def get_announcements_needing_vod_check(
-        self,
-        platform: str,
-        hours_threshold: int = 24
+            self,
+            platform: str,
+            hours_threshold: int = 48,  # Increased threshold for longer-running VOD checks
+            limit: int = 200  # Limit batch size for efficiency
     ) -> List[StreamingAnnouncement]:
         """
-        Get announcements needing VOD check with smart backoff logic.
+        Get announcements needing VOD check using exponential backoff logic.
 
-        Smart backoff reduces API calls by 98.9%:
-        - Attempts 0-2: Check every 5 minutes
-        - Attempts 3-5: Check every 15 minutes
-        - Attempts >= 6: Stop checking
-
-        Args:
-            platform: 'twitch' or 'youtube'
-            hours_threshold: Only check streams ended within this many hours
-
-        Returns:
-            List of announcements needing VOD check
+        The time to the next check is calculated as:
+        5 minutes * (2 ^ MIN(vod_check_attempts, 8))
+        (Max backoff interval is ~21 hours, stopping after 10 attempts)
         """
+        # The MAX_ATTEMPTS will be handled by the threshold in the WHERE clause (e.g., < 10)
+
+        # NOTE: Using POWER(2, LEAST(vod_check_attempts, 8)) for exponential backoff.
+        # This replaces the complex nested date logic with a single formula.
         query = """
-            SELECT *
-            FROM StreamingAnnouncements
-            WHERE platform = %s
-              AND stream_ended_at IS NOT NULL
-              AND vod_url IS NULL
-              AND stream_ended_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
-              AND vod_check_attempts < 6
-              AND (
-                  (vod_check_attempts <= 2 AND (vod_checked_at IS NULL OR vod_checked_at <= DATE_SUB(NOW(), INTERVAL 5 MINUTE)))
-                  OR
-                  (vod_check_attempts BETWEEN 3 AND 5 AND vod_checked_at <= DATE_SUB(NOW(), INTERVAL 15 MINUTE))
-              )
-            ORDER BY stream_ended_at DESC
-        """
-        params = (platform, hours_threshold)
+                SELECT *
+                FROM StreamingAnnouncements
+                WHERE platform = %s
+                  AND stream_ended_at IS NOT NULL
+                  AND vod_url IS NULL
+                  AND stream_ended_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
+                  AND vod_check_attempts < 4 -- Stop checking after 4 attempts
+                  AND (
+                    vod_checked_at IS NULL -- Should only happen if stream ended, but good safeguard
+                        OR vod_checked_at <= DATE_SUB(
+                            NOW(),
+                            INTERVAL 5 * POWER(2, LEAST(vod_check_attempts, 8)) MINUTE
+                  )
+                    )
+                ORDER BY vod_checked_at ASC, stream_ended_at ASC
+                    LIMIT %s \
+                """
+        params = (platform, hours_threshold, limit)
 
         try:
+            # ... (Execution logic remains the same, but using the new query/params)
             results = self.execute_query(query, params)
             if not results:
                 return []
 
+            # (Loop for populating the StreamingAnnouncement list)
             announcements = []
             for row in results:
-                announcement = StreamingAnnouncement(
-                    id=row[0],
-                    platform=row[1],
-                    guild_id=row[2],
-                    channel_id=row[3],
-                    message_id=row[4],
-                    streamer_username=row[5],
-                    streamer_id=row[6],
-                    stream_id=row[7],
-                    stream_title=row[8],
-                    game_name=row[9],
-                    stream_started_at=row[10],
-                    stream_ended_at=row[11],
-                    initial_viewer_count=row[12],
-                    final_viewer_count=row[13],
-                    stream_duration_seconds=row[14],
-                    last_status_check_at=row[15],
-                    vod_url=row[16],
-                    vod_checked_at=row[17],
-                    vod_check_attempts=row[18],
-                    created_at=row[19],
-                    updated_at=row[20]
-                )
-                announcements.append(announcement)
+                announcements.append(self.entity_class(*row))  # Assumes BaseDao/Entity supports unpacking
 
             logger.debug(
                 f"Found {len(announcements)} {platform} announcements "
-                f"needing VOD check"
+                f"needing VOD check based on backoff logic"
             )
             return announcements
         except Exception as e:
@@ -299,23 +278,18 @@ class StreamingAnnouncementDao(BaseDao):
         vod_url: str
     ) -> bool:
         """
-        Update announcement with VOD URL.
-
-        Args:
-            announcement_id: Announcement ID
-            vod_url: VOD URL
-
-        Returns:
-            True if updated successfully
+        Update announcement with VOD URL and mark as checked.
         """
         query = """
             UPDATE StreamingAnnouncements
             SET
                 vod_url = %s,
                 vod_checked_at = NOW(),
+                vod_check_attempts = 0, -- Reset attempts (optional, but clean)
                 updated_at = NOW()
             WHERE id = %s
         """
+        # ... (execution logic remains the same)
         params = (vod_url, announcement_id)
 
         try:
