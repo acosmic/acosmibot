@@ -22,6 +22,9 @@ class GuildUser(BaseEntity):
             exp_gained: int = 0,
             exp_lost: int = 0,
             currency: int = 0,
+            slots_free_spins_remaining: int = 0,
+            slots_locked_bet_amount: int = 0,
+            slots_bonus_total_won: int = 0,
             messages_sent: int = 0,
             reactions_sent: int = 0,
             joined_at: Union[str, datetime] = None,
@@ -44,6 +47,9 @@ class GuildUser(BaseEntity):
             exp_gained (int, optional): Experience points gained in this guild. Defaults to 0.
             exp_lost (int, optional): Experience points lost in this guild. Defaults to 0.
             currency (int, optional): User's currency amount in this guild. Defaults to 0.
+            slots_free_spins_remaining (int, optional): Free spins remaining in active bonus round. Defaults to 0.
+            slots_locked_bet_amount (int, optional): Bet amount locked during bonus round. Defaults to 0.
+            slots_bonus_total_won (int, optional): Total winnings accumulated during bonus round. Defaults to 0.
             messages_sent (int, optional): Number of messages sent in this guild. Defaults to 0.
             reactions_sent (int, optional): Number of reactions sent in this guild. Defaults to 0.
             joined_at (Union[str, datetime], optional): When user joined this guild. Defaults to None.
@@ -63,6 +69,9 @@ class GuildUser(BaseEntity):
         self.exp_gained = exp_gained
         self.exp_lost = exp_lost
         self.currency = currency
+        self.slots_free_spins_remaining = slots_free_spins_remaining
+        self.slots_locked_bet_amount = slots_locked_bet_amount
+        self.slots_bonus_total_won = slots_bonus_total_won
         self.messages_sent = messages_sent
         self.reactions_sent = reactions_sent
         self.joined_at = joined_at
@@ -180,6 +189,36 @@ class GuildUser(BaseEntity):
     def currency(self, value: int) -> None:
         """Set user's currency amount in this guild"""
         self._currency = value
+
+    @property
+    def slots_free_spins_remaining(self) -> int:
+        """Number of free spins remaining in active bonus round"""
+        return self._slots_free_spins_remaining
+
+    @slots_free_spins_remaining.setter
+    def slots_free_spins_remaining(self, value: int) -> None:
+        """Set number of free spins remaining"""
+        self._slots_free_spins_remaining = value
+
+    @property
+    def slots_locked_bet_amount(self) -> int:
+        """Bet amount locked during bonus round (0 if not in bonus)"""
+        return self._slots_locked_bet_amount
+
+    @slots_locked_bet_amount.setter
+    def slots_locked_bet_amount(self, value: int) -> None:
+        """Set locked bet amount for bonus round"""
+        self._slots_locked_bet_amount = value
+
+    @property
+    def slots_bonus_total_won(self) -> int:
+        """Cumulative winnings during current bonus round (paid at end)"""
+        return self._slots_bonus_total_won
+
+    @slots_bonus_total_won.setter
+    def slots_bonus_total_won(self, value: int) -> None:
+        """Set total bonus round winnings"""
+        self._slots_bonus_total_won = value
 
     @property
     def messages_sent(self) -> int:

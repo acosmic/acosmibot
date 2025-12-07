@@ -44,6 +44,9 @@ class GuildUserDao(BaseDao[GuildUser]):
                 exp_gained INT DEFAULT 0,
                 exp_lost INT DEFAULT 0,
                 currency INT DEFAULT 0,
+                slots_free_spins_remaining INT DEFAULT 0,
+                slots_locked_bet_amount INT DEFAULT 0,
+                slots_bonus_total_won BIGINT DEFAULT 0,
                 messages_sent INT DEFAULT 0,
                 reactions_sent INT DEFAULT 0,
                 joined_at DATETIME,
@@ -55,7 +58,8 @@ class GuildUserDao(BaseDao[GuildUser]):
                 INDEX idx_guild_exp (guild_id, exp DESC),
                 INDEX idx_guild_currency (guild_id, currency DESC),
                 INDEX idx_guild_level (guild_id, level DESC),
-                INDEX idx_last_active (guild_id, last_active DESC)
+                INDEX idx_last_active (guild_id, last_active DESC),
+                INDEX idx_active_bonus_rounds (slots_free_spins_remaining)
             )
         """
 
@@ -80,9 +84,10 @@ class GuildUserDao(BaseDao[GuildUser]):
             INSERT INTO GuildUsers (
                 user_id, guild_id, name, nickname, level,
                 streak, highest_streak, exp, exp_gained, exp_lost, currency,
+                slots_free_spins_remaining, slots_locked_bet_amount, slots_bonus_total_won,
                 messages_sent, reactions_sent, joined_at, last_active,
                 daily, last_daily, is_active
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
             new_guild_user.user_id,
@@ -96,6 +101,9 @@ class GuildUserDao(BaseDao[GuildUser]):
             new_guild_user.exp_gained,
             new_guild_user.exp_lost,
             new_guild_user.currency,
+            new_guild_user.slots_free_spins_remaining,
+            new_guild_user.slots_locked_bet_amount,
+            new_guild_user.slots_bonus_total_won,
             new_guild_user.messages_sent,
             new_guild_user.reactions_sent,
             new_guild_user.joined_at,
@@ -126,7 +134,9 @@ class GuildUserDao(BaseDao[GuildUser]):
             UPDATE GuildUsers
             SET name = %s, nickname = %s, level = %s,
                 streak = %s, highest_streak = %s, exp = %s, exp_gained = %s,
-                exp_lost = %s, currency = %s, messages_sent = %s, reactions_sent = %s,
+                exp_lost = %s, currency = %s,
+                slots_free_spins_remaining = %s, slots_locked_bet_amount = %s, slots_bonus_total_won = %s,
+                messages_sent = %s, reactions_sent = %s,
                 last_active = %s, daily = %s, last_daily = %s, is_active = %s
             WHERE user_id = %s AND guild_id = %s
         """
@@ -140,6 +150,9 @@ class GuildUserDao(BaseDao[GuildUser]):
             updated_guild_user.exp_gained,
             updated_guild_user.exp_lost,
             updated_guild_user.currency,
+            updated_guild_user.slots_free_spins_remaining,
+            updated_guild_user.slots_locked_bet_amount,
+            updated_guild_user.slots_bonus_total_won,
             updated_guild_user.messages_sent,
             updated_guild_user.reactions_sent,
             updated_guild_user.last_active,
@@ -226,13 +239,16 @@ class GuildUserDao(BaseDao[GuildUser]):
                     exp_gained=user_data[8],
                     exp_lost=user_data[9],
                     currency=user_data[10],
-                    messages_sent=user_data[11],
-                    reactions_sent=user_data[12],
-                    joined_at=user_data[13],
-                    last_active=user_data[14],
-                    daily=user_data[15],
-                    last_daily=user_data[16],
-                    is_active=bool(user_data[17])
+                    slots_free_spins_remaining=user_data[11],
+                    slots_locked_bet_amount=user_data[12],
+                    slots_bonus_total_won=user_data[13],
+                    messages_sent=user_data[14],
+                    reactions_sent=user_data[15],
+                    joined_at=user_data[16],
+                    last_active=user_data[17],
+                    daily=user_data[18],
+                    last_daily=user_data[19],
+                    is_active=bool(user_data[20])
                 )
                 return guild_user
             return None
@@ -348,13 +364,16 @@ class GuildUserDao(BaseDao[GuildUser]):
                         exp_gained=user_data[8],
                         exp_lost=user_data[9],
                         currency=user_data[10],
-                        messages_sent=user_data[11],
-                        reactions_sent=user_data[12],
-                        joined_at=user_data[13],
-                        last_active=user_data[14],
-                        daily=user_data[15],
-                        last_daily=user_data[16],
-                        is_active=bool(user_data[17])
+                        slots_free_spins_remaining=user_data[11],
+                        slots_locked_bet_amount=user_data[12],
+                        slots_bonus_total_won=user_data[13],
+                        messages_sent=user_data[14],
+                        reactions_sent=user_data[15],
+                        joined_at=user_data[16],
+                        last_active=user_data[17],
+                        daily=user_data[18],
+                        last_daily=user_data[19],
+                        is_active=bool(user_data[20])
                     ))
 
             return guild_users
@@ -397,13 +416,16 @@ class GuildUserDao(BaseDao[GuildUser]):
                         exp_gained=user_data[8],
                         exp_lost=user_data[9],
                         currency=user_data[10],
-                        messages_sent=user_data[11],
-                        reactions_sent=user_data[12],
-                        joined_at=user_data[13],
-                        last_active=user_data[14],
-                        daily=user_data[15],
-                        last_daily=user_data[16],
-                        is_active=bool(user_data[17])
+                        slots_free_spins_remaining=user_data[11],
+                        slots_locked_bet_amount=user_data[12],
+                        slots_bonus_total_won=user_data[13],
+                        messages_sent=user_data[14],
+                        reactions_sent=user_data[15],
+                        joined_at=user_data[16],
+                        last_active=user_data[17],
+                        daily=user_data[18],
+                        last_daily=user_data[19],
+                        is_active=bool(user_data[20])
                     ))
 
             return guild_users
@@ -541,6 +563,9 @@ class GuildUserDao(BaseDao[GuildUser]):
                 exp_gained=0,
                 exp_lost=0,
                 currency=1000,  # Starting currency
+                slots_free_spins_remaining=0,
+                slots_locked_bet_amount=0,
+                slots_bonus_total_won=0,
                 messages_sent=0,
                 reactions_sent=0,
                 joined_at=joined_at,
@@ -643,9 +668,10 @@ class GuildUserDao(BaseDao[GuildUser]):
             INSERT INTO GuildUsers (
                 user_id, guild_id, name, nickname, level,
                 streak, highest_streak, exp, exp_gained, exp_lost, currency,
+                slots_free_spins_remaining, slots_locked_bet_amount, slots_bonus_total_won,
                 messages_sent, reactions_sent, joined_at, last_active,
                 daily, last_daily, is_active
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 name = VALUES(name),
                 nickname = VALUES(nickname),
@@ -668,6 +694,9 @@ class GuildUserDao(BaseDao[GuildUser]):
                     gu.exp_gained,
                     gu.exp_lost,
                     gu.currency,
+                    gu.slots_free_spins_remaining,
+                    gu.slots_locked_bet_amount,
+                    gu.slots_bonus_total_won,
                     gu.messages_sent,
                     gu.reactions_sent,
                     gu.joined_at,
@@ -727,6 +756,55 @@ class GuildUserDao(BaseDao[GuildUser]):
         except Exception as e:
             self.logger.error(f"Error updating currency with global sync for user {user_id} in guild {guild_id}: {e}")
             return False
+
+    def update_slots_bonus_state(self, user_id: int, guild_id: int,
+                                 free_spins_remaining: int,
+                                 locked_bet_amount: int = 0,
+                                 bonus_total_won: int = 0) -> bool:
+        """
+        Update user's slots bonus round state atomically.
+
+        Args:
+            user_id (int): Discord user ID
+            guild_id (int): Discord guild ID
+            free_spins_remaining (int): Number of free spins left (0 to end bonus)
+            locked_bet_amount (int): Locked bet amount (0 to clear)
+            bonus_total_won (int): Total won during bonus (0 to reset)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = """
+            UPDATE GuildUsers
+            SET slots_free_spins_remaining = %s,
+                slots_locked_bet_amount = %s,
+                slots_bonus_total_won = %s
+            WHERE user_id = %s AND guild_id = %s
+        """
+
+        try:
+            self.execute_query(sql,
+                              (free_spins_remaining, locked_bet_amount, bonus_total_won,
+                               user_id, guild_id),
+                              commit=True)
+            self.logger.debug(f"Updated slots bonus state for user {user_id} in guild {guild_id}: spins={free_spins_remaining}, bet={locked_bet_amount}, total={bonus_total_won}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating slots bonus state for user {user_id} in guild {guild_id}: {e}")
+            return False
+
+    def clear_slots_bonus_state(self, user_id: int, guild_id: int) -> bool:
+        """
+        Clear user's slots bonus round state (convenience method).
+
+        Args:
+            user_id (int): Discord user ID
+            guild_id (int): Discord guild ID
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        return self.update_slots_bonus_state(user_id, guild_id, 0, 0, 0)
 
     def save(self, guild_user: GuildUser) -> Optional[GuildUser]:
         """
