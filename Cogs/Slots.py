@@ -60,7 +60,7 @@ class Slots(commands.Cog):
 
         # Base multipliers (whole numbers only)
         self.BASE_MULTIPLIERS = {
-            2: 1,     # Pair = break even (1x)
+            2: 0.5,   # Single pair = half back (0.5x)
             3: 3,     # Base for 3-match
             4: 15,    # Base for 4-match
             5: 100    # Base for 5-match
@@ -76,7 +76,7 @@ class Slots(commands.Cog):
         }
 
         self.LEGENDARY_5_MATCH_BONUS = 10  # Additional ×10 for 5 legendary symbols → ×1000 total
-        self.DOUBLE_PAIR_MULTIPLIER = 1  # Break even for two pairs
+        self.DOUBLE_PAIR_MULTIPLIER = 1  # Break even for two pairs (0.5x + 0.5x = 1x)
 
         # Scatter symbol configuration for bonus rounds
         self.default_scatter_config = {
@@ -466,7 +466,7 @@ class Slots(commands.Cog):
 
             # Check if there's also a pair in the remaining matches - bonus payout!
             if len(all_matches) >= 2 and all_matches[1]["count"] == 2:
-                pair_bonus = cost  # Pair is now 1x (break even)
+                pair_bonus = int(cost * 0.5)  # Pair is 0.5x (half back)
                 amount_won += pair_bonus
                 win_phrases = {
                     3: f"**THREE OF A KIND!** {primary['symbol']} ×{multiplier} + **PAIR BONUS!** {all_matches[1]['symbol']} +{pair_bonus:,}",
@@ -484,17 +484,17 @@ class Slots(commands.Cog):
             embed.color = discord.Color.gold() if primary["count"] == 5 else discord.Color.green()
 
         elif len(all_matches) >= 2 and all_matches[0]["count"] == 2 and all_matches[1]["count"] == 2:
-            # Two separate 2-matches = 2x (both pairs pay 1x each)
-            amount_won = cost * 2
+            # Two separate 2-matches = 1x break even (both pairs pay 0.5x each)
+            amount_won = cost
             amount_lost = 0
-            result_text = f"**DOUBLE PAIR!** {all_matches[0]['symbol']} {all_matches[1]['symbol']} ×2 🎲"
+            result_text = f"**DOUBLE PAIR!** {all_matches[0]['symbol']} {all_matches[1]['symbol']} Break even 🎲"
             embed.color = discord.Color.blue()
 
         elif all_matches[0]["count"] == 2:
-            # Single 2-match - break even (1x)
-            amount_won = cost
-            amount_lost = 0
-            result_text = f"**PAIR!** {all_matches[0]['symbol']} Break even ↩️"
+            # Single 2-match - half back (0.5x)
+            amount_won = int(cost * 0.5)
+            amount_lost = cost - amount_won
+            result_text = f"**PAIR!** {all_matches[0]['symbol']} Half back ↩️"
             embed.color = discord.Color.light_grey()
 
         # Handle currency and bonus state updates
