@@ -86,7 +86,7 @@ class SettingsManager:
                     settings_dict = guild.settings
 
                 # Extract leveling_role_system section or use empty dict
-                lr_settings = settings_dict.get("leveling_role_system", {})
+                lr_settings = settings_dict.get("leveling", {})
                 return GuildLevelingRoleSettings(**lr_settings)
 
             else:

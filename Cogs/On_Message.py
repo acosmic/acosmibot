@@ -92,21 +92,23 @@ class On_Message(commands.Cog):
         }
 
         try:
-            # Use singleton SettingsManager to get guild settings
             settings_manager = SettingsManager.get_instance()
             guild_settings = settings_manager.get_guild_settings(str(guild_id))
+            logger.info(guild_settings)
 
-            # Extract daily announcements settings from the guild settings object
+            # --- FIX: Read the top-level, flattened attributes ---
             leveling_config = {
-                "enabled": guild_settings.leveling.enabled,
-                "daily_announcements_enabled": guild_settings.leveling.daily_announcements_enabled,
-                "daily_announcement_channel_id": guild_settings.leveling.daily_announcement_channel_id
+                # Use the correctly loaded top-level attributes
+                "enabled": guild_settings.enabled,
+                "daily_announcements_enabled": guild_settings.daily_announcements_enabled,
+                "daily_announcement_channel_id": guild_settings.daily_announcement_channel_id
             }
+            # ----------------------------------------------------
 
             return leveling_config
 
         except Exception as e:
-            logger.error(f"Error getting leveling config for guild {guild_id}: {e}")
+            logger.error(f"Error getting leveling config for guild {guild_id}: {e}", exc_info=True)
             return default_config
 
     @commands.Cog.listener()
@@ -117,7 +119,7 @@ class On_Message(commands.Cog):
 
         # Get guild leveling config
         leveling_config = self.get_leveling_config(message.guild.id)
-
+        logger.info(leveling_config)
         # Skip if leveling is disabled
         if not leveling_config.get("enabled", True):
             return
@@ -198,6 +200,7 @@ class On_Message(commands.Cog):
     async def process_daily_reward(self, guild_user: GuildUser, member: discord.Member,
                                    daily_channel: Optional[discord.TextChannel]):
         """Process daily reward for guild user"""
+
         try:
             today = datetime.now(timezone.utc).replace(tzinfo=None).date()
 
@@ -231,6 +234,7 @@ class On_Message(commands.Cog):
             calculated_daily_reward = base_daily + streak_bonus
 
             logger.info(f"CURRENT CURRENCY: {guild_user.currency}")
+            logger.info(f"DAILY CHANNEL: {daily_channel}")
 
             # Update currency with global sync
             guild_user_dao = GuildUserDao()
