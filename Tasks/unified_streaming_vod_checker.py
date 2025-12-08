@@ -80,7 +80,9 @@ async def check_for_vods(bot):
         # It only returns announcements where the next check time is now or past.
         # Example logic in DAO: Check interval = 5 * 2^(min(attempts, 6)) minutes.
         twitch_announcements = dao.get_announcements_needing_vod_check('twitch')
-        youtube_announcements = dao.get_announcements_needing_vod_check('youtube')
+        # YouTube tracking is currently disabled
+        # youtube_announcements = dao.get_announcements_needing_vod_check('youtube')
+        youtube_announcements = []
 
         total_announcements = len(twitch_announcements) + len(youtube_announcements)
 
@@ -94,10 +96,10 @@ async def check_for_vods(bot):
         )
 
         async with aiohttp.ClientSession() as session:
-            # 1. Process YouTube VODs using Batching
-            await _process_youtube_vods_batched(
-                bot, youtube_announcements, youtube_service, session, guild_dao, dao
-            )
+            # 1. Process YouTube VODs using Batching (DISABLED)
+            # await _process_youtube_vods_batched(
+            #     bot, youtube_announcements, youtube_service, session, guild_dao, dao
+            # )
 
             # 2. Process Twitch VODs (Sequential, but heavily filtered by DAO backoff)
             for ann in twitch_announcements:

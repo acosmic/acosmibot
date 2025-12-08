@@ -100,6 +100,35 @@ class SettingsManager:
             logger.error(f"Error getting guild settings for {guild_id}: {e}")
             return GuildLevelingRoleSettings()
 
+    def get_settings_dict(self, guild_id: str) -> Dict:
+        """
+        Get the complete raw settings dictionary from the database.
+
+        Args:
+            guild_id: Discord guild ID as string
+
+        Returns:
+            Dict: The complete settings dictionary, or an empty dict if not found.
+        """
+        try:
+            guild = self.guild_dao.find_by_id(int(guild_id))
+
+            if guild and guild.settings:
+                # Parse JSON settings
+                if isinstance(guild.settings, str):
+                    return json.loads(guild.settings)
+                # If already a dict (e.g., from an ORM), return it
+                return guild.settings
+
+            return {}
+
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Error parsing raw settings dict for {guild_id}: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Error getting raw settings dict for {guild_id}: {e}")
+            return {}
+
     def update_guild_settings(self, guild_id: str, settings: GuildLevelingRoleSettings) -> bool:
         """
         Update complete guild settings in database.

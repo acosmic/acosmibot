@@ -230,6 +230,8 @@ class On_Message(commands.Cog):
             streak_bonus = math.floor(base_daily * streak_bonus_percentage)
             calculated_daily_reward = base_daily + streak_bonus
 
+            logger.info(f"CURRENT CURRENCY: {guild_user.currency}")
+
             # Update currency with global sync
             guild_user_dao = GuildUserDao()
             guild_user_dao.update_currency_with_global_sync(
@@ -237,7 +239,7 @@ class On_Message(commands.Cog):
                 member.guild.id,
                 calculated_daily_reward
             )
-
+            guild_user.currency += calculated_daily_reward
             # Set daily and last_daily
             guild_user.daily = 1
             guild_user.last_daily = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
