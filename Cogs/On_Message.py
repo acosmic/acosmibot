@@ -94,16 +94,16 @@ class On_Message(commands.Cog):
         try:
             settings_manager = SettingsManager.get_instance()
             guild_settings = settings_manager.get_guild_settings(str(guild_id))
-            logger.info(guild_settings)
+            # logger.info(guild_settings)
 
-            # --- FIX: Read the top-level, flattened attributes ---
+
             leveling_config = {
                 # Use the correctly loaded top-level attributes
                 "enabled": guild_settings.enabled,
                 "daily_announcements_enabled": guild_settings.daily_announcements_enabled,
                 "daily_announcement_channel_id": guild_settings.daily_announcement_channel_id
             }
-            # ----------------------------------------------------
+
 
             return leveling_config
 
@@ -232,9 +232,6 @@ class On_Message(commands.Cog):
             streak_bonus_percentage = streak * base_bonus_multiplier
             streak_bonus = math.floor(base_daily * streak_bonus_percentage)
             calculated_daily_reward = base_daily + streak_bonus
-
-            logger.info(f"CURRENT CURRENCY: {guild_user.currency}")
-            logger.info(f"DAILY CHANNEL: {daily_channel}")
 
             # Update currency with global sync
             guild_user_dao = GuildUserDao()
