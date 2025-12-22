@@ -100,8 +100,7 @@ class StreamingAnnouncementDao(BaseDao):
         platform: str,
         guild_id: int,
         streamer_username: str,
-        stream_ended_at: datetime,
-        final_viewer_count: Optional[int] = None
+        stream_ended_at: datetime
     ) -> bool:
         """
         Mark stream as ended and calculate duration.
@@ -111,7 +110,6 @@ class StreamingAnnouncementDao(BaseDao):
             guild_id: Discord guild ID
             streamer_username: Platform username
             stream_ended_at: Stream end timestamp
-            final_viewer_count: Final viewer count
 
         Returns:
             True if updated successfully
@@ -120,7 +118,6 @@ class StreamingAnnouncementDao(BaseDao):
             UPDATE StreamingAnnouncements
             SET
                 stream_ended_at = %s,
-                final_viewer_count = %s,
                 stream_duration_seconds = TIMESTAMPDIFF(SECOND, stream_started_at, %s),
                 updated_at = NOW()
             WHERE platform = %s
@@ -132,7 +129,6 @@ class StreamingAnnouncementDao(BaseDao):
         """
         params = (
             stream_ended_at,
-            final_viewer_count,
             stream_ended_at,
             platform,
             guild_id,

@@ -334,8 +334,6 @@ async def _handle_stream_offline_from_cache(guild, guild_id, username, platform,
         duration_seconds = int(
             (stream_end_time - announcement.stream_started_at.replace(tzinfo=pytz.utc)).total_seconds())
 
-        final_viewer_count = announcement.initial_viewer_count  # Default to last known count
-
         # Edit the announcement message (using the dedicated helper)
         await _edit_announcement_on_stream_end(
             guild,
@@ -343,8 +341,7 @@ async def _handle_stream_offline_from_cache(guild, guild_id, username, platform,
             announcement.message_id,
             announcement.stream_started_at,
             stream_end_time,
-            duration_seconds,
-            final_viewer_count
+            duration_seconds
         )
 
         # Update database with end info and initialize VOD backoff
@@ -352,8 +349,7 @@ async def _handle_stream_offline_from_cache(guild, guild_id, username, platform,
             platform,
             guild_id,
             username,
-            stream_end_time.replace(tzinfo=None),  # Store naive datetime
-            final_viewer_count
+            stream_end_time.replace(tzinfo=None)  # Store naive datetime
         )
         logger.debug(f'Guild {guild.name}: {username} went offline, edited announcement')
 
@@ -408,10 +404,9 @@ async def _edit_announcement_on_stream_end(
         message_id: int,
         stream_started_at: datetime,
         stream_end_time: datetime,
-        duration_seconds: int,
-        final_viewer_count: int = None
+        duration_seconds: int
 ):
-    """Edit announcement embed when stream ends with timing and viewer info (MIGRATED)."""
+    """Edit announcement embed when stream ends with timing info (no final viewer count)."""
     try:
         channel = guild.get_channel(channel_id)
         if not channel:
@@ -452,10 +447,6 @@ async def _edit_announcement_on_stream_end(
         # Add stream end metadata fields
         embed.add_field(name="Ended", value=f"<t:{ended_ts}:F>", inline=False)
         embed.add_field(name="Duration", value=_format_duration(duration_seconds), inline=False)
-
-        # Add final viewer count
-        if final_viewer_count is not None:
-            embed.add_field(name="Final Viewers", value=f"{final_viewer_count:,}", inline=False)
 
         await message.edit(embed=embed)
         logger.debug(f'Guild {guild.name}: Successfully edited announcement for message {message_id}')

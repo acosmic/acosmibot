@@ -209,7 +209,7 @@ async def _post_youtube_live_announcement_to_guild(
 
         embed = discord.Embed(
             title=embed_title,
-            description=f"## {markdown_link}",
+            description=f"### {markdown_link}",
             color=color
         )
 
@@ -290,7 +290,7 @@ async def _post_youtube_video_announcement_to_guild(
 
         embed = discord.Embed(
             title=embed_title,
-            description=f"## {markdown_link}",
+            description=f"### {markdown_link}",
             color=color
         )
 

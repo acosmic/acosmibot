@@ -186,16 +186,6 @@ async def _check_streamer_status(streamer_username, streamer_config, guild, chan
                             stream_end_time = datetime.utcnow()
                             duration_seconds = int((stream_end_time - stream_started_at).total_seconds())
 
-                            # Try to get final viewer count from last API call
-                            final_viewer_count = None
-                            try:
-                                async with aiohttp.ClientSession() as session:
-                                    stream_data = await tw.get_stream_info(session, streamer_username)
-                                    if stream_data.get('data') and len(stream_data['data']) > 0:
-                                        final_viewer_count = stream_data['data'][0].get('viewer_count')
-                            except Exception as e:
-                                logger.debug(f'Guild {guild.name}: Could not fetch final viewer count: {e}')
-
                             # Edit the announcement message
                             await _edit_announcement_on_stream_end(
                                 guild,
@@ -203,12 +193,11 @@ async def _check_streamer_status(streamer_username, streamer_config, guild, chan
                                 message_id,
                                 stream_started_at,
                                 stream_end_time,
-                                duration_seconds,
-                                final_viewer_count
+                                duration_seconds
                             )
 
                             # Update database with end info
-                            dao.mark_stream_offline(guild_id, streamer_username, final_viewer_count, duration_seconds)
+                            dao.mark_stream_offline('twitch', guild_id, streamer_username, stream_end_time)
 
                         async with _announcements_lock:
                             _posted_announcements[guild_id][streamer_username] = False
@@ -253,7 +242,7 @@ async def _post_live_announcement(streamer_username, streamer_config, guild, cha
 
         embed = discord.Embed(
             title=embed_title,
-            description=f"## {markdown_link}",
+            description=f"### {markdown_link}",
             color=color
         )
 
@@ -361,10 +350,9 @@ async def _edit_announcement_on_stream_end(
     message_id: int,
     stream_started_at: datetime,
     stream_end_time: datetime,
-    duration_seconds: int,
-    final_viewer_count: int = None
+    duration_seconds: int
 ):
-    """Edit announcement embed when stream ends with timing and viewer info."""
+    """Edit announcement embed when stream ends with timing info."""
     try:
         channel = guild.get_channel(channel_id)
         if not channel:
