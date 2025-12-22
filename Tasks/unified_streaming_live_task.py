@@ -28,9 +28,7 @@ _announcements_lock = asyncio.Lock()
 # Cache for live stream data retrieved from the central API check
 _live_stream_cache: Dict[str, Dict[str, Any]] = {}  # {platform_username: stream_data}
 
-# YouTube Quota Tracking (for graceful self-throttling)
-_youtube_quota_exceeded: bool = False
-_youtube_quota_reset_time: Optional[datetime] = None
+
 
 
 async def start_task(bot):
@@ -44,25 +42,18 @@ async def _initialize_announcement_cache(bot):
     try:
         # Assumes get_active_announcements_for_cache is a DAO method returning list of entities
         twitch_active: List[StreamingAnnouncement] = dao.get_active_announcements_for_cache('twitch')
-        youtube_active: List[StreamingAnnouncement] = dao.get_active_announcements_for_cache('youtube')
-
+    
         async with _announcements_lock:
             for announcement in twitch_active:
                 guild_id = announcement.guild_id
                 username = announcement.streamer_username
                 _posted_announcements.setdefault(guild_id, {'twitch': {}, 'youtube': {}}).setdefault('twitch', {})[
                     username] = True
-
-            for announcement in youtube_active:
-                guild_id = announcement.guild_id
-                username = announcement.streamer_username
-                _posted_announcements.setdefault(guild_id, {'twitch': {}, 'youtube': {}}).setdefault('youtube', {})[
-                    username] = True
-
-        total_active = len(twitch_active) + len(youtube_active)
+    
+        total_active = len(twitch_active)
         logger.info(
             f"Initialized streaming announcement cache with {total_active} active streams "
-            f"({len(twitch_active)} Twitch, {len(youtube_active)} YouTube)"
+            f"({len(twitch_active)} Twitch)"
         )
     except Exception as e:
         logger.error(f"Error initializing streaming announcement cache: {e}", exc_info=True)
@@ -96,7 +87,7 @@ async def unified_streaming_live_check_task(bot):
 
 async def _get_unique_streamers_to_check(bot) -> Dict[str, Set[str]]:
     """Aggregate all unique streamers across all guilds."""
-    unique_streamers = {'twitch': set(), 'youtube': set()}
+    unique_streamers = {'twitch': set()}
     guild_dao = GuildDao()
 
     try:
@@ -157,67 +148,16 @@ async def _check_all_unique_streams_batched(bot):
                 except Exception as e:
                     logger.error(f"Twitch batch check failed: {e}", exc_info=True)
 
-            # 2. YouTube Check
-            if not _youtube_quota_exceeded:
-                youtube_users = list(unique_streamers['youtube'])
-
-                youtube_tasks = []
-                for username in youtube_users:
-                    # Assuming _check_single_youtube_stream_for_cache handles resolving channel ID
-                    youtube_tasks.append(
-                        _check_single_youtube_stream_for_cache(
-                            username,
-                            youtube_service,
-                            session,
-                            dao
-                        )
-                    )
-
-                results = await asyncio.gather(*youtube_tasks, return_exceptions=True)
-
-                for result in results:
-                    if isinstance(result, Exception):
-                        # Check for Quota Error (403 Forbidden)
-                        if isinstance(result, aiohttp.ClientResponseError) and result.status == 403:
-                            logger.critical("YouTube Quota Exhausted (403). Pausing YouTube checks for 30 minutes.")
-                            _youtube_quota_exceeded = True
-                            _youtube_quota_reset_time = datetime.now() + timedelta(minutes=30)
-                        else:
-                            logger.error(f"YouTube check error: {result}")
-                    elif result is not None:
-                        # Result is (username, stream_data)
-                        username, stream_data = result
-                        _live_stream_cache[f'youtube_{username}'] = stream_data
+            # 2. YouTube Check: Now handled by webhooks, no longer polled here.
+            # The process_youtube_events_task will handle creating/updating StreamingAnnouncements
+            # based on incoming WebSub notifications.
+            # _youtube_quota_exceeded and _youtube_quota_reset_time are no longer managed here.
 
     # --- Ensure DAO closes correctly ---
     finally:
         dao.close()
 
-async def _check_single_youtube_stream_for_cache(
-        username: str,
-        yt: YouTubeService,
-        session: aiohttp.ClientSession,
-        dao: StreamingAnnouncementDao  # DAO used for ID lookups
-) -> Optional[Tuple[str, Dict[str, Any]]]:
-    """Helper to check a single YouTube streamer and return data for the cache."""
-    try:
-        # Assuming resolve_channel_id is a robust method, possibly using cached IDs
-        channel_id = await yt.resolve_channel_id(session, username, dao)
 
-        if not channel_id:
-            return None
-
-        stream_data = await yt.get_live_stream_info(session, channel_id)
-
-        if stream_data:
-            return (username, stream_data)
-
-        return None
-
-    except aiohttp.ClientResponseError as e:
-        raise e
-    except Exception as e:
-        return None
 
 
 async def _process_announcements_for_all_guilds(bot):
@@ -227,7 +167,6 @@ async def _process_announcements_for_all_guilds(bot):
     """
     guild_dao = GuildDao()
     twitch_service = TwitchService()
-    youtube_service = YouTubeService()
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -274,10 +213,9 @@ async def _process_announcements_for_all_guilds(bot):
                                     streaming_settings
                                 ))
                             elif platform == 'youtube':
-                                tasks.append(_post_youtube_live_announcement_from_cache(
-                                    username, streamer_config, stream_data, guild, channel, youtube_service, session,
-                                    streaming_settings
-                                ))
+                                # YouTube announcements are now handled by the webhook processing task
+                                # This block should only handle Twitch.
+                                logger.debug(f"Skipping YouTube announcement for {username} in guild {guild.id}. Handled by webhooks.")
 
                             async with _announcements_lock:
                                 _posted_announcements.setdefault(guild.id, {}).setdefault(platform, {})[username] = True
@@ -379,74 +317,7 @@ async def _post_twitch_live_announcement_from_cache(username, streamer_config, s
         logger.error(f'Guild {guild.name}: Error posting Twitch announcement for {username}: {e}', exc_info=True)
 
 
-async def _post_youtube_live_announcement_from_cache(
-        username, streamer_config, stream_data, guild, channel, yt, session, settings
-):
-    """Post a live announcement for a YouTube streamer using cached data."""
-    try:
-        video_id = stream_data['video_id']
-        stream_title = stream_data['title']
-        channel_title = stream_data['channel_title']
-        viewer_count = stream_data['viewer_count']
-        thumbnail_url = stream_data['thumbnail_url']
-        stream_url = stream_data['url']
-        started_at = stream_data['started_at']
-        channel_id = stream_data['channel_id']
 
-        # Get channel info for avatar
-        channel_info = await yt.get_channel_info(session, channel_id)
-        channel_thumbnail = channel_info.get('thumbnail_url', '') if channel_info else ''
-
-        ann_settings = settings.get('announcement_settings', {})
-        color_hex = ann_settings.get('youtube_color', '0xFF0000')
-        color = int(color_hex.replace('0x', ''), 16) if isinstance(color_hex, str) else color_hex
-
-        embed_title = f"🔴 {channel_title} is live on YouTube!"
-        markdown_link = f"[{stream_title}]({stream_url})"
-        embed = discord.Embed(
-            title=embed_title, description=f"## {markdown_link}", color=color
-        )
-
-        if ann_settings.get('include_thumbnail', True):
-            embed.set_image(url=thumbnail_url)
-            embed.set_thumbnail(url=channel_thumbnail)
-
-        if ann_settings.get('include_viewer_count', True):
-            embed.add_field(name="Viewers", value=f"{viewer_count:,}", inline=False)
-
-        if ann_settings.get('include_start_time', True):
-            discord_timestamp = _convert_to_discord_timestamp(started_at)
-            embed.add_field(name="Started", value=discord_timestamp, inline=False)
-
-        content = _build_announcement_content_twitch(streamer_config, channel_title, "", stream_title, viewer_count)
-        message = await channel.send(content=content, embed=embed)
-
-        dao = StreamingAnnouncementDao()
-        try:
-            try:
-                stream_started_dt = datetime.strptime(started_at, "%Y-%m-%dT%H:%M:%SZ")
-            except ValueError:
-                stream_started_dt = datetime.strptime(started_at.split('.')[0], "%Y-%m-%dT%H:%M:%S")
-
-            dao.create_announcement(
-                platform='youtube',
-                guild_id=guild.id,
-                channel_id=channel.id,
-                message_id=message.id,
-                streamer_username=username,
-                streamer_id=channel_id,
-                stream_id=video_id,
-                stream_title=stream_title,
-                game_name=None,
-                stream_started_at=stream_started_dt,
-                initial_viewer_count=viewer_count
-            )
-            logger.info(f'Guild {guild.name}: Posted YouTube announcement for {username} (message {message.id})')
-        finally:
-            dao.close()
-
-    except Exception as e:
-        logger.error(f'Guild {guild.name}: Error posting YouTube announcement for {username}: {e}', exc_info=True)
 
 
 async def _handle_stream_offline_from_cache(guild, guild_id, username, platform, dao, tw, yt, session):
@@ -673,18 +544,11 @@ async def _check_stream_status_updates(bot):
     """
     dao = StreamingAnnouncementDao()
     twitch_service = TwitchService()
-    youtube_service = YouTubeService()
 
     try:
         # 1. Fetch ALL streams needing an update (DAO uses time-based filtering)
         twitch_due = dao.get_announcements_needing_status_update('twitch', update_interval_minutes=20)
-        youtube_due = dao.get_announcements_needing_status_update('youtube', update_interval_minutes=20)
 
-        if not twitch_due and not youtube_due:
-            return
-
-        twitch_usernames = [a.streamer_username for a in twitch_due]
-        youtube_channel_ids = [a.streamer_id for a in youtube_due if a.streamer_id]
 
         status_update_data = {}  # {platform_username: stream_data}
 
@@ -698,22 +562,10 @@ async def _check_stream_status_updates(bot):
                 except Exception as e:
                     logger.error(f"Twitch status update batch failed: {e}")
 
-            # b. YouTube Check (Assumes get_multiple_live_stream_info is available)
-            if youtube_channel_ids:
-                try:
-                    youtube_live_data = await youtube_service.get_multiple_live_stream_info(session,
-                                                                                            youtube_channel_ids)
 
-                    for channel_id, data in youtube_live_data.items():
-                        original_ann = next((a for a in youtube_due if a.streamer_id == channel_id), None)
-                        if original_ann:
-                            status_update_data[f'youtube_{original_ann.streamer_username}'] = data
-
-                except Exception as e:
-                    logger.error(f"YouTube status update failed: {e}")
 
         # 3. Process Updates
-        all_due_announcements = twitch_due + youtube_due
+        all_due_announcements = twitch_due
         update_tasks = []
         for announcement in all_due_announcements:
             cache_key = f'{announcement.platform}_{announcement.streamer_username}'

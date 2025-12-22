@@ -236,3 +236,37 @@ class Database:
                 logger.warning(f"Error closing pool '{pool_name}': {e}")
         cls._pools.clear()
 
+
+# --- SQLAlchemy Async Setup for new features ---
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from contextlib import asynccontextmanager
+
+_async_engine = None
+
+def get_async_engine():
+    """Get the global async engine singleton instance."""
+    global _async_engine
+    if _async_engine is None:
+        DB_USER = os.getenv("db_user")
+        DB_PASSWORD = os.getenv("db_password")
+        DB_HOST = os.getenv("db_host")
+        DB_NAME = os.getenv("db_name")
+        DATABASE_URL = f"mysql+aiomysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+        _async_engine = create_async_engine(DATABASE_URL, pool_recycle=3600)
+    return _async_engine
+
+@asynccontextmanager
+async def get_db_session():
+    """Provide a transactional scope around a series of operations for async DAO."""
+    engine = get_async_engine()
+    AsyncSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+

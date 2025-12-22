@@ -65,137 +65,267 @@ async def unified_vod_checker_task(bot):
 
 
 async def check_for_vods(bot):
+
+
     """
+
+
     Check announcements for available VODs across all platforms.
 
+
+
+
+
     This function is refactored to use YouTube batch checking.
+
+
     """
+
+
     dao = StreamingAnnouncementDao()
+
+
     guild_dao = GuildDao()
+
+
     twitch_service = TwitchService()
-    youtube_service = YouTubeService()
+
+
+    youtube_service = YouTubeService() # Instantiate YouTubeService here
+
+
+
+
 
     try:
+
+
         # DAO method must now implement the dynamic backoff interval based on attempts.
+
+
         # It only returns announcements where the next check time is now or past.
+
+
         # Example logic in DAO: Check interval = 5 * 2^(min(attempts, 6)) minutes.
+
+
         twitch_announcements = dao.get_announcements_needing_vod_check('twitch')
-        # YouTube tracking is currently disabled
-        # youtube_announcements = dao.get_announcements_needing_vod_check('youtube')
-        youtube_announcements = []
+
+
+        youtube_announcements = dao.get_announcements_needing_vod_check('youtube')
+
+
+
+
+
+
+
 
         total_announcements = len(twitch_announcements) + len(youtube_announcements)
 
+
+
+
+
         if total_announcements == 0:
+
+
             logger.debug('No announcements need VOD checking')
+
+
             return
 
+
+
+
+
         logger.info(
+
+
             f'Checking {total_announcements} announcements for VODs (using smart backoff) '
+
+
             f'({len(twitch_announcements)} Twitch, {len(youtube_announcements)} YouTube)'
+
+
         )
 
-        async with aiohttp.ClientSession() as session:
-            # 1. Process YouTube VODs using Batching (DISABLED)
-            # await _process_youtube_vods_batched(
-            #     bot, youtube_announcements, youtube_service, session, guild_dao, dao
-            # )
 
-            # 2. Process Twitch VODs (Sequential, but heavily filtered by DAO backoff)
+
+
+
+        async with aiohttp.ClientSession() as session:
+
+
+            # 1. Process Twitch VODs (Sequential, but heavily filtered by DAO backoff)
+
+
             for ann in twitch_announcements:
+
+
                 # The _check_twitch_vod logic handles the single-stream check
+
+
                 # and marks the announcement for the next backoff interval.
+
+
                 await _check_twitch_vod(bot, ann, twitch_service, session, guild_dao, dao)
 
+
+
+
+
+            # 2. Process YouTube VODs
+
+
+            for ann in youtube_announcements:
+
+
+                await _check_youtube_vod(bot, ann, youtube_service, session, guild_dao, dao) # New function
+
+
+
+
+
     finally:
+
+
         dao.close()
+
+
         guild_dao.close()
 
 
-async def _process_youtube_vods_batched(bot, announcements, youtube_service, session, guild_dao, dao):
-    """
-    Gathers all YouTube VOD check announcements and processes them in batches
-    of up to 50 video IDs per API call.
-    """
-    video_ids_to_check = {}  # {video_id: [announcement_id, announcement_id, ...]}
 
-    # 1. Gather unique video IDs to check and filter by guild settings
-    filtered_announcements = []
 
-    for ann in announcements:
-        # Check if VOD detection is disabled for the guild or streamer
+
+
+
+
+async def _check_youtube_vod(bot, ann, youtube_service, session, guild_dao, dao):
+
+
+    """
+
+
+    Check for YouTube VOD for a specific announcement.
+
+
+    """
+
+
+    try:
+
+
+        attempt_count = ann.vod_check_attempts
+
+
+
+
+
+        # Check if guild has VOD detection enabled
+
+
         settings = guild_dao.get_guild_settings(ann.guild_id)
-        if not settings or not settings.get('streaming', {}).get('vod_settings', {}).get('enabled'):
-            dao.mark_vod_checked(ann.id)  # Mark as permanently done if disabled
-            continue
 
-        streamer_config = next(
-            (s for s in settings['streaming'].get('tracked_streamers', [])
-             if s.get('platform') == 'youtube' and s.get('username') == ann.streamer_username),
-            {}
-        )
-        if streamer_config.get('skip_vod_check', False):
-            dao.mark_vod_checked(ann.id)
-            continue
 
-        if ann.stream_id:
-            filtered_announcements.append(ann)
-            if ann.stream_id not in video_ids_to_check:
-                video_ids_to_check[ann.stream_id] = []
-            video_ids_to_check[ann.stream_id].append(ann.id)
-        else:
-            # If no stream_id is cached, we can't batch or check effectively.
-            logger.warning(f"No stream_id cached for YouTube {ann.streamer_username}, marking as checked.")
-            dao.mark_vod_checked(ann.id)
+        vod_settings = settings.get('streaming', {}).get('vod_settings', {})
 
-    if not video_ids_to_check:
-        return
 
-    # 2. Execute the batched API calls
-    all_video_ids = list(video_ids_to_check.keys())
-    batch_size = 50
-    vod_status_map = {}  # {video_id: vod_url or None}
 
-    logger.info(f"Starting YouTube VOD batch check for {len(all_video_ids)} unique video IDs.")
 
-    for i in range(0, len(all_video_ids), batch_size):
-        batch_ids = all_video_ids[i:i + batch_size]
 
-        # New youtube_service method needed:
-        # get_video_status_batch(session, list_of_video_ids) -> {video_id: vod_url or None}
-        try:
-            batch_results = await youtube_service.get_video_status_batch(session, batch_ids)
-            vod_status_map.update(batch_results)
-        except Exception as e:
-            logger.error(f"Error executing YouTube VOD batch check (Batch {i // batch_size + 1}): {e}")
-            # If batch fails, skip processing this batch but continue with the next
-            continue
+        # Configuration checks were done in check_for_vods; skip if already handled.
 
-    # 3. Process results and update announcements
-    for ann in filtered_announcements:
-        vod_url = vod_status_map.get(ann.stream_id)
 
-        if vod_url:
-            logger.info(f"Found YouTube VOD for {ann.streamer_username} in guild {ann.guild_id}: {vod_url}")
+        if not vod_settings.get('enabled') or ann.vod_url is not None:
+
+
+            return
+
+
+
+
+
+        # Check for VOD
+
+
+        # YouTube VODs are essentially the original video for a livestream once it's ended
+
+
+        # We need to re-fetch video details to ensure it's no longer live and get its URL
+
+
+        video_details = await youtube_service.get_video_details(session, ann.stream_id)
+
+
+
+
+
+        if video_details and not video_details['is_live'] and not video_details['is_upcoming']:
+
+
+            vod_url = video_details['url'] # The direct video URL
+
+
+            logger.info(f"Found YouTube VOD for {ann.streamer_username} (video {ann.stream_id}) in guild {ann.guild_id}: {vod_url}")
+
+
             dao.update_vod_info(ann.id, vod_url)
 
-            # Fetch the guild settings again (necessary for VOD settings)
-            settings = guild_dao.get_guild_settings(ann.guild_id)
-            vod_settings = settings.get('streaming', {}).get('vod_settings', {})
+
+
+
 
             if vod_settings.get('edit_message_when_vod_available', True):
+
+
                 await edit_announcement_with_vod(bot, ann, vod_url, vod_settings)
+
+
         else:
-            # VOD not ready or not published yet
+
+
+            # Still live, upcoming, or details not found, mark as checked for backoff
+
+
             dao.mark_vod_checked(ann.id)
 
-            # Smart logging for streams that are still pending
-            attempt_count = ann.vod_check_attempts
+
+
+
+
+            # Smart logging based on attempt count
+
+
             if attempt_count % 5 == 0 and attempt_count > 0:
+
+
                 logger.warning(
-                    f"Still checking for YouTube VOD: {ann.streamer_username} in guild {ann.guild_id} "
+
+
+                    f"Still checking for YouTube VOD: {ann.streamer_username} (video {ann.stream_id}) in guild {ann.guild_id} "
+
+
                     f"(attempt {attempt_count + 1}) - Check interval has increased."
+
+
                 )
+
+
+
+
+
+    except Exception as e:
+
+
+        logger.error(f"Error checking YouTube VOD for announcement {ann.id}: {e}", exc_info=True)
+
+
+
+
+
+
 
 
 async def _check_twitch_vod(bot, ann, twitch_service, session, guild_dao, dao):

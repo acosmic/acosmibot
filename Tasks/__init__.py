@@ -12,6 +12,8 @@ from .check_reminders_task import check_reminders_task
 from .unified_stats_reconciliation_task import unified_stats_reconciliation_task
 from .bank_interest_task import bank_interest_task
 from .portal_manager import check_expired_portals
+from .process_youtube_events_task import start_task as start_process_youtube_events_task # Alias to avoid conflict with module name
+from .youtube_rss_poll_task import start_task as start_youtube_rss_poll_task # RSS polling for YouTube videos/streams
 
 # Deprecated tasks (kept for 30-day transition period)
 # Old Twitch-only tasks replaced by unified_streaming_live_task and unified_streaming_vod_checker
@@ -29,5 +31,7 @@ __all__ = [
     "check_reminders_task",
     "unified_stats_reconciliation_task",
     "bank_interest_task",
-    "portal_manager"
+    "portal_manager",
+    "process_youtube_events_task",  # Process YouTube webhook/RSS events
+    "youtube_rss_poll_task"  # Poll YouTube RSS feeds for new videos/streams
 ]

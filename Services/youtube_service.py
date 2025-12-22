@@ -351,3 +351,66 @@ class YouTubeService:
         # (Unchanged)
         channel_id = await self.resolve_channel_id(session, channel_identifier)
         return channel_id is not None
+
+    async def get_video_details(
+            self,
+            session: aiohttp.ClientSession,
+            video_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetches detailed information about a specific video ID.
+        This is crucial for processing webhook events to get comprehensive video data.
+        Quota cost: 1 unit.
+        """
+        data = await self._make_api_request(
+            session,
+            'videos',
+            {
+                'part': 'snippet,liveStreamingDetails,statistics',
+                'id': video_id
+            },
+            quota_cost=1
+        )
+
+        if not data.get('items'):
+            logger.warning(f"No video details found for video ID: {video_id}")
+            return None
+
+        video = data['items'][0]
+        snippet = video.get('snippet', {})
+        live_details = video.get('liveStreamingDetails', {})
+        stats = video.get('statistics', {})
+
+        # Determine live status more accurately
+        # YouTube API reports 'liveStreamingDetails' if it's a live or upcoming stream.
+        # 'actualStartTime' means it's live. 'scheduledStartTime' without 'actualStartTime' means upcoming.
+        # If liveStreamingDetails is missing, it's a regular video.
+        is_live = False
+        is_upcoming = False
+        if live_details:
+            if live_details.get('actualStartTime'):
+                is_live = True
+            elif live_details.get('scheduledStartTime'):
+                is_upcoming = True
+
+        return {
+            'video_id': video['id'],
+            'title': snippet.get('title'),
+            'description': snippet.get('description'),
+            'thumbnail_url': snippet.get('thumbnails', {}).get('maxres', {}).get('url') or
+                             snippet.get('thumbnails', {}).get('high', {}).get('url'),
+            'channel_title': snippet.get('channelTitle'),
+            'channel_id': snippet.get('channelId'),
+            'published_at': snippet.get('publishedAt'),
+            'is_live': is_live,
+            'is_upcoming': is_upcoming,
+            'started_at': live_details.get('actualStartTime'),
+            'scheduled_start': live_details.get('scheduledStartTime'),
+            'ended_at': live_details.get('actualEndTime'),
+            'viewer_count': int(live_details.get('concurrentViewers', 0)) if is_live else 0,
+            'view_count': int(stats.get('viewCount', 0)),
+            'like_count': int(stats.get('likeCount', 0)),
+            'comment_count': int(stats.get('commentCount', 0)),
+            'category_id': snippet.get('categoryId'),
+            'url': f"https://www.youtube.com/watch?v={video['id']}"
+        }
