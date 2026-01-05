@@ -64,8 +64,6 @@ async def twitch_live_check_task(bot):
         try:
             await _check_all_guilds_twitch_streams(bot)
 
-            # Also check for streams that need 20-minute status updates
-            await _check_stream_status_updates(bot)
         except Exception as e:
             logger.error(f'Twitch live check task error: {e}', exc_info=True)
 
@@ -84,17 +82,15 @@ async def _check_all_guilds_twitch_streams(bot):
 
 
 async def _check_guild_twitch_streams(guild, tw):
-    """Check Twitch streams for a specific guild."""
-    # Get guild settings
+    """Check Twitch streams for a specific guild using batch processing."""
     guild_dao = GuildDao()
+    announcement_dao = TwitchAnnouncementDao()
     try:
         settings = guild_dao.get_guild_settings(guild.id)
 
-        # Check if Twitch notifications are enabled
         if not settings or not settings.get('twitch', {}).get('enabled'):
             return
 
-        # Get announcement channel
         channel_id = settings.get('twitch', {}).get('announcement_channel_id')
         if not channel_id:
             logger.debug(f'Guild {guild.name}: Twitch enabled but no announcement channel configured')
@@ -105,120 +101,129 @@ async def _check_guild_twitch_streams(guild, tw):
             logger.warning(f'Guild {guild.name}: Twitch announcement channel {channel_id} not found')
             return
 
-        # Get tracked streamers
         tracked_streamers = settings.get('twitch', {}).get('tracked_streamers', [])
         if not tracked_streamers:
             logger.debug(f'Guild {guild.name}: No Twitch streamers configured')
             return
 
         guild_id = guild.id
-
         async with _announcements_lock:
             if guild_id not in _posted_announcements:
                 _posted_announcements[guild_id] = {}
 
-        # Check each streamer
-        tasks = [
-            _check_streamer_status(
-                streamer_config['twitch_username'],
-                streamer_config,
-                guild,
-                channel,
-                tw,
-                settings
-            )
-            for streamer_config in tracked_streamers
-            if streamer_config.get('twitch_username')
-        ]
-        await asyncio.gather(*tasks, return_exceptions=True)
-    finally:
-        guild_dao.close()
+        streamer_usernames = [s['username'] for s in tracked_streamers if 'username' in s]
+        if not streamer_usernames:
+            return
 
-
-async def _check_streamer_status(streamer_username, streamer_config, guild, channel, tw, settings):
-    """Check a specific streamer's status and handle announcements."""
-    guild_id = guild.id
-
-    try:
         async with aiohttp.ClientSession() as session:
-            is_live = await tw.is_user_live(session, streamer_username)
+            live_streams_map = await tw.get_live_streams_batch(session, streamer_usernames)
+            streamer_config_map = {s['username'].lower(): s for s in tracked_streamers}
+        # --- Process Live Streams ---
+        live_usernames = set(live_streams_map.keys())
+        tasks = []
+        for live_username, stream_data in live_streams_map.items():
+            streamer_config = streamer_config_map.get(live_username)
+            if not streamer_config:
+                continue
 
             async with _announcements_lock:
-                already_posted = _posted_announcements[guild_id].get(streamer_username, False)
+                already_posted = _posted_announcements[guild_id].get(live_username, False)
 
-            if is_live:
-                if not already_posted:
-                    await _post_live_announcement(
-                        streamer_username,
-                        streamer_config,
-                        guild,
-                        channel,
-                        tw,
-                        session,
-                        settings
-                    )
-                    async with _announcements_lock:
-                        _posted_announcements[guild_id][streamer_username] = True
-                    logger.info(f'Guild {guild.name}: Posted Twitch announcement for {streamer_username}')
-                else:
-                    logger.debug(f'Guild {guild.name}: {streamer_username} is live but announcement already posted')
+            if not already_posted:
+                tasks.append(_post_live_announcement(
+                    live_username,
+                    streamer_config,
+                    guild,
+                    channel,
+                    tw,
+                    session,
+                    settings,
+                    stream_data,
+                    announcement_dao
+                ))
             else:
-                if already_posted:
-                    # Stream went offline - edit the embed and mark offline
-                    dao = TwitchAnnouncementDao()
-                    try:
-                        # Fetch the announcement from database
-                        results = dao.execute_query("""
-                            SELECT id, message_id, channel_id, stream_started_at
-                            FROM TwitchAnnouncements
-                            WHERE guild_id = %s
-                            AND streamer_username = %s
-                            AND stream_ended_at IS NULL
-                            ORDER BY stream_started_at DESC
-                            LIMIT 1
-                        """, (guild_id, streamer_username))
-                        announcement = results[0] if results else None
+                # This stream is already live, check if it needs a status update
+                announcements_to_update = announcement_dao.get_announcements_needing_status_update()
+                for announcement in announcements_to_update:
+                    if announcement['streamer_username'].lower() == live_username.lower():
+                        current_viewer_count = stream_data['data'][0].get('viewer_count')
+                        tasks.append(_update_announcement_viewer_count(
+                            guild,
+                            announcement['channel_id'],
+                            announcement['message_id'],
+                            current_viewer_count
+                        ))
+                        announcement_dao.update_last_status_check(announcement['id'])
+                        logger.debug(f'Updated viewer count for {live_username} in {guild.name}')
 
-                        if announcement:
-                            announcement_id, message_id, announcement_channel_id, stream_started_at = announcement
+            async with _announcements_lock:
+                previously_live_streamers = {
+                    username for username, status in _posted_announcements.get(guild_id, {}).items() if status
+                }
 
-                            # Calculate stream duration
-                            stream_end_time = datetime.utcnow()
-                            duration_seconds = int((stream_end_time - stream_started_at).total_seconds())
+            offline_streamers = previously_live_streamers - live_usernames
 
-                            # Edit the announcement message
-                            await _edit_announcement_on_stream_end(
-                                guild,
-                                announcement_channel_id,
-                                message_id,
-                                stream_started_at,
-                                stream_end_time,
-                                duration_seconds
-                            )
+            for offline_username in offline_streamers:
+                tasks.append(_handle_stream_offline(guild, offline_username, announcement_dao))
 
-                            # Update database with end info
-                            dao.mark_stream_offline('twitch', guild_id, streamer_username, stream_end_time)
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
 
-                        async with _announcements_lock:
-                            _posted_announcements[guild_id][streamer_username] = False
-                        logger.debug(f'Guild {guild.name}: {streamer_username} went offline, edited announcement')
-                    finally:
-                        dao.close()
-
-    except Exception as e:
-        logger.error(f'Guild {guild.name}: Error checking {streamer_username}: {e}', exc_info=True)
+    finally:
+        guild_dao.close()
+        announcement_dao.close()
 
 
-async def _post_live_announcement(streamer_username, streamer_config, guild, channel, tw, session, settings):
-    """Post a live announcement for a streamer."""
+async def _handle_stream_offline(guild, streamer_username, dao):
+    """Handle logic for a streamer who has gone offline."""
+    guild_id = guild.id
     try:
-        stream_data = await tw.get_stream_info(session, streamer_username)
+        results = dao.execute_query("""
+            SELECT id, message_id, channel_id, stream_started_at
+            FROM TwitchAnnouncements
+            WHERE guild_id = %s
+            AND streamer_username = %s
+            AND stream_ended_at IS NULL
+            ORDER BY stream_started_at DESC
+            LIMIT 1
+        """, (guild_id, streamer_username))
+        announcement = results[0] if results else None
 
+        if announcement:
+            announcement_id, message_id, announcement_channel_id, stream_started_at = announcement
+            stream_end_time = datetime.utcnow()
+            duration_seconds = int((stream_end_time - stream_started_at).total_seconds())
+
+            await _edit_announcement_on_stream_end(
+                guild,
+                announcement_channel_id,
+                message_id,
+                stream_started_at,
+                stream_end_time,
+                duration_seconds
+            )
+
+            dao.mark_stream_offline(guild_id, streamer_username, None, duration_seconds)
+
+        async with _announcements_lock:
+            if guild_id in _posted_announcements:
+                _posted_announcements[guild_id][streamer_username] = False
+        logger.debug(f'Guild {guild.name}: {streamer_username} went offline, edited announcement')
+    except Exception as e:
+        logger.error(f'Error handling offline stream for {streamer_username} in guild {guild.id}: {e}', exc_info=True)
+
+
+
+
+async def _post_live_announcement(streamer_username, streamer_config, guild, channel, tw, session, settings, stream_data, dao):
+    """Post a live announcement for a streamer using pre-fetched data."""
+    try:
         if not stream_data.get('data'):
-            logger.warning(f'Guild {guild.name}: No stream data found for {streamer_username}')
+            logger.warning(f'Guild {guild.name}: No stream data provided for {streamer_username}')
             return
 
         stream_info = stream_data['data'][0]
+        # We still need the profile picture, which is a separate call
         profile_picture = await tw.get_user_info(session, streamer_username)
         profile_picture_url = profile_picture.get('profile_image_url', '') if profile_picture else ''
 
@@ -304,8 +309,13 @@ async def _post_live_announcement(streamer_username, streamer_config, guild, cha
         # Send message
         message = await channel.send(content=content, embed=embed)
 
+        # Mark as posted in cache immediately to prevent duplicates
+        async with _announcements_lock:
+            if guild.id not in _posted_announcements:
+                _posted_announcements[guild.id] = {}
+            _posted_announcements[guild.id][streamer_username] = True
+
         # Store in database for VOD tracking
-        dao = TwitchAnnouncementDao()
         try:
             stream_started_dt = datetime.strptime(stream_start_time, "%Y-%m-%dT%H:%M:%SZ")
             dao.create_announcement(
@@ -320,8 +330,9 @@ async def _post_live_announcement(streamer_username, streamer_config, guild, cha
             )
 
             logger.info(f'Guild {guild.name}: Posted announcement for {streamer_username} (message {message.id})')
-        finally:
-            dao.close()
+        except Exception as e:
+            logger.error(f'Guild {guild.name}: Error creating announcement in database for {streamer_username}: {e}', exc_info=True)
+
 
     except Exception as e:
         logger.error(f'Guild {guild.name}: Error posting announcement for {streamer_username}: {e}', exc_info=True)
@@ -391,65 +402,6 @@ async def _edit_announcement_on_stream_end(
         logger.error(f'Guild {guild.name}: Error editing announcement on stream end: {e}', exc_info=True)
 
 
-async def _check_stream_status_updates(bot):
-    """Check and update viewer counts for streams live >20 minutes."""
-    dao = None
-    try:
-        dao = TwitchAnnouncementDao()
-        announcements = dao.get_announcements_needing_status_update()
-
-        if not announcements:
-            return
-
-        logger.debug(f'Checking status for {len(announcements)} live streams')
-
-        tw = TwitchService()
-
-        for announcement in announcements:
-            try:
-                guild = bot.get_guild(announcement['guild_id'])
-                if not guild:
-                    continue
-
-                streamer_username = announcement['streamer_username']
-                announcement_id = announcement['id']
-
-                # Check if still live and get updated viewer count
-                async with aiohttp.ClientSession() as session:
-                    is_live = await tw.is_user_live(session, streamer_username)
-
-                    if is_live:
-                        # Get updated stream info
-                        stream_data = await tw.get_stream_info(session, streamer_username)
-                        if stream_data.get('data') and len(stream_data['data']) > 0:
-                            current_viewer_count = stream_data['data'][0].get('viewer_count')
-
-                            # Try to update the announcement message with new viewer count
-                            channel_id = announcement['channel_id']
-                            message_id = announcement['message_id']
-
-                            await _update_announcement_viewer_count(
-                                guild,
-                                channel_id,
-                                message_id,
-                                current_viewer_count
-                            )
-
-                        # Update last status check time
-                        dao.update_last_status_check(announcement_id)
-                        logger.debug(f'Updated viewer count for {streamer_username} in {guild.name}')
-
-            except Exception as e:
-                logger.error(f'Error updating stream status: {e}', exc_info=True)
-
-    except Exception as e:
-        logger.error(f'Error in _check_stream_status_updates: {e}', exc_info=True)
-    finally:
-        if dao:
-            try:
-                dao.close()
-            except Exception as e:
-                logger.warning(f'Error closing DAO: {e}')
 
 
 async def _update_announcement_viewer_count(

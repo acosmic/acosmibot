@@ -69,13 +69,14 @@ async def start_task(bot):
                     }
 
                     # Poll each channel
-                    for channel_id in unique_channels:
+                    for channel_id, channel_name in unique_channels:
                         try:
                             result = await poll_channel(
                                 http_session,
                                 youtube_dao,
                                 youtube_service,
-                                channel_id
+                                channel_id,
+                                channel_name
                             )
                             stats['checked'] += 1
 
@@ -104,28 +105,31 @@ async def poll_channel(
     http_session: aiohttp.ClientSession,
     youtube_dao: YoutubeDao,
     youtube_service: YouTubeService,
-    channel_id: str
+    channel_id: str,
+    channel_name: str
 ) -> dict:
     """
     Poll a single channel's RSS feed.
     Returns dict with event info if new video found, None otherwise.
     """
-    # Fetch RSS feed
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    }
     feed_url = RSS_FEED_URL_TEMPLATE.format(channel_id=channel_id)
 
     try:
-        async with http_session.get(feed_url, timeout=10) as response:
+        async with http_session.get(feed_url, timeout=10, headers=headers) as response:
             if response.status != 200:
-                logger.warning(f"RSS feed returned {response.status} for channel {channel_id}")
+                logger.warning(f"RSS feed returned {response.status} for channel {channel_id} ({channel_name})")
                 return None
 
             feed_xml = await response.text()
 
     except asyncio.TimeoutError:
-        logger.warning(f"RSS feed fetch timeout for channel {channel_id}")
+        logger.warning(f"RSS feed fetch timeout for channel {channel_id} ({channel_name})")
         return None
     except Exception as e:
-        logger.error(f"Failed to fetch RSS feed for {channel_id}: {e}")
+        logger.error(f"Failed to fetch RSS feed for {channel_id} ({channel_name}): {e}")
         return None
 
     # Parse RSS feed
@@ -137,7 +141,7 @@ async def poll_channel(
         # Get most recent entry (first entry in feed)
         entries = root.findall(f'.//{atom_ns}entry')
         if not entries:
-            logger.debug(f"No entries in RSS feed for channel {channel_id}")
+            logger.debug(f"No entries in RSS feed for channel {channel_id} ({channel_name})")
             await youtube_dao.update_youtube_poll_tracking(channel_id, None, None)
             return None
 
@@ -148,7 +152,7 @@ async def poll_channel(
         published_el = latest_entry.find(f'.//{atom_ns}published')
 
         if video_id_el is None or published_el is None:
-            logger.warning(f"Missing video_id or published in RSS entry for {channel_id}")
+            logger.warning(f"Missing video_id or published in RSS entry for {channel_id} ({channel_name})")
             return None
 
         video_id = video_id_el.text
@@ -164,7 +168,7 @@ async def poll_channel(
             return None
 
         # NEW VIDEO DETECTED!
-        logger.info(f"🆕 New video detected for channel {channel_id}: {video_id}")
+        logger.info(f"🆕 New video detected for channel {channel_id} ({channel_name}): {video_id}")
 
         # Check if video is live using YouTube Data API (costs 1 quota)
         video_details = await youtube_service.get_video_details(http_session, video_id)
@@ -229,5 +233,5 @@ async def poll_channel(
         }
 
     except ET.ParseError as e:
-        logger.error(f"Failed to parse RSS XML for {channel_id}: {e}")
+        logger.error(f"Failed to parse RSS XML for {channel_id} ({channel_name}): {e}")
         return None

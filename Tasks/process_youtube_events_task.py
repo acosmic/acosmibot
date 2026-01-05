@@ -111,7 +111,7 @@ async def _get_subscribed_guilds_for_channel(bot, channel_id: str) -> List[tuple
                 logger.debug(f"No settings found for guild {guild_id}")
                 continue
 
-            streaming_settings = settings.get('streaming', {})
+            streaming_settings = settings.get('youtube', {})
             if not streaming_settings.get('enabled'):
                 logger.debug(f"Streaming disabled for guild {guild.name}")
                 continue

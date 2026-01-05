@@ -81,18 +81,13 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         try:
-            self.execute_query(
+            # Use execute_write which returns the last insert ID automatically
+            last_id = self.execute_write(
                 sql,
                 (guild_id, streamer_username, message_id, channel_id, stream_started_at,
-                 initial_viewer_count, stream_title, game_name),
-                commit=True
+                 initial_viewer_count, stream_title, game_name)
             )
-            # Get the last inserted ID
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT LAST_INSERT_ID()")
-            result = cursor.fetchone()
-            cursor.close()
-            return result[0] if result else None
+            return last_id
         except Exception as e:
             logger.error(f"Error creating announcement: {e}")
             return None
@@ -347,23 +342,36 @@ class TwitchAnnouncementDao(BaseDao[TwitchAnnouncement]):
             logger.error(f"Error getting announcements needing status update: {e}")
             return []
 
-    def update_last_status_check(self, announcement_id: int) -> bool:
+    def update_last_status_check(self, announcement_id: int, new_viewer_count: Optional[int] = None) -> bool:
         """
         Update the last_status_check_at timestamp for an announcement.
+        Optionally update the final_viewer_count (which serves as current viewer count during stream).
 
         Args:
             announcement_id: ID of the announcement
+            new_viewer_count: Optional viewer count to update
 
         Returns:
             bool: True if updated successfully
         """
-        sql = """
-            UPDATE TwitchAnnouncements
-            SET last_status_check_at = NOW()
-            WHERE id = %s
-        """
+        if new_viewer_count is not None:
+            sql = """
+                UPDATE TwitchAnnouncements
+                SET last_status_check_at = NOW(),
+                    final_viewer_count = %s
+                WHERE id = %s
+            """
+            params = (new_viewer_count, announcement_id)
+        else:
+            sql = """
+                UPDATE TwitchAnnouncements
+                SET last_status_check_at = NOW()
+                WHERE id = %s
+            """
+            params = (announcement_id,)
+
         try:
-            self.execute_query(sql, (announcement_id,), commit=True)
+            self.execute_query(sql, params, commit=True)
             return True
         except Exception as e:
             logger.error(f"Error updating last status check: {e}")

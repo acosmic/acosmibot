@@ -198,15 +198,71 @@ class YoutubeDao:
         await self.session.execute(query, {"id": event_id})
         await self.session.commit()
 
-    async def get_all_unique_subscribed_channels(self) -> List[str]:
-        """Retrieves all unique YouTube channel IDs that have active subscriptions."""
+    async def get_all_unique_subscribed_channels(self) -> List[Tuple[str, str]]:
+        """Retrieves all unique YouTube channel IDs and names that have active subscriptions."""
         query = text("""
-            SELECT DISTINCT channel_id
+            SELECT DISTINCT channel_id, channel_name
             FROM YouTubeSubscriptions
             ORDER BY channel_id
         """)
         result = await self.session.execute(query)
-        return [row[0] for row in result.fetchall()]
+        return result.fetchall()
+
+    async def update_websub_status(
+        self,
+        channel_id: str,
+        status: str,
+        lease_seconds: int = None,
+        error_message: str = None
+    ) -> None:
+        """
+        Updates the WebSub subscription status for a channel.
+
+        Args:
+            channel_id: YouTube channel ID
+            status: 'active', 'failed', or 'pending'
+            lease_seconds: Lease duration in seconds (typically 432000 = 5 days)
+            error_message: Error message if status is 'failed'
+        """
+        if lease_seconds:
+            # Calculate expiration time
+            query = text("""
+                UPDATE YouTubeSubscriptions
+                SET websub_status = :status,
+                    websub_lease_expires_at = DATE_ADD(NOW(), INTERVAL :lease_seconds SECOND),
+                    last_verified_at = NOW(),
+                    last_error = :error_message,
+                    error_count = CASE WHEN :status = 'failed' THEN error_count + 1 ELSE 0 END,
+                    last_error_at = CASE WHEN :status = 'failed' THEN NOW() ELSE last_error_at END,
+                    updated_at = NOW()
+                WHERE channel_id = :channel_id
+            """)
+            await self.session.execute(query, {
+                "channel_id": channel_id,
+                "status": status,
+                "lease_seconds": lease_seconds,
+                "error_message": error_message
+            })
+        else:
+            # No lease (for unsubscribe or status update)
+            query = text("""
+                UPDATE YouTubeSubscriptions
+                SET websub_status = :status,
+                    last_verified_at = NOW(),
+                    last_error = :error_message,
+                    error_count = CASE WHEN :status = 'failed' THEN error_count + 1 ELSE 0 END,
+                    last_error_at = CASE WHEN :status = 'failed' THEN NOW() ELSE last_error_at END,
+                    updated_at = NOW()
+                WHERE channel_id = :channel_id
+            """)
+            await self.session.execute(query, {
+                "channel_id": channel_id,
+                "status": status,
+                "error_message": error_message
+            })
+
+        await self.session.commit()
+        logger.info(f"Updated WebSub status for channel {channel_id}: {status}")
 
     async def get_guilds_subscribed_to_channel(self, channel_id: str) -> List[Tuple[int, str]]:
         """

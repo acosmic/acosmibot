@@ -16,8 +16,8 @@ from .process_youtube_events_task import start_task as start_process_youtube_eve
 from .youtube_rss_poll_task import start_task as start_youtube_rss_poll_task # RSS polling for YouTube videos/streams
 
 # Deprecated tasks (kept for 30-day transition period)
-# Old Twitch-only tasks replaced by unified_streaming_live_task and unified_streaming_vod_checker
-# from .twitch_live_task import twitch_live_check_task
+# Old Twitch-only task replaced by EventSub webhook system
+from .twitch_live_task import twitch_live_check_task
 # from .twitch_vod_checker import twitch_vod_checker_task
 # Deprecated: currency_reconciliation_task (replaced by unified_stats_reconciliation_task)
 # from .currency_reconciliation_task import currency_reconciliation_task
@@ -33,5 +33,6 @@ __all__ = [
     "bank_interest_task",
     "portal_manager",
     "process_youtube_events_task",  # Process YouTube webhook/RSS events
-    "youtube_rss_poll_task"  # Poll YouTube RSS feeds for new videos/streams
+    "youtube_rss_poll_task",  # Poll YouTube RSS feeds for new videos/streams
+    # twitch_live_task removed - replaced by EventSub webhooks
 ]

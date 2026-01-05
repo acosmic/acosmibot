@@ -119,7 +119,7 @@ class On_Message(commands.Cog):
 
         # Get guild leveling config
         leveling_config = self.get_leveling_config(message.guild.id)
-        logger.info(leveling_config)
+        # logger.info(leveling_config)
         # Skip if leveling is disabled
         if not leveling_config.get("enabled", True):
             return

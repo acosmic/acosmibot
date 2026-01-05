@@ -455,8 +455,14 @@ class LevelingSystem:
             roles_to_add = []
             roles_to_remove = []
 
-            for level_str, role_ids in role_mappings.items():
+            for level_str, role_data in role_mappings.items():
                 level_threshold = int(level_str)
+
+                # Handle both old array format and new object format
+                if isinstance(role_data, dict):
+                    role_ids = role_data.get("role_ids", [])
+                else:
+                    role_ids = role_data  # Old format (array)
 
                 if current_level >= level_threshold:
                     # User qualifies for these roles
