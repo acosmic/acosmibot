@@ -60,7 +60,7 @@ class UpdateLevelingSettingsRequest(BaseModel):
             "example": {
                 "enabled": True,
                 "exp_per_message": 20,
-                "level_up_announcements": True,
+                "level_up_announcements": False,
                 "announcement_channel_id": "123456789012345678"
             }
         }
@@ -91,7 +91,7 @@ class UpdateRoleSettingsRequest(BaseModel):
             "example": {
                 "enabled": True,
                 "mode": "progressive",
-                "role_announcement": True
+                "role_announcement": False
             }
         }
 

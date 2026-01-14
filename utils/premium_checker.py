@@ -59,18 +59,45 @@ class PremiumChecker:
             # Custom Commands
             'custom_commands': 25,
 
-            # AI
-            'ai_daily_limit': 100,
-            'ai_models': ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
-            'image_generation': True,
-            'image_monthly_limit': 50,
-            'image_analysis': True,  # Image analysis enabled
-            'image_analysis_monthly_limit': 100,
+            # AI - SAME AS FREE (basic tier only)
+            'ai_daily_limit': 20,  # Same as free
+            'ai_models': ['gpt-3.5-turbo'],  # Same as free
+            'image_generation': False,  # Same as free
+            'image_monthly_limit': 0,  # Same as free
+            'image_analysis': False,  # Same as free
+            'image_analysis_monthly_limit': 0,  # Same as free
 
             # Economy
             'xp_multiplier': 1.2,  # 20% bonus
 
             # Features
+            'custom_currency_name': True,
+            'custom_embed_color': True,
+            'custom_level_up_message': True,
+        },
+        'premium_plus_ai': {
+            # Streaming (platform-specific limits) - Same as premium
+            'twitch_streamers': 5,
+            'youtube_streamers': 5,
+
+            # Reaction Roles - Same as premium
+            'reaction_roles': 10,
+
+            # Custom Commands - Same as premium
+            'custom_commands': 25,
+
+            # AI - ENHANCED (all features unlocked)
+            'ai_daily_limit': 100,  # 5x increase from free/premium
+            'ai_models': ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],  # All models
+            'image_generation': True,  # Enabled
+            'image_monthly_limit': 50,
+            'image_analysis': True,  # Enabled
+            'image_analysis_monthly_limit': 100,
+
+            # Economy - Same as premium
+            'xp_multiplier': 1.2,  # 20% bonus
+
+            # Features - Same as premium
             'custom_currency_name': True,
             'custom_embed_color': True,
             'custom_level_up_message': True,
@@ -86,7 +113,7 @@ class PremiumChecker:
             guild_id: Discord guild ID
 
         Returns:
-            Tier string ('free' or 'premium')
+            Tier string ('free', 'premium', or 'premium_plus_ai')
         """
         try:
             with GuildDao() as dao:
@@ -113,16 +140,36 @@ class PremiumChecker:
     @staticmethod
     def has_premium(guild_id: int) -> bool:
         """
-        Check if guild has premium subscription
+        Check if guild has premium subscription (premium OR premium_plus_ai)
 
         Args:
             guild_id: Discord guild ID
 
         Returns:
-            True if premium, False otherwise
+            True if premium or premium_plus_ai, False otherwise
         """
         tier = PremiumChecker.get_guild_tier(guild_id)
-        return tier == 'premium'
+        return tier in ['premium', 'premium_plus_ai']
+
+    @staticmethod
+    def has_tier_or_higher(guild_id: int, required_tier: str) -> bool:
+        """
+        Check if guild's tier meets or exceeds the required tier
+
+        Tier hierarchy: free < premium < premium_plus_ai
+
+        Args:
+            guild_id: Discord guild ID
+            required_tier: Required tier ('free', 'premium', or 'premium_plus_ai')
+
+        Returns:
+            True if guild's tier >= required tier, False otherwise
+        """
+        tier_hierarchy = {'free': 0, 'premium': 1, 'premium_plus_ai': 2}
+        current_tier = PremiumChecker.get_guild_tier(guild_id)
+        current_level = tier_hierarchy.get(current_tier, 0)
+        required_level = tier_hierarchy.get(required_tier, 0)
+        return current_level >= required_level
 
     @staticmethod
     def has_feature(guild_id: int, feature: str) -> bool:
@@ -188,10 +235,10 @@ class PremiumChecker:
             return True, ""
 
         # Generate helpful error message
-        if tier == 'free':
+        if tier in ['free', 'premium']:
             return False, (
-                f"❌ Model **{model}** requires **Premium** subscription!\n"
-                f"Free tier supports: {', '.join(allowed_models)}\n"
+                f"❌ Model **{model}** requires **Premium + AI** subscription!\n"
+                f"Your tier supports: {', '.join(allowed_models)}\n"
                 f"Upgrade at https://acosmibot.com/premium"
             )
         else:
@@ -362,7 +409,7 @@ class PremiumChecker:
         """
         if not PremiumChecker.has_feature(guild_id, 'image_generation'):
             return False, (
-                f"❌ **Image Generation** requires **Premium** subscription!\n"
+                f"❌ **Image Generation** requires **Premium + AI** subscription!\n"
                 f"Upgrade at https://acosmibot.com/premium"
             )
         return True, ""
@@ -380,7 +427,7 @@ class PremiumChecker:
         """
         if not PremiumChecker.has_feature(guild_id, 'image_analysis'):
             return False, (
-                f"❌ **Image Analysis** requires **Premium** subscription!\n"
+                f"❌ **Image Analysis** requires **Premium + AI** subscription!\n"
                 f"Upgrade at https://acosmibot.com/premium"
             )
         return True, ""
@@ -402,7 +449,7 @@ class PremiumChecker:
 
         if monthly_limit == 0:
             return False, (
-                f"❌ **Image Generation** requires **Premium** subscription!\n"
+                f"❌ **Image Generation** requires **Premium + AI** subscription!\n"
                 f"Upgrade at https://acosmibot.com/premium"
             )
 
@@ -431,7 +478,7 @@ class PremiumChecker:
         # Check if feature is enabled for this tier
         if not PremiumChecker.TIER_LIMITS[tier]['image_analysis']:
             return False, (
-                f"❌ **Image Analysis** requires **Premium** subscription!\n"
+                f"❌ **Image Analysis** requires **Premium + AI** subscription!\n"
                 f"Upgrade at https://acosmibot.com/premium"
             )
 

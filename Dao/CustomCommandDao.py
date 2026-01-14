@@ -72,7 +72,11 @@ class CustomCommandDao(BaseDao):
 
     def get_by_id(self, command_id: int) -> Optional[CustomCommand]:
         """Get custom command by ID"""
-        query = "SELECT * FROM CustomCommands WHERE id = %s"
+        query = """
+            SELECT id, guild_id, command, prefix, response_type, response_text,
+                   embed_config, created_by, is_enabled, use_count, created_at, updated_at
+            FROM CustomCommands WHERE id = %s
+        """
         results, description = self.execute_query(query, (command_id,), return_description=True)
 
         if results and len(results) > 0 and description:
@@ -96,7 +100,11 @@ class CustomCommandDao(BaseDao):
         Returns:
             List of command dictionaries
         """
-        query = "SELECT * FROM CustomCommands WHERE guild_id = %s"
+        query = """
+            SELECT id, guild_id, command, prefix, response_type, response_text,
+                   embed_config, created_by, is_enabled, use_count, created_at, updated_at
+            FROM CustomCommands WHERE guild_id = %s
+        """
         params = [str(guild_id)]
 
         if enabled_only:
@@ -119,7 +127,11 @@ class CustomCommandDao(BaseDao):
         prefix: str = '!'
     ) -> Optional[CustomCommand]:
         """Get command by guild ID, command word, and prefix"""
-        query = "SELECT * FROM CustomCommands WHERE guild_id = %s AND command = %s AND prefix = %s"
+        query = """
+            SELECT id, guild_id, command, prefix, response_type, response_text,
+                   embed_config, created_by, is_enabled, use_count, created_at, updated_at
+            FROM CustomCommands WHERE guild_id = %s AND command = %s AND prefix = %s
+        """
         results, description = self.execute_query(query, (str(guild_id), command, prefix), return_description=True)
 
         if results and len(results) > 0 and description:
@@ -259,7 +271,9 @@ class CustomCommandDao(BaseDao):
     def get_most_used_commands(self, guild_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get most frequently used commands for a guild"""
         query = """
-            SELECT * FROM CustomCommands
+            SELECT id, guild_id, command, prefix, response_type, response_text,
+                   embed_config, created_by, is_enabled, use_count, created_at, updated_at
+            FROM CustomCommands
             WHERE guild_id = %s AND is_enabled = TRUE
             ORDER BY use_count DESC
             LIMIT %s

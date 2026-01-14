@@ -143,9 +143,11 @@ class SlotsDao(BaseDao[SlotEvent]):
             params.append(guild_id)
 
         sql = f"""
-            SELECT * FROM Slots_Games 
+            SELECT id, game_id, user_id, guild_id, symbols, multiplier,
+                   amount_bet, amount_won, amount_lost, created_at
+            FROM Slots_Games
             {where_clause}
-            ORDER BY created_at DESC 
+            ORDER BY created_at DESC
             LIMIT %s
         """
         params.append(limit)

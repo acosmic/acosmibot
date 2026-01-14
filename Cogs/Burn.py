@@ -32,7 +32,6 @@ class Burn(commands.Cog):
                 # Calculate how much we're burning to sync global stats
                 currency_delta = -target_user.currency
                 guild_user_dao.update_currency_with_global_sync(target.id, interaction.guild.id, currency_delta)
-                target_user.currency = 0
 
             if column == "exp":
                 target_user.exp = 0

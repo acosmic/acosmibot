@@ -12,7 +12,7 @@ class Subscription(BaseEntity):
     Attributes:
         id (int): Auto-increment primary key
         guild_id (str): Discord guild ID
-        tier (str): Subscription tier ('free', 'premium')
+        tier (str): Subscription tier ('free', 'premium', 'premium_plus_ai')
         status (str): Subscription status ('active', 'past_due', 'canceled', 'expired')
         current_period_start (datetime): Start of current billing period
         current_period_end (datetime): End of current billing period
@@ -92,8 +92,12 @@ class Subscription(BaseEntity):
         return self.status == 'canceled'
 
     def has_premium(self) -> bool:
-        """Check if subscription has premium access"""
-        return self.tier == 'premium' and self.status in ['active', 'past_due']
+        """Check if subscription has premium access (premium or premium_plus_ai)"""
+        return self.tier in ['premium', 'premium_plus_ai'] and self.status in ['active', 'past_due']
+
+    def has_ai_access(self) -> bool:
+        """Check if subscription has enhanced AI access (premium_plus_ai only)"""
+        return self.tier == 'premium_plus_ai' and self.status in ['active', 'past_due']
 
     def __repr__(self) -> str:
         return f"<Subscription id={self.id} guild_id={self.guild_id} tier={self.tier} status={self.status}>"

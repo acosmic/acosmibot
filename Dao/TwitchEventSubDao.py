@@ -26,7 +26,11 @@ class TwitchEventSubDao(BaseDao):
     ) -> Optional[Dict[str, Any]]:
         """Get subscription record for a broadcaster"""
         query = """
-            SELECT * FROM TwitchEventSubSubscriptions
+            SELECT id, broadcaster_user_id, broadcaster_username, online_subscription_id,
+                   offline_subscription_id, guild_count, tracked_guild_ids, online_status,
+                   offline_status, last_error, error_count, last_error_at, created_at,
+                   updated_at, last_verified_at
+            FROM TwitchEventSubSubscriptions
             WHERE broadcaster_user_id = %s
             LIMIT 1
         """
@@ -205,7 +209,11 @@ class TwitchEventSubDao(BaseDao):
     def get_all_active_subscriptions(self) -> List[Dict[str, Any]]:
         """Get all subscriptions with guild_count > 0"""
         query = """
-            SELECT * FROM TwitchEventSubSubscriptions
+            SELECT id, broadcaster_user_id, broadcaster_username, online_subscription_id,
+                   offline_subscription_id, guild_count, tracked_guild_ids, online_status,
+                   offline_status, last_error, error_count, last_error_at, created_at,
+                   updated_at, last_verified_at
+            FROM TwitchEventSubSubscriptions
             WHERE guild_count > 0
             ORDER BY broadcaster_username
         """

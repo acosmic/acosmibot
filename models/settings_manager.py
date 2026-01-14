@@ -1,6 +1,6 @@
 import json
 from typing import Dict, Optional
-from models.base_models import GuildLevelingRoleSettings, BetterEmbedsSettings
+from models.base_models import GuildLevelingRoleSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,6 @@ class SettingsManager:
 
         # Use anywhere
         settings = settings_manager.get_guild_settings(guild_id)
-        better_embeds = settings_manager.get_better_embeds_settings(guild_id)
-        is_enabled = settings_manager.is_instagram_embeds_enabled(guild_id)
     """
 
     _instance = None
@@ -85,9 +83,9 @@ class SettingsManager:
                 else:
                     settings_dict = guild.settings
 
-                # Extract leveling_role_system section or use empty dict
-                lr_settings = settings_dict.get("leveling", {})
-                return GuildLevelingRoleSettings(**lr_settings)
+                # GuildLevelingRoleSettings expects "leveling" and "roles" keys in settings_dict
+                # Pydantic will use defaults for any missing keys
+                return GuildLevelingRoleSettings(**settings_dict)
 
             else:
                 # Return default settings if guild not found or no settings
@@ -164,60 +162,6 @@ class SettingsManager:
 
         except Exception as e:
             logger.error(f"Error updating guild settings for {guild_id}: {e}")
-            return False
-
-    def get_better_embeds_settings(self, guild_id: str) -> BetterEmbedsSettings:
-        """
-        Get better embeds configuration for a guild.
-
-        Returns default settings if guild not found or settings are invalid.
-
-        Args:
-            guild_id: Discord guild ID as string
-
-        Returns:
-            BetterEmbedsSettings: Better embeds configuration object with defaults applied
-        """
-        try:
-            guild = self.guild_dao.find_by_id(int(guild_id))
-
-            if guild and guild.settings:
-                # Parse JSON settings
-                if isinstance(guild.settings, str):
-                    settings_dict = json.loads(guild.settings)
-                else:
-                    settings_dict = guild.settings
-
-                # Extract better_embeds section or use empty dict
-                better_embeds = settings_dict.get("better_embeds", {})
-                return BetterEmbedsSettings(**better_embeds)
-
-            else:
-                # Return default settings if guild not found
-                return BetterEmbedsSettings()
-
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Error parsing better embeds settings for {guild_id}: {e}")
-            return BetterEmbedsSettings()
-        except Exception as e:
-            logger.error(f"Error getting better embeds settings for {guild_id}: {e}")
-            return BetterEmbedsSettings()
-
-    def is_instagram_embeds_enabled(self, guild_id: str) -> bool:
-        """
-        Check if Instagram better embeds are enabled for a guild.
-
-        Args:
-            guild_id: Discord guild ID as string
-
-        Returns:
-            bool: True if Instagram embeds are enabled, False otherwise
-        """
-        try:
-            better_embeds = self.get_better_embeds_settings(guild_id)
-            return better_embeds.enabled and better_embeds.instagram.enabled
-        except Exception as e:
-            logger.error(f"Error checking Instagram embeds status for {guild_id}: {e}")
             return False
 
     def update_settings_dict(self, guild_id: str, settings_dict: Dict) -> bool:

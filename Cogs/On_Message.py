@@ -13,7 +13,7 @@ from Dao.UserDao import UserDao
 from Entities.GuildUser import GuildUser
 from Entities.User import User
 from logger import AppLogger
-from models.settings_manager import SettingsManager
+from Services.DailyCheckCache import get_daily_check_cache
 
 # Load environment variables from .env file
 load_dotenv()
@@ -83,33 +83,10 @@ class On_Message(commands.Cog):
 
         return cleaned.strip()
 
-    def get_leveling_config(self, guild_id):
-        """Get leveling configuration from guild settings"""
-        default_config = {
-            "enabled": True,
-            "daily_announcements_enabled": False,
-            "daily_announcement_channel_id": None
-        }
-
-        try:
-            settings_manager = SettingsManager.get_instance()
-            guild_settings = settings_manager.get_guild_settings(str(guild_id))
-            # logger.info(guild_settings)
-
-
-            leveling_config = {
-                # Use the correctly loaded top-level attributes
-                "enabled": guild_settings.enabled,
-                "daily_announcements_enabled": guild_settings.daily_announcements_enabled,
-                "daily_announcement_channel_id": guild_settings.daily_announcement_channel_id
-            }
-
-
-            return leveling_config
-
-        except Exception as e:
-            logger.error(f"Error getting leveling config for guild {guild_id}: {e}", exc_info=True)
-            return default_config
+    async def get_leveling_config(self, guild_id):
+        """Get leveling configuration from guild settings (cached)"""
+        from Services.ConfigCache import get_config_cache
+        return await get_config_cache().get_leveling_config(guild_id)
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
@@ -118,7 +95,7 @@ class On_Message(commands.Cog):
             return
 
         # Get guild leveling config
-        leveling_config = self.get_leveling_config(message.guild.id)
+        leveling_config = await self.get_leveling_config(message.guild.id)
         # logger.info(leveling_config)
         # Skip if leveling is disabled
         if not leveling_config.get("enabled", True):
@@ -176,10 +153,27 @@ class On_Message(commands.Cog):
                     await message.delete()
                     return
 
-            # CHECK IF - DAILY REWARD
-            if current_guild_user.daily == 0:
+            # CHECK IF - DAILY REWARD (optimized with daily check cache)
+            from Services.PerformanceMonitor import get_performance_monitor
+
+            daily_cache = get_daily_check_cache()
+            should_check = await daily_cache.should_check_daily(message.guild.id, message.author.id)
+
+            # Record daily check stats
+            perf_monitor = get_performance_monitor()
+            if should_check:
+                await perf_monitor.record_daily_check_performed()
+            else:
+                await perf_monitor.record_daily_check_skipped()
+
+            if should_check and current_guild_user.daily == 0:
                 logger.info(f"{message.author.name} - COMPLETED DAILY REWARD in {message.guild.name}")
                 await self.process_daily_reward(current_guild_user, message.author, daily_reward_channel)
+
+                # Record daily reward in performance monitor
+                from Services.PerformanceMonitor import get_performance_monitor
+                perf_monitor = get_performance_monitor()
+                await perf_monitor.record_daily_reward()
 
             # SAVE TO DATABASE
             guild_user_dao.update_guild_user(current_guild_user)
@@ -199,9 +193,17 @@ class On_Message(commands.Cog):
 
     async def process_daily_reward(self, guild_user: GuildUser, member: discord.Member,
                                    daily_channel: Optional[discord.TextChannel]):
-        """Process daily reward for guild user"""
+        """Process daily reward for guild user, including bank interest."""
 
         try:
+            # Get the global user for bank balance
+            user_dao = UserDao()
+            global_user = user_dao.get_user(member.id)
+            if not global_user:
+                logger.error(f"Could not find global user for {member.name} during daily reward.")
+                # Create a temporary user object to prevent crashes, though interest will be 0
+                global_user = User(id=member.id, discord_username=member.name, bank_balance=0)
+
             today = datetime.now(timezone.utc).replace(tzinfo=None).date()
 
             if guild_user.last_daily is None:
@@ -218,12 +220,26 @@ class On_Message(commands.Cog):
                     guild_user.streak += 1
                     if guild_user.streak > guild_user.highest_streak:
                         guild_user.highest_streak = guild_user.streak
-                        logger.info(f"{member.name} - HIGHEST STREAK INCREMENTED TO {guild_user.highest_streak}")
-                    logger.info(f"{member.name} - STREAK INCREMENTED TO {guild_user.streak}")
                 elif last_daily_date < today - timedelta(days=1):
                     # Reset streak
                     guild_user.streak = 1
-                    logger.info(f"{member.name} - STREAK RESET TO {guild_user.streak}")
+            
+            # CALCULATE AND PAY BANK INTEREST (20% APR) - ONCE PER DAY GLOBALLY
+            interest_amount = 0
+            # Convert last payout date string to a date object if it exists
+            last_payout_date = None
+            if global_user.last_interest_payout_date:
+                if isinstance(global_user.last_interest_payout_date, str):
+                    last_payout_date = datetime.strptime(global_user.last_interest_payout_date, "%Y-%m-%d").date()
+                else: # It's already a date object
+                    last_payout_date = global_user.last_interest_payout_date
+
+            if global_user.bank_balance > 0 and last_payout_date != today:
+                daily_rate = 0.20 / 365
+                interest_amount = math.floor(global_user.bank_balance * daily_rate)
+                if interest_amount > 0:
+                    # This method now atomically updates the date
+                    user_dao.add_bank_interest(member.id, interest_amount)
 
             # CALCULATE DAILY REWARD
             base_daily = 100
@@ -241,6 +257,7 @@ class On_Message(commands.Cog):
                 calculated_daily_reward
             )
             guild_user.currency += calculated_daily_reward
+            
             # Set daily and last_daily
             guild_user.daily = 1
             guild_user.last_daily = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
@@ -250,12 +267,14 @@ class On_Message(commands.Cog):
 
             # Send daily reward message using custom template
             if daily_channel:
-                # Get leveling config for custom message templates
-                leveling_config = self.get_leveling_config(member.guild.id)
+                leveling_config = await self.get_leveling_config(member.guild.id)
+                if streak > 1:
+                    template = leveling_config.get("daily_announcement_message_with_streak",
+                        "💰 {mention} claimed their daily reward! +{credits} Credits! ({base_credits} + {streak_bonus} from {streak}x streak!)")
+                else:
+                    template = leveling_config.get("daily_announcement_message",
+                        "💰 {username} claimed their daily reward! +{credits} Credits!")
 
-                # Use single template with all placeholders available
-                template = leveling_config.get("daily_announcement_message",
-                    "{username} claimed their daily reward! +{credits} Credits! 💰")
                 message = template.format(
                     mention=member.mention,
                     username=member.name,
@@ -264,6 +283,9 @@ class On_Message(commands.Cog):
                     streak=streak,
                     streak_bonus=f"{streak_bonus:,}"
                 )
+
+                if interest_amount > 0:
+                    message += f"\n> You also earned **{interest_amount:,}** credits in daily interest from your bank balance! 📈"
 
                 await daily_channel.send(message)
 

@@ -28,6 +28,7 @@ class User(BaseEntity):
             account_created: Union[str, datetime, None] = None,
             first_seen: Union[str, datetime, None] = None,
             last_seen: Union[str, datetime, None] = None,
+            last_interest_payout_date: Union[str, datetime, None] = None,
             privacy_settings: Optional[str] = None,
             global_settings: Optional[str] = None
     ) -> None:
@@ -53,6 +54,7 @@ class User(BaseEntity):
         self._first_seen = first_seen
         self._last_seen = last_seen
         self._last_transfer_reset = last_transfer_reset
+        self._last_interest_payout_date = last_interest_payout_date
         self._privacy_settings = privacy_settings
         self._global_settings = global_settings
 
@@ -62,7 +64,11 @@ class User(BaseEntity):
             return 0
         if isinstance(value, Decimal):
             return int(value)
-        return int(value) if value is not None else 0
+        if isinstance(value, (int, float)):
+            return int(value)
+        # If it's not a numeric type (e.g., datetime), return 0
+        # This prevents crashes when database column ordering is wrong
+        return 0
 
     @property
     def id(self) -> int:
@@ -148,6 +154,16 @@ class User(BaseEntity):
     def last_transfer_reset(self, value):
         """Set last transfer reset date"""
         self._last_transfer_reset = value
+
+    @property
+    def last_interest_payout_date(self) -> Union[str, datetime, None]:
+        """Last date when daily interest was paid out"""
+        return self._last_interest_payout_date
+
+    @last_interest_payout_date.setter
+    def last_interest_payout_date(self, value):
+        """Set last interest payout date"""
+        self._last_interest_payout_date = value
 
     @property
     def total_messages(self) -> int:

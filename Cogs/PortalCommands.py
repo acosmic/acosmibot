@@ -169,17 +169,20 @@ class PortalCommands(commands.Cog):
                 await interaction.followup.send("This server has not configured a portal channel. Ask an admin to set one up.", ephemeral=True)
                 return
 
-            # Check if user has enough credits
-            user = self.user_dao.get_user(interaction.user.id)
+            # Check if user has enough credits IN THIS GUILD
+            guild_user_dao = GuildUserDao()
+            guild_user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild_id)
             portal_cost = source_portal_settings.get('portal_cost', 1000)
 
-            if not user or user.total_currency < portal_cost:
-                await interaction.followup.send(f"You need {portal_cost} credits to open a portal. You have {user.total_currency if user else 0} credits.", ephemeral=True)
+            if not guild_user or guild_user.currency < portal_cost:
+                await interaction.followup.send(f"You need {portal_cost} credits in this server to open a portal. You have {guild_user.currency if guild_user else 0} credits.", ephemeral=True)
                 return
 
-            # Deduct credits
-            user.total_currency -= portal_cost
-            self.user_dao.update_user(user)
+            # Deduct credits using the correct, synced method
+            success = guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -portal_cost)
+            if not success:
+                await interaction.followup.send("Failed to process portal fee. Please try again.", ephemeral=True)
+                return
 
             # Create portal session
             now = datetime.now()
@@ -200,8 +203,7 @@ class PortalCommands(commands.Cog):
             created_portal = self.portal_dao.create_portal(portal)
             if not created_portal:
                 # Refund credits on failure
-                user.total_currency += portal_cost
-                self.user_dao.update_user(user)
+                guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, portal_cost)
                 await interaction.followup.send("Failed to create portal. Credits have been refunded.", ephemeral=True)
                 return
 
@@ -211,8 +213,7 @@ class PortalCommands(commands.Cog):
 
             if not source_channel or not target_channel:
                 self.portal_dao.close_portal(created_portal.id)
-                user.total_currency += portal_cost
-                self.user_dao.update_user(user)
+                guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, portal_cost)
                 await interaction.followup.send("Could not access portal channels. Credits have been refunded.", ephemeral=True)
                 return
 

@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from logger import AppLogger
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 import io
 from datetime import datetime
@@ -67,13 +67,16 @@ class Nasa(commands.Cog):
         logger.info("Cache invalid or empty, fetching new APOD data")
 
         try:
-            response = requests.get(self.URL)
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch APOD: HTTP {response.status_code}")
-                await interaction.followup.send("Failed to fetch APOD, please try again later.", ephemeral=True)
-                return
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.URL) as response:
+                    if response.status != 200:
+                        logger.error(f"Failed to fetch APOD: HTTP {response.status}")
+                        await interaction.followup.send("Failed to fetch APOD, please try again later.", ephemeral=True)
+                        return
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+                    html_content = await response.text()
+
+            soup = BeautifulSoup(html_content, 'html.parser')
 
             # Extract the title
             title_tag = soup.find('b')
@@ -140,17 +143,19 @@ class Nasa(commands.Cog):
 
         # Download and cache the image
         try:
-            img_response = requests.get(media_link, timeout=30)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(media_link, timeout=aiohttp.ClientTimeout(total=30)) as img_response:
+                    if img_response.status != 200:
+                        logger.error(f"Failed to download image: HTTP {img_response.status}")
+                        raise Exception(f"Image download failed: {img_response.status}")
 
-            if img_response.status_code != 200:
-                logger.error(f"Failed to download image: HTTP {img_response.status_code}")
-                raise Exception(f"Image download failed: {img_response.status_code}")
+                    image_content = await img_response.read()
 
             # Check file size (Discord limit is 25MB for files)
-            file_size_mb = len(img_response.content) / (1024 * 1024)
+            file_size_mb = len(image_content) / (1024 * 1024)
             logger.info(f"Downloaded image size: {file_size_mb:.2f} MB")
 
-            if len(img_response.content) > 25 * 1024 * 1024:  # 25MB limit
+            if len(image_content) > 25 * 1024 * 1024:  # 25MB limit
                 logger.error(f"Image too large: {file_size_mb:.2f} MB")
                 raise Exception(f"Image too large: {file_size_mb:.2f} MB")
 
@@ -162,15 +167,15 @@ class Nasa(commands.Cog):
                 filename += '.jpg'
 
             # Cache the image data
-            self.apod_cache['image_data'] = img_response.content
+            self.apod_cache['image_data'] = image_content
             self.apod_cache['filename'] = filename
 
             # Create and send the embed with image
-            await self.send_image_embed(interaction, title, filename, img_response.content)
+            await self.send_image_embed(interaction, title, filename, image_content)
             logger.info(
                 f"{interaction.user.name} successfully received APOD with downloaded image (cached for future use).")
 
-        except requests.RequestException as e:
+        except aiohttp.ClientError as e:
             logger.error(f"Failed to download image: {e}")
             await self.send_fallback_embed(interaction, title, media_link)
 

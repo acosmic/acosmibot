@@ -108,7 +108,9 @@ class AIImageDao(BaseDao):
         try:
             if type:
                 sql = """
-                    SELECT * FROM AIImages
+                    SELECT id, guild_id, user_id, type, prompt, image_url,
+                           revised_prompt, analysis_result, model, size, quality, created_at
+                    FROM AIImages
                     WHERE guild_id = %s AND type = %s
                     ORDER BY created_at DESC
                     LIMIT %s
@@ -116,7 +118,9 @@ class AIImageDao(BaseDao):
                 params = (guild_id, type, limit)
             else:
                 sql = """
-                    SELECT * FROM AIImages
+                    SELECT id, guild_id, user_id, type, prompt, image_url,
+                           revised_prompt, analysis_result, model, size, quality, created_at
+                    FROM AIImages
                     WHERE guild_id = %s
                     ORDER BY created_at DESC
                     LIMIT %s
@@ -164,7 +168,9 @@ class AIImageDao(BaseDao):
             params.append(limit)
 
             sql = f"""
-                SELECT * FROM AIImages
+                SELECT id, guild_id, user_id, type, prompt, image_url,
+                       revised_prompt, analysis_result, model, size, quality, created_at
+                FROM AIImages
                 WHERE {' AND '.join(conditions)}
                 ORDER BY created_at DESC
                 LIMIT %s

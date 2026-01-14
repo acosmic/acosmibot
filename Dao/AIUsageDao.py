@@ -264,7 +264,9 @@ class AIUsageDao(BaseDao):
     ) -> List[Dict[str, Any]]:
         """Get image generation history for a guild"""
         query = """
-            SELECT * FROM AIImages
+            SELECT id, guild_id, user_id, type, prompt, image_url,
+                   revised_prompt, analysis_result, model, size, quality, created_at
+            FROM AIImages
             WHERE guild_id = %s
             ORDER BY created_at DESC
             LIMIT %s

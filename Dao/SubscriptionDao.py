@@ -65,7 +65,12 @@ class SubscriptionDao(BaseDao[Subscription]):
 
     def get_by_guild_id(self, guild_id: str) -> Optional[Subscription]:
         """Get subscription by guild ID"""
-        query = "SELECT * FROM Subscriptions WHERE guild_id = %s"
+        query = """
+            SELECT id, guild_id, tier, status, stripe_subscription_id, stripe_customer_id,
+                   current_period_start, current_period_end, cancel_at_period_end, cancel_at,
+                   created_at, updated_at
+            FROM Subscriptions WHERE guild_id = %s
+        """
         results = self.execute_query(query, (str(guild_id),), return_description=True)
 
         if results and results[0] and len(results[0]) > 0:
@@ -77,7 +82,12 @@ class SubscriptionDao(BaseDao[Subscription]):
 
     def get_by_stripe_subscription_id(self, stripe_subscription_id: str) -> Optional[Subscription]:
         """Get subscription by Stripe subscription ID"""
-        query = "SELECT * FROM Subscriptions WHERE stripe_subscription_id = %s"
+        query = """
+            SELECT id, guild_id, tier, status, stripe_subscription_id, stripe_customer_id,
+                   current_period_start, current_period_end, cancel_at_period_end, cancel_at,
+                   created_at, updated_at
+            FROM Subscriptions WHERE stripe_subscription_id = %s
+        """
         results = self.execute_query(query, (stripe_subscription_id,), return_description=True)
 
         if results and results[0] and len(results[0]) > 0:
@@ -217,7 +227,12 @@ class SubscriptionDao(BaseDao[Subscription]):
 
     def get_all_active_subscriptions(self) -> List[Subscription]:
         """Get all active premium subscriptions"""
-        query = "SELECT * FROM Subscriptions WHERE status = 'active' AND tier != 'free'"
+        query = """
+            SELECT id, guild_id, tier, status, stripe_subscription_id, stripe_customer_id,
+                   current_period_start, current_period_end, cancel_at_period_end, cancel_at,
+                   created_at, updated_at
+            FROM Subscriptions WHERE status = 'active' AND tier != 'free'
+        """
         results = self.execute_query(query, fetch_all=True)
 
         if results:
@@ -227,7 +242,10 @@ class SubscriptionDao(BaseDao[Subscription]):
     def get_expiring_subscriptions(self, days_before: int = 7) -> List[Subscription]:
         """Get subscriptions expiring in N days"""
         query = """
-            SELECT * FROM Subscriptions
+            SELECT id, guild_id, tier, status, stripe_subscription_id, stripe_customer_id,
+                   current_period_start, current_period_end, cancel_at_period_end, cancel_at,
+                   created_at, updated_at
+            FROM Subscriptions
             WHERE status = 'active'
             AND tier != 'free'
             AND current_period_end BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL %s DAY)
@@ -240,7 +258,12 @@ class SubscriptionDao(BaseDao[Subscription]):
 
     def get_past_due_subscriptions(self) -> List[Subscription]:
         """Get all subscriptions with past_due status"""
-        query = "SELECT * FROM Subscriptions WHERE status = 'past_due'"
+        query = """
+            SELECT id, guild_id, tier, status, stripe_subscription_id, stripe_customer_id,
+                   current_period_start, current_period_end, cancel_at_period_end, cancel_at,
+                   created_at, updated_at
+            FROM Subscriptions WHERE status = 'past_due'
+        """
         results = self.execute_query(query, fetch_all=True)
 
         if results:

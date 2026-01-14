@@ -2,11 +2,13 @@
 import sys
 import discord
 from discord.ext import commands
+
+from Services.ConfigCache import initialize_config_cache, cleanup_config_cache
+from Services.PerformanceMonitor import initialize_performance_monitor, cleanup_performance_monitor
+from Services.MessageCountBuffer import initialize_message_count_buffer, cleanup_message_count_buffer
 from logger import AppLogger
 from Tasks.task_manager import register_tasks
 from Cogs import __all__ as enabled_cogs
-from models.settings_manager import SettingsManager
-from Dao.GuildDao import GuildDao
 from database import Database
 
 
@@ -33,15 +35,25 @@ class Bot(commands.Bot):
         logger.error(f"Command error in {ctx.guild.name if ctx.guild else 'DM'}: {error}")
 
     async def setup_hook(self):
-        # Initialize SettingsManager singleton on bot startup
         try:
-            guild_dao = GuildDao()
-            SettingsManager(guild_dao)
-            guild_dao.close()  # Close the DAO after setup
-            logger.info("SettingsManager singleton initialized")
+            await initialize_config_cache()
+            logger.info("✅ Config cache initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize SettingsManager: {e}")
-            raise
+            logger.error(f"❌ Failed to initialize config cache: {e}")
+            logger.warning("⚠️  Bot will continue with degraded performance")
+
+        try:
+            await initialize_message_count_buffer()
+            logger.info("✅ Message count buffer initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize message count buffer: {e}")
+            logger.warning("⚠️  Message counts will be written immediately (higher DB load)")
+
+        try:
+            await initialize_performance_monitor()
+            logger.info("✅ Performance monitor initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize performance monitor: {e}")
 
         register_tasks(self)
         for cog_name in enabled_cogs:
@@ -55,7 +67,29 @@ class Bot(commands.Bot):
 
     async def close(self):
         """Close the bot and clean up database connections"""
-        logger.info("Bot shutting down, closing database connection pools...")
+        logger.info("🛑 Bot shutting down, closing database connection pools...")
+
+        # Cleanup message count buffer (flushes remaining counts)
+        try:
+            await cleanup_message_count_buffer()
+            logger.info("✅ Message count buffer cleaned up")
+        except Exception as e:
+            logger.error(f"Error during message count buffer cleanup: {e}")
+
+        # Cleanup performance monitor (generates final report)
+        try:
+            await cleanup_performance_monitor()
+            logger.info("✅ Performance monitor cleaned up")
+        except Exception as e:
+            logger.error(f"Error during performance monitor cleanup: {e}")
+
+        # Cleanup cache
+        try:
+            await cleanup_config_cache()
+            logger.info("✅ Config cache cleaned up")
+        except Exception as e:
+            logger.error(f"Error during cache cleanup: {e}")
+
         try:
             Database.close_all_pools()
             logger.info("Database connection pools closed successfully")

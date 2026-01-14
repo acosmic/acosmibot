@@ -36,7 +36,7 @@ class RoleCacheEntry(BaseModel):
 class LevelingSettings(BaseModel):
     """Leveling system configuration"""
     enabled: bool = True
-    level_up_announcements: bool = True
+    level_up_announcements: bool = False  # Default to False to prevent unwanted spam
     announcement_channel_id: Optional[str] = None
 
     # Custom announcement message templates
@@ -67,7 +67,7 @@ class LevelingSettings(BaseModel):
         json_schema_extra = {
             "example": {
                 "enabled": True,
-                "level_up_announcements": True,
+                "level_up_announcements": False,
                 "level_up_message": "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits!",
                 "announcement_channel_id": "123456789012345678",
                 "exp_multiplier": 1.0,
@@ -101,7 +101,7 @@ class RoleSystemSettings(BaseModel):
     max_level_tracked: int = Field(default=50, ge=1, le=1000)
 
     # Announcement settings
-    role_announcement: bool = True
+    role_announcement: bool = False  # Default to False to prevent unwanted spam
     announcement_channel_id: Optional[str] = None
 
     @field_validator('role_mappings')
@@ -110,8 +110,8 @@ class RoleSystemSettings(BaseModel):
         for level_str in v.keys():
             try:
                 level = int(level_str)
-                if level < 1 or level > 1000:
-                    raise ValueError(f"Level {level} must be between 1 and 1000")
+                if level < 0 or level > 1000:
+                    raise ValueError(f"Level {level} must be between 0 and 1000")
             except ValueError:
                 raise ValueError(f"Invalid level key: {level_str}. Must be a number.")
         return v
@@ -171,7 +171,7 @@ class RoleSystemSettings(BaseModel):
                 },
                 "remove_previous_roles": True,
                 "max_level_tracked": 50,
-                "role_announcement": True
+                "role_announcement": False
             }
         }
 
@@ -253,7 +253,7 @@ class GuildLevelingRoleSettings(BaseModel):
             "example": {
                 "leveling": {
                     "enabled": True,
-                    "level_up_announcements": True,
+                    "level_up_announcements": False,
                     "level_up_message": "🎉 {mention} reached level {level}!"
                 },
                 "roles": {

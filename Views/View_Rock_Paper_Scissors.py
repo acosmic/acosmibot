@@ -403,91 +403,76 @@ class View_Rock_Paper_Scissors(discord.ui.View):
 
     def winner_payout(self):
         """Handle winner payout"""
-        if self.bet > 0:
-            guild_user_dao = GuildUserDao()
+        if self.bet <= 0:
+            return
 
-            if self.player_one_wins >= 3:
-                # Player one wins
-                user_one = guild_user_dao.get_guild_user(self.player_one.id, self.guild_id)
-                user_two = guild_user_dao.get_guild_user(self.player_two.id, self.guild_id)
+        guild_user_dao = GuildUserDao()
+        games_dao = GamesDao()
 
-                if user_one and user_two:
-                    user_one.currency += self.bet
-                    user_two.currency -= self.bet
-                    guild_user_dao.update_guild_user(user_one)
-                    guild_user_dao.update_guild_user(user_two)
+        winner_id = None
+        loser_id = None
+        winner_player = None
+        loser_player = None
 
-                    # Record game in database with game_data
-                    games_dao = GamesDao()
-                    games_dao.add_game(
-                        user_id=self.player_one.id,
-                        guild_id=self.guild_id,
-                        game_type="rockpaperscissors",
-                        amount_bet=self.bet,
-                        amount_won=self.bet,
-                        amount_lost=0,
-                        result="win",
-                        game_data={
-                            "opponent_id": self.player_two.id,
-                            "opponent_name": self.player_two.display_name,
-                            "rounds": self.round_number - 1,
-                            "player_wins": self.player_one_wins,
-                            "opponent_wins": self.player_two_wins,
-                            "draws": self.draws
-                        }
-                    )
-                    games_dao.add_game(
-                        user_id=self.player_two.id,
-                        guild_id=self.guild_id,
-                        game_type="rockpaperscissors",
-                        amount_bet=self.bet,
-                        amount_won=0,
-                        amount_lost=self.bet,
-                        result="lose",
-                        game_data={
-                            "opponent_id": self.player_one.id,
-                            "opponent_name": self.player_one.display_name,
-                            "rounds": self.round_number - 1,
-                            "player_wins": self.player_two_wins,
-                            "opponent_wins": self.player_one_wins,
-                            "draws": self.draws
-                        }
-                    )
+        if self.player_one_wins >= 3:
+            winner_id = self.player_one.id
+            loser_id = self.player_two.id
+            winner_player = self.player_one
+            loser_player = self.player_two
+        elif self.player_two_wins >= 3:
+            winner_id = self.player_two.id
+            loser_id = self.player_one.id
+            winner_player = self.player_two
+            loser_player = self.player_one
 
-            elif self.player_two_wins >= 3:
-                # Player two wins
-                user_one = guild_user_dao.get_guild_user(self.player_one.id, self.guild_id)
-                user_two = guild_user_dao.get_guild_user(self.player_two.id, self.guild_id)
+        if winner_id and loser_id:
+            # Atomically update currency for both players
+            guild_user_dao.update_currency_with_global_sync(winner_id, self.guild_id, self.bet)
+            guild_user_dao.update_currency_with_global_sync(loser_id, self.guild_id, -self.bet)
 
-                if user_one and user_two:
-                    user_one.currency -= self.bet
+            # Record game for winner
+            games_dao.add_game(
+                user_id=winner_id,
+                guild_id=self.guild_id,
+                game_type="rockpaperscissors",
+                amount_bet=self.bet,
+                amount_won=self.bet,
+                amount_lost=0,
+                result="win",
+                game_data={
+                    "opponent_id": loser_id,
+                    "opponent_name": loser_player.display_name,
+                    "rounds": self.round_number - 1,
+                    "player_wins": self.player_one_wins if winner_id == self.player_one.id else self.player_two_wins,
+                    "opponent_wins": self.player_two_wins if winner_id == self.player_one.id else self.player_one_wins,
+                    "draws": self.draws
+                }
+            )
 
-                    async def complete_game(self):
-                        """Complete the game"""
-                        if self.bet > 0:
-                            await self.announce_winner()
-                            self.winner_payout()
-
-                        # Disable all buttons
-                        for child in self.children:
-                            child.disabled = True
-
-                        logging.info(f"RPS game {self.game_id} completed in guild {self.guild_id}")
-
-                        async def complete_game(self):
-                            """Complete the game"""
-                            if self.bet > 0:
-                                await self.announce_winner()
-                                self.winner_payout()
-
-                            # Disable all buttons
-                            for child in self.children:
-                                child.disabled = True
-
-                            logging.info(f"RPS game {self.game_id} completed in guild {self.guild_id}")
+            # Record game for loser
+            games_dao.add_game(
+                user_id=loser_id,
+                guild_id=self.guild_id,
+                game_type="rockpaperscissors",
+                amount_bet=self.bet,
+                amount_won=0,
+                amount_lost=self.bet,
+                result="lose",
+                game_data={
+                    "opponent_id": winner_id,
+                    "opponent_name": winner_player.display_name,
+                    "rounds": self.round_number - 1,
+                    "player_wins": self.player_two_wins if loser_id == self.player_two.id else self.player_one_wins,
+                    "opponent_wins": self.player_one_wins if loser_id == self.player_two.id else self.player_two_wins,
+                    "draws": self.draws
+                }
+            )
 
     async def complete_game(self):
         """Complete the game"""
+        if not self.match_complete:
+            return 
+            
         if self.bet > 0:
             await self.announce_winner()
             self.winner_payout()
@@ -497,3 +482,4 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             child.disabled = True
 
         logging.info(f"RPS game {self.game_id} completed in guild {self.guild_id}")
+        await self.message.edit(view=self)

@@ -7,6 +7,13 @@ from Entities.BaseEntity import BaseEntity
 class Guild(BaseEntity):
     """
     Guild entity representing a Discord guild in the database.
+
+    Attributes:
+        subscription_tier (str): Guild's subscription tier
+            - 'free': Free tier (1 streamer, 1 command, 1 reaction role, 20/day AI with gpt-3.5 only)
+            - 'premium': Premium tier (5 streamers, 25 commands, 10 roles, XP boost, customization, same AI as free)
+            - 'premium_plus_ai': Premium + AI tier (all premium features + enhanced AI: 100/day, all models, images)
+        subscription_status (str): Subscription status ('active', 'past_due', 'canceled', 'expired')
     """
 
     def __init__(
@@ -20,10 +27,6 @@ class Guild(BaseEntity):
             created: Union[str, datetime] = None,
             last_active: Union[str, datetime] = None,
             vault_currency: int = 0,
-            ai_enabled: bool = True,
-            ai_thread_id: Optional[str] = None,
-            ai_temperature: float = 1.0,
-            ai_personality_traits: Optional[Dict[str, Any]] = None,
             subscription_tier: str = 'free',
             subscription_status: str = 'active'
     ) -> None:
@@ -36,10 +39,6 @@ class Guild(BaseEntity):
         self.created = created
         self.last_active = last_active
         self.vault_currency = vault_currency
-        self.ai_enabled = ai_enabled
-        self.ai_thread_id = ai_thread_id
-        self.ai_temperature = ai_temperature
-        self.ai_personality_traits = ai_personality_traits or {"humor_level": "high", "sarcasm_level": "medium", "nerd_level": "high", "friendliness": "high"}
         self.subscription_tier = subscription_tier
         self.subscription_status = subscription_status
 
@@ -90,38 +89,6 @@ class Guild(BaseEntity):
     @vault_currency.setter
     def vault_currency(self, value: int) -> None:
         self._vault_currency = value
-
-    @property
-    def ai_enabled(self) -> bool:
-        return self._ai_enabled
-
-    @ai_enabled.setter
-    def ai_enabled(self, value: bool) -> None:
-        self._ai_enabled = value
-
-    @property
-    def ai_thread_id(self) -> Optional[str]:
-        return self._ai_thread_id
-
-    @ai_thread_id.setter
-    def ai_thread_id(self, value: Optional[str]) -> None:
-        self._ai_thread_id = value
-
-    @property
-    def ai_temperature(self) -> float:
-        return self._ai_temperature
-
-    @ai_temperature.setter
-    def ai_temperature(self, value: float) -> None:
-        self._ai_temperature = value
-
-    @property
-    def ai_personality_traits(self) -> Dict[str, Any]:
-        return self._ai_personality_traits
-
-    @ai_personality_traits.setter
-    def ai_personality_traits(self, value: Dict[str, Any]) -> None:
-        self._ai_personality_traits = value
 
     @property
     def settings(self) -> Optional[str]:

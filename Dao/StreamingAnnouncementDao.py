@@ -166,7 +166,11 @@ class StreamingAnnouncementDao(BaseDao):
         # NOTE: Using POWER(2, LEAST(vod_check_attempts, 8)) for exponential backoff.
         # This replaces the complex nested date logic with a single formula.
         query = """
-                SELECT *
+                SELECT id, platform, guild_id, channel_id, message_id,
+                       streamer_username, streamer_id, stream_id, stream_title, game_name,
+                       stream_started_at, stream_ended_at, initial_viewer_count, final_viewer_count,
+                       stream_duration_seconds, last_status_check_at, vod_url, vod_checked_at,
+                       vod_check_attempts, created_at, updated_at
                 FROM StreamingAnnouncements
                 WHERE platform = %s
                   AND stream_ended_at IS NOT NULL
@@ -219,7 +223,11 @@ class StreamingAnnouncementDao(BaseDao):
             List of active announcements
         """
         query = """
-            SELECT *
+            SELECT id, platform, guild_id, channel_id, message_id,
+                   streamer_username, streamer_id, stream_id, stream_title, game_name,
+                   stream_started_at, stream_ended_at, initial_viewer_count, final_viewer_count,
+                   stream_duration_seconds, last_status_check_at, vod_url, vod_checked_at,
+                   vod_check_attempts, created_at, updated_at
             FROM StreamingAnnouncements
             WHERE platform = %s
               AND stream_ended_at IS NULL
@@ -349,7 +357,11 @@ class StreamingAnnouncementDao(BaseDao):
             StreamingAnnouncement or None
         """
         query = """
-            SELECT *
+            SELECT id, platform, guild_id, channel_id, message_id,
+                   streamer_username, streamer_id, stream_id, stream_title, game_name,
+                   stream_started_at, stream_ended_at, initial_viewer_count, final_viewer_count,
+                   stream_duration_seconds, last_status_check_at, vod_url, vod_checked_at,
+                   vod_check_attempts, created_at, updated_at
             FROM StreamingAnnouncements
             WHERE guild_id = %s
               AND message_id = %s
@@ -439,7 +451,11 @@ class StreamingAnnouncementDao(BaseDao):
             List of announcements needing update
         """
         query = """
-            SELECT *
+            SELECT id, platform, guild_id, channel_id, message_id,
+                   streamer_username, streamer_id, stream_id, stream_title, game_name,
+                   stream_started_at, stream_ended_at, initial_viewer_count, final_viewer_count,
+                   stream_duration_seconds, last_status_check_at, vod_url, vod_checked_at,
+                   vod_check_attempts, created_at, updated_at
             FROM StreamingAnnouncements
             WHERE platform = %s
               AND stream_ended_at IS NULL
@@ -553,7 +569,11 @@ class StreamingAnnouncementDao(BaseDao):
             StreamingAnnouncement or None
         """
         query = """
-            SELECT *
+            SELECT id, platform, guild_id, channel_id, message_id,
+                   streamer_username, streamer_id, stream_id, stream_title, game_name,
+                   stream_started_at, stream_ended_at, initial_viewer_count, final_viewer_count,
+                   stream_duration_seconds, last_status_check_at, vod_url, vod_checked_at,
+                   vod_check_attempts, created_at, updated_at
             FROM StreamingAnnouncements
             WHERE id = %s
             LIMIT 1
@@ -610,7 +630,11 @@ class StreamingAnnouncementDao(BaseDao):
             Active announcement or None
         """
         query = """
-            SELECT *
+            SELECT id, platform, guild_id, channel_id, message_id,
+                   streamer_username, streamer_id, stream_id, stream_title, game_name,
+                   stream_started_at, stream_ended_at, initial_viewer_count, final_viewer_count,
+                   stream_duration_seconds, last_status_check_at, vod_url, vod_checked_at,
+                   vod_check_attempts, created_at, updated_at
             FROM StreamingAnnouncements
             WHERE platform = %s
               AND guild_id = %s

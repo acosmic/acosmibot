@@ -30,42 +30,22 @@ class LevelingSystem:
             "enabled": True,  # Deprecated - always true (stats always tracked)
             "exp_per_message": 10,
             "exp_cooldown_seconds": 3,
-            "level_up_announcements": True,
+            "level_up_announcements": False,  # Default to False to prevent spam if settings can't be fetched
             "announcement_channel_id": None,
             "streak_multiplier": 0.05,  # 5% bonus per streak day
             "max_streak_bonus": 20,  # Maximum streak days for bonus calculation
             "daily_bonus": 1000,  # Daily reward bonus amount
             "daily_announcements_enabled": False,  # Enable daily reward announcements
-            "daily_announcement_channel_id": None  # Channel for daily reward announcements
+            "daily_announcement_channel_id": None,  # Channel for daily reward announcements
+            "level_up_message": "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits!",
+            "level_up_message_with_streak": "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits! {base_credits} + {streak_bonus} from {streak}x Streak!"
         }
 
-    def get_leveling_config(self, guild_id):
-        """Get leveling configuration from guild settings"""
-        try:
-            guild_dao = GuildDao()
-            try:
-                guild = guild_dao.get_guild(guild_id)
-
-                if not guild or not guild.settings:
-                    return self.default_config
-
-                # Parse settings JSON
-                settings = json.loads(guild.settings) if isinstance(guild.settings, str) else guild.settings
-
-                # Get leveling settings or return default
-                leveling_settings = settings.get("leveling", {})
-
-                # Merge with defaults
-                config = self.default_config.copy()
-                config.update(leveling_settings)
-
-                return config
-            finally:
-                guild_dao.close()
-
-        except Exception as e:
-            logger.error(f"Error getting leveling config: {e}")
-            return self.default_config
+    # REPLACE WITH:
+    async def get_leveling_config(self, guild_id):
+        """Get leveling configuration from guild settings (cached)"""
+        from Services.ConfigCache import get_config_cache
+        return await get_config_cache().get_leveling_config(guild_id)
 
     def calculate_level_from_exp(self, exp):
         """Calculate level from experience points using standard formula"""
@@ -134,7 +114,7 @@ class LevelingSystem:
         user_id = message.author.id
 
         # Get leveling configuration
-        config = self.get_leveling_config(guild_id)
+        config = await self.get_leveling_config(guild_id)
 
         guild_user_dao = None
         user_dao = None
@@ -154,22 +134,29 @@ class LevelingSystem:
             if not global_user:
                 return
 
-            # === ALWAYS UPDATE MESSAGE COUNTS AND ACTIVITY ===
-            guild_user.messages_sent += 1
-            guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            global_user.total_messages += 1
-            global_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # === BUFFER MESSAGE COUNTS (non-critical, batched every 30s) ===
+            # Message counts are handled separately from XP to reduce DB writes
+            from Services.MessageCountBuffer import get_message_count_buffer
+            from Services.PerformanceMonitor import get_performance_monitor
 
-            # === ALWAYS PROCESS EXP AND LEVELS (stats always tracked) ===
-            # Note: leveling.enabled is deprecated - stats are always tracked now
-            # Announcements and roles are controlled by separate toggles
+            message_buffer = get_message_count_buffer()
+            await message_buffer.increment_activity(guild_id, user_id)
 
-            # Check cooldown (but still save message count above even if on cooldown)
+            # Record message processed
+            perf_monitor = get_performance_monitor()
+            await perf_monitor.record_message_processed()
+
+            # === CHECK COOLDOWN - Skip XP if on cooldown ===
+            # Message count already buffered above, no DB write needed here
             if self.is_user_on_cooldown(user_id, guild_id, config["exp_cooldown_seconds"]):
-                # Save the message count even though exp is not awarded due to cooldown
-                guild_user_dao.update_guild_user(guild_user)
-                user_dao.update_user(global_user)
+                # Skip XP grant and DB write - message count buffered in memory
                 return
+
+            # === NOT ON COOLDOWN - GRANT XP AND WRITE TO DB ===
+            # Note: Message counts are NOT updated here (handled by buffer)
+            # Only update last_active for streak/activity tracking
+            guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            global_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # Calculate old level
             old_level = self.calculate_level_from_exp(guild_user.exp)
@@ -206,6 +193,9 @@ class LevelingSystem:
             # Set cooldown
             self.set_user_cooldown(user_id, guild_id)
 
+            # Record XP grant
+            await perf_monitor.record_xp_grant()
+
             # Log experience gain
             if streak > 0:
                 logger.info(
@@ -239,6 +229,11 @@ class LevelingSystem:
         """Handle level up event"""
         guild_user_dao = None
         try:
+            # Record level-up in performance monitor
+            from Services.PerformanceMonitor import get_performance_monitor
+            perf_monitor = get_performance_monitor()
+            await perf_monitor.record_level_up()
+
             user = message.author
             guild = message.guild
 
@@ -276,9 +271,14 @@ class LevelingSystem:
                     announcement_channel = message.channel
 
                 # Create level up message using custom template
-                # Use single template with all placeholders available
-                template = config.get("level_up_message",
-                    "{username}, you have reached level {level}! Gained {credits} Credits! 🎉")
+                # Use appropriate template based on streak
+                if streak > 0:
+                    template = config.get("level_up_message_with_streak",
+                        "{mention} reached level {level}! +{credits} Credits! ({base_credits} + {streak_bonus} from {streak}x streak!)")
+                else:
+                    template = config.get("level_up_message",
+                        "{username}, you have reached level {level}! Gained {credits} Credits! 🎉")
+
                 level_message = template.format(
                     mention=user.mention,
                     username=user.name,

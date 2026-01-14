@@ -42,7 +42,6 @@ class Bailout(commands.Cog):
                         await interaction.user.remove_roles(role)
                         await interaction.user.add_roles(first_role)
                         guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -bail)
-                        current_user.currency -= bail
                         await interaction.response.send_message(f"{interaction.user.name} paid {bail:,.0f} credits to get out of jail.")
                         await general_channel.send(f"## {interaction.user.name} paid {bail:,.0f} credits to get out of jail.")
                         return
@@ -58,7 +57,6 @@ class Bailout(commands.Cog):
                         await target.add_roles(first_role)
 
                     guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -bail)
-                    current_user.currency -= bail
                     await interaction.response.send_message(f"{interaction.user.name} paid {bail:,.0f} credits to get {target.name} out of jail.")
                     await general_channel.send(f"## {interaction.user.name} paid {bail:,.0f} credits to get {target.name} out of jail.")
                     return

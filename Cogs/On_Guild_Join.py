@@ -78,19 +78,10 @@ class On_Guild_Join(commands.Cog):
                     owner_id=guild.owner_id,
                     member_count=guild.member_count,
                     active=True,
-                    settings=None,  # Can be expanded later for guild-specific models
+                    settings=None,  # Can be expanded later for guild-specific settings
                     created=formatted_join_date,
                     last_active=formatted_join_date,
-                    vault_currency=0,  # Default vault currency
-                    ai_enabled=True,  # AI enabled by default
-                    ai_thread_id=None,  # Will be set when AI is first used
-                    ai_temperature=1.0,  # Default temperature
-                    ai_personality_traits={
-                        "humor_level": "high",
-                        "sarcasm_level": "medium",
-                        "nerd_level": "high",
-                        "friendliness": "high"
-                    }  # Default personality traits
+                    vault_currency=0  # Default vault currency
                 )
 
                 if guild_dao.add_new_guild(new_guild):

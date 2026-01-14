@@ -55,6 +55,7 @@ class UserDao(BaseDao[User]):
                                bank_balance INT DEFAULT 0,
                                daily_transfer_amount INT DEFAULT 0,
                                last_transfer_reset DATE,
+                               last_interest_payout_date DATE,
                                total_messages INT DEFAULT 0,
                                total_reactions INT DEFAULT 0,
                                account_created DATETIME,
@@ -92,6 +93,7 @@ class UserDao(BaseDao[User]):
                                  bank_balance, \
                                  daily_transfer_amount, \
                                  last_transfer_reset, \
+                                 last_interest_payout_date, \
                                  total_messages, \
                                  total_reactions, \
                                  account_created, \
@@ -99,7 +101,7 @@ class UserDao(BaseDao[User]):
                                  last_seen, \
                                  privacy_settings, \
                                  global_settings) \
-              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
               '''
         values = (
             new_user.id,
@@ -113,6 +115,7 @@ class UserDao(BaseDao[User]):
             new_user.bank_balance,
             new_user.daily_transfer_amount,
             new_user.last_transfer_reset,
+            new_user.last_interest_payout_date,
             new_user.total_messages,
             new_user.total_reactions,
             new_user.account_created,
@@ -151,6 +154,7 @@ class UserDao(BaseDao[User]):
                   bank_balance     = %s,
                   daily_transfer_amount = %s,
                   last_transfer_reset = %s,
+                  last_interest_payout_date = %s,
                   total_messages   = %s,
                   total_reactions  = %s,
                   account_created  = %s,
@@ -171,6 +175,7 @@ class UserDao(BaseDao[User]):
             updated_user.bank_balance,
             updated_user.daily_transfer_amount,
             updated_user.last_transfer_reset,
+            updated_user.last_interest_payout_date,
             updated_user.total_messages,
             updated_user.total_reactions,
             updated_user.account_created,
@@ -189,16 +194,12 @@ class UserDao(BaseDao[User]):
             return False
 
     def get_user(self, id: int) -> Optional[User]:
-        """
-        Get a user by their ID.
-
-        Args:
-            id (int): User ID
-
-        Returns:
-            Optional[User]: User if found, None otherwise
-        """
-        sql = 'SELECT * FROM Users WHERE id = %s'
+        sql = '''SELECT id, discord_username, global_name, avatar_url, is_bot,
+                        global_exp, global_level, total_currency, bank_balance,
+                        daily_transfer_amount, last_transfer_reset, last_interest_payout_date,
+                        total_messages, total_reactions, account_created, first_seen,
+                        last_seen, privacy_settings, global_settings
+                 FROM Users WHERE id = %s'''
 
         try:
             result = self.execute_query(sql, (id,))
@@ -217,13 +218,14 @@ class UserDao(BaseDao[User]):
                     bank_balance=user_data[8],
                     daily_transfer_amount=user_data[9],
                     last_transfer_reset=user_data[10],
-                    total_messages=user_data[11],
-                    total_reactions=user_data[12],
-                    account_created=user_data[13],
-                    first_seen=user_data[14],
-                    last_seen=user_data[15],
-                    privacy_settings=user_data[16],
-                    global_settings=user_data[17]
+                    last_interest_payout_date=user_data[11],
+                    total_messages=user_data[12],
+                    total_reactions=user_data[13],
+                    account_created=user_data[14],
+                    first_seen=user_data[15],
+                    last_seen=user_data[16],
+                    privacy_settings=user_data[17],
+                    global_settings=user_data[18]
                 )
                 return user
             return None
@@ -242,7 +244,12 @@ class UserDao(BaseDao[User]):
         Returns:
             Optional[User]: User if found, None otherwise
         """
-        sql = 'SELECT * FROM Users WHERE discord_username = %s'
+        sql = '''SELECT id, discord_username, global_name, avatar_url, is_bot,
+                        global_exp, global_level, total_currency, bank_balance,
+                        daily_transfer_amount, last_transfer_reset, last_interest_payout_date,
+                        total_messages, total_reactions, account_created, first_seen,
+                        last_seen, privacy_settings, global_settings
+                 FROM Users WHERE discord_username = %s'''
 
         try:
             result = self.execute_query(sql, (username,))
@@ -261,13 +268,14 @@ class UserDao(BaseDao[User]):
                     bank_balance=user_data[8],
                     daily_transfer_amount=user_data[9],
                     last_transfer_reset=user_data[10],
-                    total_messages=user_data[11],
-                    total_reactions=user_data[12],
-                    account_created=user_data[13],
-                    first_seen=user_data[14],
-                    last_seen=user_data[15],
-                    privacy_settings=user_data[16],
-                    global_settings=user_data[17]
+                    last_interest_payout_date=user_data[11],
+                    total_messages=user_data[12],
+                    total_reactions=user_data[13],
+                    account_created=user_data[14],
+                    first_seen=user_data[15],
+                    last_seen=user_data[16],
+                    privacy_settings=user_data[17],
+                    global_settings=user_data[18]
                 )
                 return user
             return None
@@ -568,7 +576,11 @@ class UserDao(BaseDao[User]):
             List[User]: List of users
         """
         sql = '''
-              SELECT * \
+              SELECT id, discord_username, global_name, avatar_url, is_bot,
+                     global_exp, global_level, total_currency, bank_balance,
+                     daily_transfer_amount, last_transfer_reset, last_interest_payout_date,
+                     total_messages, total_reactions, account_created, first_seen,
+                     last_seen, privacy_settings, global_settings
               FROM Users
               WHERE first_seen BETWEEN %s AND %s \
                 AND is_bot = FALSE
@@ -593,13 +605,14 @@ class UserDao(BaseDao[User]):
                         bank_balance=user_data[8],
                         daily_transfer_amount=user_data[9],
                         last_transfer_reset=user_data[10],
-                        total_messages=user_data[11],
-                        total_reactions=user_data[12],
-                        account_created=user_data[13],
-                        first_seen=user_data[14],
-                        last_seen=user_data[15],
-                        privacy_settings=user_data[16],
-                        global_settings=user_data[17]
+                        last_interest_payout_date=user_data[11],
+                        total_messages=user_data[12],
+                        total_reactions=user_data[13],
+                        account_created=user_data[14],
+                        first_seen=user_data[15],
+                        last_seen=user_data[16],
+                        privacy_settings=user_data[17],
+                        global_settings=user_data[18]
                     ))
 
             return users
@@ -716,8 +729,15 @@ class UserDao(BaseDao[User]):
                 self.logger.info(f"Created new global user: {discord_user.name}")
                 return new_user
             else:
-                self.logger.error(f"Failed to create global user: {discord_user.name}")
-                return None
+                # add_user failed - could be duplicate key (race condition)
+                # Try to get the user one more time
+                existing_user = self.get_user(discord_user.id)
+                if existing_user:
+                    self.logger.info(f"User {discord_user.name} already existed (race condition)")
+                    return existing_user
+                else:
+                    self.logger.error(f"Failed to create global user: {discord_user.name}")
+                    return None
 
         except Exception as e:
             self.logger.error(f"Error getting/creating global user {discord_user.name}: {e}")
@@ -757,10 +777,10 @@ class UserDao(BaseDao[User]):
         sql = '''
               INSERT INTO Users (id, discord_username, global_name, avatar_url, is_bot,
                                  global_exp, global_level, total_currency, bank_balance,
-                                 daily_transfer_amount, last_transfer_reset, total_messages,
-                                 total_reactions, account_created, first_seen, last_seen,
+                                 daily_transfer_amount, last_transfer_reset, last_interest_payout_date, 
+                                 total_messages, total_reactions, account_created, first_seen, last_seen,
                                  privacy_settings, global_settings)
-              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
               ON DUPLICATE KEY UPDATE
                   discord_username = VALUES(discord_username),
                   global_name = VALUES(global_name),
@@ -783,6 +803,7 @@ class UserDao(BaseDao[User]):
                     user.bank_balance,
                     user.daily_transfer_amount,
                     user.last_transfer_reset,
+                    user.last_interest_payout_date,
                     user.total_messages,
                     user.total_reactions,
                     user.account_created,
@@ -932,4 +953,33 @@ class UserDao(BaseDao[User]):
             return True
         except Exception as e:
             self.logger.error(f"Error incrementing daily transfer for user {user_id}: {e}")
+            return False
+
+    def add_bank_interest(self, user_id: int, interest_amount: int) -> bool:
+        """
+        Add interest to a user's bank balance and total currency atomically.
+
+        Args:
+            user_id (int): User ID
+            interest_amount (int): The amount of interest to add
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if interest_amount <= 0:
+            return True # Nothing to add
+
+        sql = """
+            UPDATE Users
+            SET bank_balance = bank_balance + %s,
+                total_currency = total_currency + %s,
+                last_interest_payout_date = CURDATE()
+            WHERE id = %s
+        """
+        try:
+            self.execute_query(sql, (interest_amount, interest_amount, user_id), commit=True)
+            self.logger.info(f"Added {interest_amount} interest to user {user_id}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error adding bank interest for user {user_id}: {e}")
             return False

@@ -220,7 +220,12 @@ class GuildUserDao(BaseDao[GuildUser]):
         Returns:
             Optional[GuildUser]: Guild user if found, None otherwise
         """
-        sql = 'SELECT * FROM GuildUsers WHERE user_id = %s AND guild_id = %s'
+        sql = '''SELECT user_id, guild_id, name, nickname, level,
+                        streak, highest_streak, exp, exp_gained, exp_lost, currency,
+                        slots_free_spins_remaining, slots_locked_bet_amount, slots_bonus_total_won,
+                        messages_sent, reactions_sent, joined_at, last_active,
+                        daily, last_daily, is_active
+                 FROM GuildUsers WHERE user_id = %s AND guild_id = %s'''
 
         try:
             result = self.execute_query(sql, (user_id, guild_id))
@@ -341,10 +346,17 @@ class GuildUserDao(BaseDao[GuildUser]):
         Returns:
             List[GuildUser]: List of guild users
         """
+        base_sql = '''SELECT user_id, guild_id, name, nickname, level,
+                             streak, highest_streak, exp, exp_gained, exp_lost, currency,
+                             slots_free_spins_remaining, slots_locked_bet_amount, slots_bonus_total_won,
+                             messages_sent, reactions_sent, joined_at, last_active,
+                             daily, last_daily, is_active
+                      FROM GuildUsers WHERE guild_id = %s'''
+
         if active_only:
-            sql = 'SELECT * FROM GuildUsers WHERE guild_id = %s AND is_active = TRUE ORDER BY exp DESC'
+            sql = base_sql + ' AND is_active = TRUE ORDER BY exp DESC'
         else:
-            sql = 'SELECT * FROM GuildUsers WHERE guild_id = %s ORDER BY exp DESC'
+            sql = base_sql + ' ORDER BY exp DESC'
 
         try:
             results = self.execute_query(sql, (guild_id,))
@@ -393,10 +405,17 @@ class GuildUserDao(BaseDao[GuildUser]):
         Returns:
             List[GuildUser]: List of user's guild memberships
         """
+        base_sql = '''SELECT user_id, guild_id, name, nickname, level,
+                             streak, highest_streak, exp, exp_gained, exp_lost, currency,
+                             slots_free_spins_remaining, slots_locked_bet_amount, slots_bonus_total_won,
+                             messages_sent, reactions_sent, joined_at, last_active,
+                             daily, last_daily, is_active
+                      FROM GuildUsers WHERE user_id = %s'''
+
         if active_only:
-            sql = 'SELECT * FROM GuildUsers WHERE user_id = %s AND is_active = TRUE ORDER BY last_active DESC'
+            sql = base_sql + ' AND is_active = TRUE ORDER BY last_active DESC'
         else:
-            sql = 'SELECT * FROM GuildUsers WHERE user_id = %s ORDER BY last_active DESC'
+            sql = base_sql + ' ORDER BY last_active DESC'
 
         try:
             results = self.execute_query(sql, (user_id,))
@@ -730,7 +749,17 @@ class GuildUserDao(BaseDao[GuildUser]):
         Returns:
             bool: True if successful, False otherwise
         """
+        connection = None
+        cursor = None
         try:
+            # Get a dedicated connection for the transaction
+            connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+            if not connection:
+                self.logger.error(f"Could not get a connection to update currency for user {user_id}")
+                return False
+            
+            cursor = connection.cursor()
+
             # Update guild user currency
             guild_sql = """
                 UPDATE GuildUsers
@@ -747,15 +776,28 @@ class GuildUserDao(BaseDao[GuildUser]):
             """
 
             # Execute both updates
-            self.execute_query(guild_sql, (currency_delta, user_id, guild_id), commit=True)
-            self.execute_query(global_sql, (currency_delta, user_id), commit=True)
+            cursor.execute(guild_sql, (currency_delta, user_id, guild_id))
+            cursor.execute(global_sql, (currency_delta, user_id))
+
+            # Commit the transaction
+            connection.commit()
 
             self.logger.debug(f"Updated currency for user {user_id} in guild {guild_id}: delta={currency_delta}")
             return True
 
         except Exception as e:
+            if connection:
+                try:
+                    connection.rollback()
+                except Exception as rb_e:
+                    self.logger.error(f"Error rolling back transaction: {rb_e}")
             self.logger.error(f"Error updating currency with global sync for user {user_id} in guild {guild_id}: {e}")
             return False
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
     def update_slots_bonus_state(self, user_id: int, guild_id: int,
                                  free_spins_remaining: int,
@@ -896,13 +938,14 @@ class GuildUserDao(BaseDao[GuildUser]):
             """
             cursor.execute(guild_sql, (amount, user_id, guild_id))
 
-            # 2. Add to bank balance
+            # 2. Add to bank balance and deduct fee from total currency
             bank_sql = """
                 UPDATE Users
-                SET bank_balance = bank_balance + %s
+                SET bank_balance = bank_balance + %s,
+                    total_currency = total_currency - %s
                 WHERE id = %s
             """
-            cursor.execute(bank_sql, (net_deposit, user_id))
+            cursor.execute(bank_sql, (net_deposit, fee, user_id))
 
             # 3. If fee exists, add to guild vault
             if fee > 0:
@@ -1019,13 +1062,14 @@ class GuildUserDao(BaseDao[GuildUser]):
 
             cursor = connection.cursor()
 
-            # 1. Deduct from bank (amount + fee)
+            # 1. Deduct from bank (amount + fee) and update total currency
             bank_sql = """
                 UPDATE Users
-                SET bank_balance = bank_balance - %s
+                SET bank_balance = bank_balance - %s,
+                    total_currency = total_currency - %s
                 WHERE id = %s
             """
-            cursor.execute(bank_sql, (total_needed, user_id))
+            cursor.execute(bank_sql, (total_needed, fee, user_id))
 
             # 2. Add amount to guild wallet
             guild_sql = """

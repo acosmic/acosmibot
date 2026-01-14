@@ -51,18 +51,19 @@ class AppLogger:
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
         handler.setFormatter(formatter)
 
-        # Clear any existing handlers attached to the root logger
-        for h in logging.root.handlers[:]:
-            logging.root.removeHandler(h)
-
-        # Add the handler to the root logger
-        logging.root.addHandler(handler)
-        logging.root.setLevel(logging.DEBUG)
+        # Only configure root logger once (on first AppLogger instantiation)
+        if not logging.root.handlers:
+            # Add the handler to the root logger
+            logging.root.addHandler(handler)
+            logging.root.setLevel(logging.DEBUG)
 
         # Configure the discord logger
         discord_logger = logging.getLogger('discord')
-        discord_logger.addHandler(handler)
-        discord_logger.setLevel(logging.INFO)
+        # Only add handler if discord logger has no handlers yet (prevents duplicates)
+        if not discord_logger.handlers:
+            discord_logger.addHandler(handler)
+            discord_logger.setLevel(logging.INFO)
+            discord_logger.propagate = False
 
         # Suppress lower-level logs for specific libraries
         logging.getLogger('httpx').setLevel(logging.WARNING)

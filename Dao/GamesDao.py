@@ -137,6 +137,7 @@ class GamesDao(BaseDao):
             WHERE {where_clause}
             GROUP BY game_type
         """
+        # Note: This query uses aggregate functions and GROUP BY, not SELECT *, so no changes needed
 
         try:
             results = self.execute_query(sql, params)
@@ -196,9 +197,11 @@ class GamesDao(BaseDao):
         where_clause = " AND ".join(where_clauses)
 
         sql = f"""
-            SELECT * FROM Games 
+            SELECT id, user_id, guild_id, game_type, amount_bet, amount_won,
+                   amount_lost, result, game_data, created_at
+            FROM Games
             WHERE {where_clause}
-            ORDER BY created_at DESC 
+            ORDER BY created_at DESC
             LIMIT %s
         """
         params.append(limit)
@@ -254,6 +257,7 @@ class GamesDao(BaseDao):
             FROM Games
             WHERE {where_clause}
         """
+        # Note: This query uses aggregate functions, not SELECT *, so no changes needed
 
         try:
             result = self.execute_query(sql, params)
@@ -306,7 +310,7 @@ class GamesDao(BaseDao):
             order_by = "ORDER BY (SUM(amount_won) - SUM(amount_lost)) DESC"
 
         sql = f"""
-            SELECT 
+            SELECT
                 user_id,
                 COUNT(*) as total_games,
                 SUM(amount_won) as total_won,
@@ -314,13 +318,14 @@ class GamesDao(BaseDao):
                 (SUM(amount_won) - SUM(amount_lost)) as net_profit,
                 SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
                 (SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) / COUNT(*) * 100) as win_rate
-            FROM Games 
+            FROM Games
             {where_clause}
             GROUP BY user_id
             HAVING total_games >= 3
             {order_by}
             LIMIT %s
         """
+        # Note: This query uses aggregate functions and GROUP BY, not SELECT *, so no changes needed
 
         params.append(limit)
 
