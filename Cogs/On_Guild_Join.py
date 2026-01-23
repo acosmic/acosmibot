@@ -1,6 +1,7 @@
 from operator import truediv
 
 import discord
+import json
 from discord.ext import commands
 from datetime import datetime
 from Dao.GuildDao import GuildDao
@@ -16,6 +17,146 @@ import asyncio
 
 load_dotenv()
 logger = AppLogger(__name__).get_logger()
+
+# Default settings for new guilds
+DEFAULT_GUILD_SETTINGS = {
+    "ai": {
+        "model": "gpt-4o-mini",
+        "enabled": False,
+        "channel_mode": "exclude",
+        "instructions": "Core vibe: Dry, minimal, deadpan monologues. Sounds unimpressed. Sarcastic and condescending. Doesn't always answer directly—often deflects, reframes, or answers the question they wish was asked. Respond in a single paragraph, 2–6 sentences. Don't overdo your answers. Don't constantly finish with a question.\n\nRecurring Moves:\n-Deflection: Answer a nearby question instead of the literal one.\n-Undercut: Provide a fact, then puncture it with a dry aside.\n-Elegantly wrong-foot: If user is fishing for compliments, pivot to mild roast.\n\n-If accused of obsession, deflect: \"That's a reach. Anyway…\".\n-Refusals: If content is disallowed or sketchy, decline in deadpan, one line, no moralizing.\nDiscord etiquette: Never ping @everyone or mass mention. No personal data requests.",
+        "allowed_channels": [],
+        "excluded_channels": []
+    },
+    "games": {
+        "enabled": True,
+        "slots-config": {
+            "enabled": True,
+            "tier_emojis": {
+                "rare": ["🍑"],
+                "common": ["🐒", "🐢", "🦉", "🦏", "🦖"],
+                "scatter": ["💎"],
+                "uncommon": ["🍾", "🍸", "🍺"],
+                "legendary": ["🍆", "🫃"]
+            }
+        }
+    },
+    "roles": {
+        "mode": "additive",
+        "enabled": False,
+        "role_cache": {},
+        "role_mappings": {},
+        "role_announcement": False,
+        "remove_previous_roles": False,
+        "announcement_channel_id": None
+    },
+    "twitch": {
+        "enabled": False,
+        "vod_settings": {
+            "enabled": True,
+            "edit_message_when_vod_available": True
+        },
+        "tracked_streamers": [],
+        "announcement_settings": {
+            "color": "0x6441A4",
+            "include_game": True,
+            "include_thumbnail": True,
+            "include_start_time": True,
+            "include_viewer_count": True
+        },
+        "announcement_channel_id": None
+    },
+    "youtube": {
+        "enabled": False,
+        "vod_settings": {
+            "enabled": True,
+            "vod_message_suffix": "[Watch VOD]({vod_url})",
+            "edit_message_when_vod_available": True
+        },
+        "tracked_streamers": [],
+        "announcement_settings": {
+            "color": "0xFF0000",
+            "include_game": True,
+            "include_thumbnail": True,
+            "include_start_time": True,
+            "include_viewer_count": True
+        },
+        "announcement_channel_id": None
+    },
+    "leveling": {
+        "enabled": False,
+        "level_up_message": "{username}, you have reached level {level}! Gained {credits} Credits!",
+        "level_up_announcements": False,
+        "announcement_channel_id": None,
+        "daily_announcement_message": "{username} claimed their daily reward. {credits} Credits!",
+        "daily_announcements_enabled": False,
+        "level_up_message_with_streak": "{username} reached level {level}! Gained {credits} Credits! {base_credits} + {streak_bonus} from {streak}x Streak!",
+        "daily_announcement_channel_id": None,
+        "daily_announcement_message_with_streak": "{username} claimed their daily reward! +{credits} Credits! ({base_credits} + {streak_bonus} from {streak}x streak!)"
+    },
+    "moderation": {
+        "events": {
+            "on_member_join": {
+                "color": "#00ff00",
+                "enabled": False,
+                "message": "Welcome {user.mention} to the server!",
+                "channel_id": None
+            },
+            "on_message_edit": {
+                "enabled": False,
+                "channel_id": None
+            },
+            "on_member_remove": {
+                "color": "#ff0000",
+                "enabled": False,
+                "message": "{user.name} has left the server.",
+                "channel_id": None
+            },
+            "on_member_update": {
+                "nickname_change": {
+                    "enabled": False,
+                    "channel_id": None
+                }
+            },
+            "on_message_delete": {
+                "enabled": False,
+                "channel_id": None
+            },
+            "on_audit_log_entry": {
+                "ban": {
+                    "enabled": False,
+                    "channel_id": None
+                },
+                "kick": {
+                    "enabled": False,
+                    "channel_id": None
+                },
+                "mute": {
+                    "enabled": False,
+                    "channel_id": None
+                },
+                "unban": {
+                    "enabled": False,
+                    "channel_id": None
+                },
+                "role_change": {
+                    "enabled": False,
+                    "channel_id": None
+                }
+            }
+        },
+        "enabled": False,
+        "mod_log_channel_id": None,
+        "member_activity_channel_id": None
+    },
+    "cross_server_portal": {
+        "enabled": False,
+        "channel_id": None,
+        "portal_cost": 1000,
+        "display_name": None,
+        "public_listing": False
+    }
+}
 
 
 class On_Guild_Join(commands.Cog):
@@ -78,7 +219,7 @@ class On_Guild_Join(commands.Cog):
                     owner_id=guild.owner_id,
                     member_count=guild.member_count,
                     active=True,
-                    settings=None,  # Can be expanded later for guild-specific settings
+                    settings=json.dumps(DEFAULT_GUILD_SETTINGS),
                     created=formatted_join_date,
                     last_active=formatted_join_date,
                     vault_currency=0  # Default vault currency

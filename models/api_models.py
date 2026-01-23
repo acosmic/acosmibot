@@ -40,7 +40,7 @@ class UpdateLevelingSettingsRequest(BaseModel):
     level_up_announcements: Optional[bool] = None
     announcement_channel_id: Optional[str] = None
     exp_multiplier: Optional[float] = Field(None, ge=0.1, le=5.0)
-    max_level: Optional[int] = Field(None, ge=1, le=1000)
+    max_level: Optional[int] = Field(None, ge=1, le=1000000)
     exp_formula: Optional[ExpFormula] = None
     base_exp: Optional[int] = Field(None, ge=50, le=1000)
     exp_growth_factor: Optional[float] = Field(None, ge=1.0, le=3.0)
@@ -71,7 +71,6 @@ class UpdateRoleSettingsRequest(BaseModel):
     enabled: Optional[bool] = None
     mode: Optional[RoleAssignmentMode] = None
     remove_previous_roles: Optional[bool] = None
-    max_level_tracked: Optional[int] = Field(None, ge=1, le=1000)
     role_announcement: Optional[bool] = None
     role_announcement_message: Optional[str] = None
     announcement_channel_id: Optional[str] = None
@@ -98,7 +97,7 @@ class UpdateRoleSettingsRequest(BaseModel):
 
 class RoleMappingRequest(BaseModel):
     """Request model for updating role mappings"""
-    level: int = Field(ge=1, le=1000)
+    level: int = Field(ge=1, le=1000000)
     role_ids: List[str]
 
     @field_validator('role_ids')
@@ -235,8 +234,8 @@ class BulkRoleMappingRequest(BaseModel):
             # Validate level
             try:
                 level = int(level_str)
-                if level < 1 or level > 1000:
-                    raise ValueError(f"Level {level} must be between 1 and 1000")
+                if level < 1 or level > 1000000:
+                    raise ValueError(f"Level {level} must be between 1 and 1000000")
             except ValueError:
                 raise ValueError(f"Invalid level key: {level_str}")
 
@@ -287,7 +286,7 @@ class GuildStatsResponse(BaseModel):
 
 class PreviewRoleAssignmentRequest(BaseModel):
     """Request to preview what roles a user would get at a specific level"""
-    level: int = Field(ge=1, le=1000)
+    level: int = Field(ge=1, le=1000000)
     user_id: Optional[str] = None  # Optional user ID to check current roles
 
     class Config:

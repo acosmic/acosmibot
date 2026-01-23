@@ -4,35 +4,41 @@ Tasks package — contains all recurring background tasks for the bot.
 
 from .daily_reward_task import daily_reward_task
 from .streaming_monitor_task import streaming_monitor_task
-# Replaced with EventSub webhook-based system (status updates only now)
-from .unified_streaming_status_update_task import start_task as unified_streaming_status_update_task
-from .unified_streaming_vod_checker import start_task as unified_streaming_vod_checker
 from .lottery_end_task import lottery_end_task
 from .check_reminders_task import check_reminders_task
 from .unified_stats_reconciliation_task import unified_stats_reconciliation_task
 from .bank_interest_task import bank_interest_task
 from .portal_manager import check_expired_portals
-from .process_youtube_events_task import start_task as start_process_youtube_events_task # Alias to avoid conflict with module name
-from .youtube_rss_poll_task import start_task as start_youtube_rss_poll_task # RSS polling for YouTube videos/streams
 
-# Deprecated tasks (kept for 30-day transition period)
-# Old Twitch-only task replaced by EventSub webhook system
-from .twitch_live_task import twitch_live_check_task
-# from .twitch_vod_checker import twitch_vod_checker_task
-# Deprecated: currency_reconciliation_task (replaced by unified_stats_reconciliation_task)
-# from .currency_reconciliation_task import currency_reconciliation_task
+# Twitch tasks (decoupled)
+from .twitch_status_update_task import start_task as twitch_status_update_task
+from .twitch_vod_checker_task import start_task as twitch_vod_checker_task
+
+# YouTube tasks (decoupled)
+from .process_youtube_events_task import start_task as process_youtube_events_task
+from .youtube_rss_poll_task import start_task as youtube_rss_poll_task
+from .youtube_vod_checker_task import start_task as youtube_vod_checker_task
+
+# Kick tasks (decoupled)
+from .kick_status_update_task import start_task as kick_status_update_task
+from .kick_vod_checker_task import start_task as kick_vod_checker_task
 
 __all__ = [
     "daily_reward_task",
     "streaming_monitor_task",
-    "unified_streaming_status_update_task",  # EventSub-based (status updates only)
-    "unified_streaming_vod_checker",
     "lottery_end_task",
     "check_reminders_task",
     "unified_stats_reconciliation_task",
     "bank_interest_task",
     "portal_manager",
-    "process_youtube_events_task",  # Process YouTube webhook/RSS events
-    "youtube_rss_poll_task",  # Poll YouTube RSS feeds for new videos/streams
-    # twitch_live_task removed - replaced by EventSub webhooks
+    # Twitch tasks
+    "twitch_status_update_task",
+    "twitch_vod_checker_task",
+    # YouTube tasks
+    "process_youtube_events_task",
+    "youtube_rss_poll_task",
+    "youtube_vod_checker_task",
+    # Kick tasks
+    "kick_status_update_task",
+    "kick_vod_checker_task",
 ]

@@ -34,10 +34,37 @@ class Rank(commands.Cog):
         target_user = user if user else interaction.user
 
         try:
-            # Get guild user rank and data
+            # Try to get real-time data from XP session first
+            from Services.XPSessionManager import get_xp_session_manager
+            import json
+
+            session_manager = get_xp_session_manager()
+            session = None
+
+            # Check if user has active XP session (real-time data)
+            if session_manager.redis_available:
+                try:
+                    session_key = f"xp_session:{interaction.guild.id}:{target_user.id}"
+                    session_data = await session_manager.redis.get(session_key)
+                    if session_data:
+                        session = json.loads(session_data)
+                        logger.info(f"📊 Rank card using live session data for {target_user.name}")
+                except Exception as e:
+                    logger.warning(f"Could not load session for rank card: {e}")
+
+            # Get guild user rank and data from DB
             user_rank = guild_user_dao.get_guild_user_rank(target_user.id, interaction.guild.id)
             current_guild_user = guild_user_dao.get_guild_user(target_user.id, interaction.guild.id)
             current_global_user = user_dao.get_user(target_user.id)
+
+            # Override with session data if available (real-time XP/levels)
+            if session is not None and current_guild_user is not None:
+                current_guild_user.exp = session["guild_exp"]
+                current_guild_user.level = session["guild_level"]
+                current_guild_user.exp_gained = session["guild_exp_gained"]
+                if current_global_user:
+                    current_global_user.global_level = session["global_level"]
+                    current_global_user.global_exp = session["global_exp"]
 
             if user_rank is not None and current_guild_user is not None:
                 # Create the rank card image
@@ -203,7 +230,7 @@ class Rank(commands.Cog):
 
             # Draw level text with padding after rank
             level_x = text_start_x + rank_text_width + 25  # 25px padding
-            d.text((level_x, 110), level_text, font=font_rank_level, fill=(73, 23, 214))  # purple level text
+            d.text((level_x, 110), level_text, font=font_rank_level, fill=(0, 255, 255))  # cyan level text
 
             # XP text remains at original position
             d.text((text_start_x, 150), xp_text, font=font_xp, fill=(200, 200, 200))
@@ -228,7 +255,7 @@ class Rank(commands.Cog):
             # Draw XP bar fill
             xp_bar_fill_img = Image.new("RGBA", (bar_width, bar_height), (0, 0, 0, 0))
             draw = ImageDraw.Draw(xp_bar_fill_img)
-            draw.rounded_rectangle([0, 0, fill_width, bar_height], radius=bar_height // 2, fill=(73, 23, 214))
+            draw.rounded_rectangle([0, 0, fill_width, bar_height], radius=bar_height // 2, fill=(0, 255, 255))
 
             # Create outline
             outline = Image.new("RGBA", (bar_width + 6, bar_height + 6), (0, 0, 0, 0))

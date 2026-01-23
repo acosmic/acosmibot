@@ -6,6 +6,7 @@ from discord.ext import commands
 from Services.ConfigCache import initialize_config_cache, cleanup_config_cache
 from Services.PerformanceMonitor import initialize_performance_monitor, cleanup_performance_monitor
 from Services.MessageCountBuffer import initialize_message_count_buffer, cleanup_message_count_buffer
+from Services.XPSessionManager import initialize_xp_session_manager, cleanup_xp_session_manager
 from logger import AppLogger
 from Tasks.task_manager import register_tasks
 from Cogs import __all__ as enabled_cogs
@@ -21,6 +22,7 @@ class Bot(commands.Bot):
         intents.message_content = True
         intents.members = True
         intents.presences = True
+        intents.moderation = True  # Required for on_audit_log_entry events (ban, unban, kick, role changes)
         super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=intents, help_command=None)
         self.posted = False
 
@@ -41,6 +43,13 @@ class Bot(commands.Bot):
         except Exception as e:
             logger.error(f"❌ Failed to initialize config cache: {e}")
             logger.warning("⚠️  Bot will continue with degraded performance")
+
+        try:
+            await initialize_xp_session_manager()
+            logger.info("✅ XP session manager initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize XP session manager: {e}")
+            logger.warning("⚠️  XP will be written immediately to database (higher DB load)")
 
         try:
             await initialize_message_count_buffer()
@@ -68,6 +77,13 @@ class Bot(commands.Bot):
     async def close(self):
         """Close the bot and clean up database connections"""
         logger.info("🛑 Bot shutting down, closing database connection pools...")
+
+        # Cleanup XP session manager FIRST (most critical data)
+        try:
+            await cleanup_xp_session_manager()
+            logger.info("✅ XP session manager cleaned up")
+        except Exception as e:
+            logger.error(f"Error during XP session manager cleanup: {e}")
 
         # Cleanup message count buffer (flushes remaining counts)
         try:

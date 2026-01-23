@@ -25,7 +25,7 @@ class On_Raw_Member_Remove(commands.Cog):
                 return  # Skip bot accounts
 
             logger.info(f"{user.name} left the server {guild.name}.")
-            mod_channel = self.bot.get_channel(1155580804269867170)  # janitorial 🚽
+            # mod_channel = self.bot.get_channel(1155580804269867170)  # Removed hardcoded legacy logging
 
             guild_user_dao = GuildUserDao()
             guild_dao = GuildDao()
@@ -43,9 +43,9 @@ class On_Raw_Member_Remove(commands.Cog):
                     # Use global sync to remove the currency from the user
                     guild_user_dao.update_currency_with_global_sync(user.id, guild.id, -currency_to_confiscate)
 
-                    # Send the message to the mod channel
-                    if mod_channel:
-                        await mod_channel.send(f"## {user.name} left the server. {currency_to_confiscate:,.0f} credits removed and added to the Vault.")
+                    # Logging is now handled by ModerationLog.py
+                    # if mod_channel:
+                    #    await mod_channel.send(f"## {user.name} left the server. {currency_to_confiscate:,.0f} credits removed and added to the Vault.")
 
                 # Deactivate the user for this guild
                 guild_user_dao.deactivate_guild_user(user.id, guild.id)

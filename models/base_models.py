@@ -44,7 +44,7 @@ class LevelingSettings(BaseModel):
     level_up_message_with_streak: str = "🎉 {mention} GUILD LEVEL UP! You have reached level {level}! Gained {credits} Credits! {base_credits} + {streak_bonus} from {streak}x Streak!"
 
     exp_multiplier: float = Field(default=1.0, ge=0.1, le=5.0)
-    max_level: int = Field(default=100, ge=1, le=1000)
+    max_level: int = Field(default=100, ge=1, le=1000000)
 
     # XP formula settings
     exp_formula: ExpFormula = ExpFormula.QUADRATIC
@@ -98,7 +98,6 @@ class RoleSystemSettings(BaseModel):
 
     # Role management options
     remove_previous_roles: bool = True
-    max_level_tracked: int = Field(default=50, ge=1, le=1000)
 
     # Announcement settings
     role_announcement: bool = False  # Default to False to prevent unwanted spam
@@ -110,8 +109,8 @@ class RoleSystemSettings(BaseModel):
         for level_str in v.keys():
             try:
                 level = int(level_str)
-                if level < 0 or level > 1000:
-                    raise ValueError(f"Level {level} must be between 0 and 1000")
+                if level < 0 or level > 1000000:
+                    raise ValueError(f"Level {level} must be between 0 and 1000000")
             except ValueError:
                 raise ValueError(f"Invalid level key: {level_str}. Must be a number.")
         return v
@@ -170,7 +169,6 @@ class RoleSystemSettings(BaseModel):
                     }
                 },
                 "remove_previous_roles": True,
-                "max_level_tracked": 50,
                 "role_announcement": False
             }
         }

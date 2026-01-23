@@ -99,8 +99,8 @@ class LevelingSystem:
         """
         Process message counting and experience gain from a message.
 
-        Message counting happens ALWAYS (independent of leveling toggle).
-        Exp/leveling only processes when leveling is enabled.
+        Uses XP sessions (Redis) for in-memory XP tracking with periodic persistence.
+        Falls back to immediate DB writes if Redis is unavailable.
         """
         # Skip bots
         if message.author.bot:
@@ -116,69 +116,119 @@ class LevelingSystem:
         # Get leveling configuration
         config = await self.get_leveling_config(guild_id)
 
+        # Get services
+        from Services.MessageCountBuffer import get_message_count_buffer
+        from Services.PerformanceMonitor import get_performance_monitor
+        from Services.XPSessionManager import get_xp_session_manager
+
+        message_buffer = get_message_count_buffer()
+        perf_monitor = get_performance_monitor()
+        session_manager = get_xp_session_manager()
+
+        # === BUFFER MESSAGE COUNTS (non-critical, batched every 30s) ===
+        await message_buffer.increment_activity(guild_id, user_id)
+        await perf_monitor.record_message_processed()
+
+        # === TRY SESSION-BASED XP TRACKING (Redis) ===
         guild_user_dao = None
         user_dao = None
+
         try:
-            # Get DAOs
             guild_user_dao = GuildUserDao()
             user_dao = UserDao()
 
-            # Get or create guild user
+            # Get or create XP session
+            session = await session_manager.get_or_create_session(
+                guild_id, user_id, guild_user_dao, user_dao
+            )
+
+            if session is not None:
+                # === SESSION-BASED PATH (Redis available) ===
+                # Calculate XP with streak multiplier
+                base_exp = config["exp_per_message"]
+                streak = min(session["streak"], config["max_streak_bonus"])
+                streak_multiplier = config["streak_multiplier"]
+                bonus_exp = streak * streak_multiplier
+                xp_with_streak = math.ceil((base_exp * bonus_exp) + base_exp)
+
+                # Apply premium multiplier
+                premium_multiplier = PremiumChecker.get_xp_multiplier(message.guild.id)
+
+                # Grant XP to session (checks cooldown internally)
+                level_up, new_level, xp_gained, updated_session = await session_manager.grant_xp(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    xp_amount=xp_with_streak,
+                    cooldown_seconds=config["exp_cooldown_seconds"],
+                    premium_multiplier=premium_multiplier
+                )
+
+                if xp_gained > 0:
+                    # Set cooldown in memory
+                    self.set_user_cooldown(user_id, guild_id)
+
+                    # Record XP grant
+                    await perf_monitor.record_xp_grant()
+
+                    # Log XP gain
+                    if streak > 0:
+                        logger.info(
+                            f'{message.author.name} in {message.guild.name} - EXP GAINED = {xp_gained} '
+                            f'({base_exp} base + {xp_gained - base_exp} from {streak}x streak) [SESSION]'
+                        )
+                    else:
+                        logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {xp_gained} [SESSION]')
+
+                    # Handle level up if it occurred
+                    if level_up:
+                        # Load guild_user for level-up handler (needs streak, currency, etc.)
+                        guild_user = guild_user_dao.get_guild_user(user_id, guild_id)
+                        if guild_user:
+                            old_level = new_level - 1  # We know they just leveled up
+                            await self.handle_level_up(message, guild_user, old_level, new_level, config)
+                    else:
+                        # Check for missing roles
+                        guild_user = guild_user_dao.get_guild_user(user_id, guild_id)
+                        if guild_user:
+                            await self.check_and_apply_missing_roles(message, guild_user, new_level)
+
+                return  # Session-based processing complete
+
+            # === FALLBACK PATH (Redis unavailable) ===
+            # Fall back to immediate DB writes (current behavior)
+            logger.debug(f"XP session unavailable for user {user_id}, using fallback DB write")
+
             guild_user = guild_user_dao.get_guild_user(user_id, guild_id)
             if not guild_user:
-                # Initialize new guild user if needed
                 return
 
-            # Get or create global user
             global_user = user_dao.get_user(user_id)
             if not global_user:
                 return
 
-            # === BUFFER MESSAGE COUNTS (non-critical, batched every 30s) ===
-            # Message counts are handled separately from XP to reduce DB writes
-            from Services.MessageCountBuffer import get_message_count_buffer
-            from Services.PerformanceMonitor import get_performance_monitor
-
-            message_buffer = get_message_count_buffer()
-            await message_buffer.increment_activity(guild_id, user_id)
-
-            # Record message processed
-            perf_monitor = get_performance_monitor()
-            await perf_monitor.record_message_processed()
-
-            # === CHECK COOLDOWN - Skip XP if on cooldown ===
-            # Message count already buffered above, no DB write needed here
+            # Check cooldown
             if self.is_user_on_cooldown(user_id, guild_id, config["exp_cooldown_seconds"]):
-                # Skip XP grant and DB write - message count buffered in memory
                 return
 
-            # === NOT ON COOLDOWN - GRANT XP AND WRITE TO DB ===
-            # Note: Message counts are NOT updated here (handled by buffer)
-            # Only update last_active for streak/activity tracking
+            # Update activity
             guild_user.last_active = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             global_user.last_seen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Calculate old level
+            # Calculate XP with streak
             old_level = self.calculate_level_from_exp(guild_user.exp)
-
-            # Calculate experience with streak multiplier
             base_exp = config["exp_per_message"]
-
-            # Apply streak multiplier (similar to current system)
-            streak = min(guild_user.streak, config["max_streak_bonus"])  # Cap streak bonus
+            streak = min(guild_user.streak, config["max_streak_bonus"])
             streak_multiplier = config["streak_multiplier"]
             bonus_exp = streak * streak_multiplier
             exp_gained = math.ceil((base_exp * bonus_exp) + base_exp)
 
-            # Apply premium XP multiplier (1.0x free, 1.2x premium = 20% boost)
+            # Apply premium multiplier
             premium_multiplier = PremiumChecker.get_xp_multiplier(message.guild.id)
             exp_gained = math.ceil(exp_gained * premium_multiplier)
 
-            # Add experience
+            # Apply XP
             guild_user.exp += exp_gained
             guild_user.exp_gained += exp_gained
-
-            # Update global exp
             global_user.global_exp += exp_gained
 
             # Calculate new level
@@ -186,7 +236,7 @@ class LevelingSystem:
             guild_user.level = new_level
             global_user.global_level = self.calculate_level_from_exp(global_user.global_exp)
 
-            # Save to database
+            # Write to database
             guild_user_dao.update_guild_user(guild_user)
             user_dao.update_user(global_user)
 
@@ -196,24 +246,24 @@ class LevelingSystem:
             # Record XP grant
             await perf_monitor.record_xp_grant()
 
-            # Log experience gain
+            # Log XP gain
             if streak > 0:
                 logger.info(
-                    f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gained} ({base_exp} base + {exp_gained - base_exp} from {streak}x streak)')
+                    f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gained} '
+                    f'({base_exp} base + {exp_gained - base_exp} from {streak}x streak) [FALLBACK]'
+                )
             else:
-                logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gained}')
+                logger.info(f'{message.author.name} in {message.guild.name} - EXP GAINED = {exp_gained} [FALLBACK]')
 
-            # Check for level up
+            # Handle level up
             if new_level > old_level:
                 await self.handle_level_up(message, guild_user, old_level, new_level, config)
             else:
-                # Even if no level up occurred, check if user is missing roles for their current level
                 await self.check_and_apply_missing_roles(message, guild_user, new_level)
 
         except Exception as e:
             logger.error(f"Error processing message exp for user {user_id} in guild {guild_id}: {e}")
         finally:
-            # Close DAOs to return connections to pool
             if guild_user_dao:
                 try:
                     guild_user_dao.close()

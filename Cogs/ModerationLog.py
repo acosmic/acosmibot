@@ -13,7 +13,10 @@ class ModerationLog(commands.Cog):
         """Fetches the moderation settings for a given guild."""
         if guild_id is None:
             return None
-        return self.guild_dao.get_guild_settings(guild_id).get("moderation")
+        settings = self.guild_dao.get_guild_settings(guild_id)
+        if settings is None:
+            return None
+        return settings.get("moderation")
 
     async def _get_log_channel(self, channel_id):
         """Fetches a channel object from an ID."""
@@ -66,8 +69,8 @@ class ModerationLog(commands.Cog):
             )
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.add_field(name="Account Created", value=f"<t:{int(member.created_at.timestamp())}:R>")
+            embed.add_field(name="Time", value=f"<t:{int(discord.utils.utcnow().timestamp())}:F> (<t:{int(discord.utils.utcnow().timestamp())}:R>)")
             embed.set_footer(text=f"ID: {member.id}")
-            embed.timestamp = discord.utils.utcnow()
             await log_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -75,6 +78,20 @@ class ModerationLog(commands.Cog):
         mod_settings = self._get_moderation_settings(member.guild.id)
         if not mod_settings or not mod_settings.get("enabled") or not mod_settings.get("events", {}).get("on_member_remove", {}).get("enabled"):
             return
+
+        # Check if user was kicked or banned - if so, skip the "left" message
+        # since those actions have their own log entries
+        try:
+            async for entry in member.guild.audit_logs(limit=5):
+                # Only check recent entries (within last 5 seconds)
+                if (discord.utils.utcnow() - entry.created_at).total_seconds() > 5:
+                    break
+                # If this member was kicked or banned, don't post "left" message
+                if entry.target and entry.target.id == member.id:
+                    if entry.action in (discord.AuditLogAction.kick, discord.AuditLogAction.ban):
+                        return  # Skip - the kick/ban handler will log this
+        except discord.Forbidden:
+            pass  # Bot doesn't have audit log permission, continue normally
 
         event_settings = mod_settings["events"]["on_member_remove"]
         # Use event-specific channel or fall back to member_activity_channel_id
@@ -90,9 +107,9 @@ class ModerationLog(commands.Cog):
                 description=message,
                 color=color
             )
+            embed.add_field(name="Time", value=f"<t:{int(discord.utils.utcnow().timestamp())}:F> (<t:{int(discord.utils.utcnow().timestamp())}:R>)")
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"ID: {member.id}")
-            embed.timestamp = discord.utils.utcnow()
             await log_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -116,8 +133,8 @@ class ModerationLog(commands.Cog):
             )
             if message.content:
                 embed.add_field(name="Content", value=message.content[:1024], inline=False)
+            embed.add_field(name="Time", value=f"<t:{int(discord.utils.utcnow().timestamp())}:F> (<t:{int(discord.utils.utcnow().timestamp())}:R>)")
             embed.set_footer(text=f"Author ID: {message.author.id} | Message ID: {message.id}")
-            embed.timestamp = discord.utils.utcnow()
             await log_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -141,8 +158,8 @@ class ModerationLog(commands.Cog):
             )
             embed.add_field(name="Before", value=before.content[:1024], inline=False)
             embed.add_field(name="After", value=after.content[:1024], inline=False)
+            embed.add_field(name="Time", value=f"<t:{int(discord.utils.utcnow().timestamp())}:F> (<t:{int(discord.utils.utcnow().timestamp())}:R>)")
             embed.set_footer(text=f"Author ID: {before.author.id} | Message ID: {after.id}")
-            embed.timestamp = discord.utils.utcnow()
             await log_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -166,12 +183,12 @@ class ModerationLog(commands.Cog):
                 )
                 embed.add_field(name="Before", value=before.nick or before.name, inline=False)
                 embed.add_field(name="After", value=after.nick or after.name, inline=False)
+                embed.add_field(name="Time", value=f"<t:{int(discord.utils.utcnow().timestamp())}:F> (<t:{int(discord.utils.utcnow().timestamp())}:R>)")
                 embed.set_footer(text=f"ID: {before.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
     @commands.Cog.listener()
-    async def on_audit_log_entry(self, entry):
+    async def on_audit_log_entry_create(self, entry):
         mod_settings = self._get_moderation_settings(entry.guild.id)
         if not mod_settings or not mod_settings.get("enabled"):
             return
@@ -184,13 +201,15 @@ class ModerationLog(commands.Cog):
             channel_id = ban_settings.get("channel_id") or mod_settings.get("mod_log_channel_id")
             log_channel = await self._get_log_channel(channel_id)
             if log_channel:
+                # entry.target may be Object (just ID) if user not in cache
+                target_mention = getattr(entry.target, 'mention', f'<@{entry.target.id}>')
                 embed = discord.Embed(
                     title="Member Banned",
-                    description=f"**Target:** {entry.target.mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}",
+                    description=f"**Target:** {target_mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}",
                     color=discord.Color.red()
                 )
+                embed.add_field(name="Time", value=f"<t:{int(entry.created_at.timestamp())}:F> (<t:{int(entry.created_at.timestamp())}:R>)")
                 embed.set_footer(text=f"Target ID: {entry.target.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
         # Member Unbanned
@@ -199,13 +218,15 @@ class ModerationLog(commands.Cog):
             channel_id = unban_settings.get("channel_id") or mod_settings.get("mod_log_channel_id")
             log_channel = await self._get_log_channel(channel_id)
             if log_channel:
+                # entry.target may be Object (just ID) for unbanned users not in cache
+                target_mention = getattr(entry.target, 'mention', f'<@{entry.target.id}>')
                 embed = discord.Embed(
                     title="Member Unbanned",
-                    description=f"**Target:** {entry.target.mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}",
+                    description=f"**Target:** {target_mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}",
                     color=discord.Color.green()
                 )
+                embed.add_field(name="Time", value=f"<t:{int(entry.created_at.timestamp())}:F> (<t:{int(entry.created_at.timestamp())}:R>)")
                 embed.set_footer(text=f"Target ID: {entry.target.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
         # Member Kicked
@@ -214,13 +235,14 @@ class ModerationLog(commands.Cog):
             channel_id = kick_settings.get("channel_id") or mod_settings.get("mod_log_channel_id")
             log_channel = await self._get_log_channel(channel_id)
             if log_channel:
+                target_mention = getattr(entry.target, 'mention', f'<@{entry.target.id}>')
                 embed = discord.Embed(
                     title="Member Kicked",
-                    description=f"**Target:** {entry.target.mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}",
+                    description=f"**Target:** {target_mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}",
                     color=discord.Color.red()
                 )
+                embed.add_field(name="Time", value=f"<t:{int(entry.created_at.timestamp())}:F> (<t:{int(entry.created_at.timestamp())}:R>)")
                 embed.set_footer(text=f"Target ID: {entry.target.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
         # Member Muted (Timeout)
@@ -229,13 +251,14 @@ class ModerationLog(commands.Cog):
             channel_id = mute_settings.get("channel_id") or mod_settings.get("mod_log_channel_id")
             log_channel = await self._get_log_channel(channel_id)
             if log_channel:
+                target_mention = getattr(entry.target, 'mention', f'<@{entry.target.id}>')
                 embed = discord.Embed(
                     title="Member Muted (Timeout)",
-                    description=f"**Target:** {entry.target.mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}\n**Until:** <t:{int(entry.after.timed_out_until.timestamp())}:R>",
+                    description=f"**Target:** {target_mention}\n**Moderator:** {entry.user.mention}\n**Reason:** {entry.reason or 'No reason provided.'}\n**Until:** <t:{int(entry.after.timed_out_until.timestamp())}:R>",
                     color=discord.Color.orange()
                 )
+                embed.add_field(name="Time", value=f"<t:{int(entry.created_at.timestamp())}:F> (<t:{int(entry.created_at.timestamp())}:R>)")
                 embed.set_footer(text=f"Target ID: {entry.target.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
         # Member Unmuted (Timeout Removed)
@@ -244,13 +267,14 @@ class ModerationLog(commands.Cog):
             channel_id = mute_settings.get("channel_id") or mod_settings.get("mod_log_channel_id")
             log_channel = await self._get_log_channel(channel_id)
             if log_channel:
+                target_mention = getattr(entry.target, 'mention', f'<@{entry.target.id}>')
                 embed = discord.Embed(
                     title="Member Unmuted (Timeout Removed)",
-                    description=f"**Target:** {entry.target.mention}\n**Moderator:** {entry.user.mention}",
+                    description=f"**Target:** {target_mention}\n**Moderator:** {entry.user.mention}",
                     color=discord.Color.green()
                 )
+                embed.add_field(name="Time", value=f"<t:{int(entry.created_at.timestamp())}:F> (<t:{int(entry.created_at.timestamp())}:R>)")
                 embed.set_footer(text=f"Target ID: {entry.target.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
         # Role Changes
@@ -266,9 +290,10 @@ class ModerationLog(commands.Cog):
                 if not added_roles and not removed_roles:
                     return
 
+                target_mention = getattr(entry.target, 'mention', f'<@{entry.target.id}>')
                 embed = discord.Embed(
                     title="Member Roles Updated",
-                    description=f"**Member:** {entry.target.mention}\n**Moderator:** {entry.user.mention}",
+                    description=f"**Member:** {target_mention}\n**Moderator:** {entry.user.mention}",
                     color=discord.Color.blue()
                 )
                 if added_roles:
@@ -276,8 +301,8 @@ class ModerationLog(commands.Cog):
                 if removed_roles:
                     embed.add_field(name="Removed Roles", value=", ".join([r.mention for r in removed_roles]), inline=False)
 
+                embed.add_field(name="Time", value=f"<t:{int(entry.created_at.timestamp())}:F> (<t:{int(entry.created_at.timestamp())}:R>)")
                 embed.set_footer(text=f"ID: {entry.target.id}")
-                embed.timestamp = discord.utils.utcnow()
                 await log_channel.send(embed=embed)
 
 

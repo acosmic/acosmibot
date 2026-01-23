@@ -1,51 +1,45 @@
 #! /usr/bin/python3.10
 """
-Unified streaming status update task
+Twitch status update task
 
-Polls database every 30s to update viewer counts and stream metadata
-for active Twitch streams. Stream.online/offline events are now handled
-by EventSub webhooks via the API.
-
-YouTube tracking is currently disabled.
+Polls database to update viewer counts and stream metadata for active Twitch streams.
+Stream online/offline events are handled by EventSub webhooks via the API.
 """
 import asyncio
 import discord
 import logging
 import aiohttp
-from datetime import datetime
 from Services.twitch_service import TwitchService
 from Dao.TwitchAnnouncementDao import TwitchAnnouncementDao
-from typing import List
 
 logger = logging.getLogger(__name__)
 
 
 async def start_task(bot):
     """Entry point function that the task manager expects."""
-    await unified_streaming_status_update_task(bot)
+    await twitch_status_update_task(bot)
 
 
-async def unified_streaming_status_update_task(bot):
-    """Poll DB every 30s to update viewer counts on active streams."""
+async def twitch_status_update_task(bot):
+    """Poll DB every 30s to update viewer counts on active Twitch streams."""
     await bot.wait_until_ready()
 
-    logger.info("Unified streaming status update task started (30s interval)")
+    logger.info("Twitch status update task started (30s interval)")
 
     while not bot.is_closed():
-        logger.debug('Running unified_streaming_status_update_task')
+        logger.debug('Running twitch_status_update_task')
 
         try:
-            await _check_stream_status_updates(bot)
+            await _check_twitch_status_updates(bot)
         except Exception as e:
-            logger.error(f'Unified streaming status update task error: {e}', exc_info=True)
+            logger.error(f'Twitch status update task error: {e}', exc_info=True)
 
-        # Check every 30 seconds
         await asyncio.sleep(30)
 
 
-async def _check_stream_status_updates(bot):
+async def _check_twitch_status_updates(bot):
     """
-    Check active streams (stream_ended_at IS NULL in DB) for viewer count/title updates.
+    Check active Twitch streams for viewer count/title updates.
     Query DB for streams needing update, batch check Twitch API, update Discord messages.
     """
     dao = TwitchAnnouncementDao()
@@ -55,9 +49,6 @@ async def _check_stream_status_updates(bot):
         # Fetch Twitch streams needing status update (last_status_check_at > 20 min ago)
         twitch_due = dao.get_announcements_needing_status_update()
 
-        # NOTE: YouTube tracking is disabled
-        # youtube_due = dao.get_announcements_needing_status_update('youtube', update_interval_minutes=20)
-
         if not twitch_due:
             logger.debug("No Twitch streams needing status update")
             return
@@ -65,11 +56,9 @@ async def _check_stream_status_updates(bot):
         logger.debug(f"Checking status updates for {len(twitch_due)} Twitch streams")
 
         twitch_usernames = [a['streamer_username'] for a in twitch_due]
-
-        status_update_data = {}  # {username: stream_data}
+        status_update_data = {}
 
         async with aiohttp.ClientSession() as session:
-            # Batch check Twitch API
             if twitch_usernames:
                 try:
                     twitch_live_data = await twitch_service.get_live_streams_batch(session, twitch_usernames)
@@ -81,7 +70,6 @@ async def _check_stream_status_updates(bot):
         # Update announcements
         update_tasks = []
         for announcement in twitch_due:
-            # announcement is a dict from TwitchAnnouncementDao.get_announcements_needing_status_update()
             username = announcement['streamer_username']
 
             if username in status_update_data:
@@ -94,15 +82,13 @@ async def _check_stream_status_updates(bot):
                     new_title = stream_info.get('title')
 
                     if new_viewer_count is not None:
-                        update_tasks.append(_update_announcement_viewer_count(bot, announcement, new_viewer_count, new_title))
+                        update_tasks.append(_update_twitch_announcement(bot, announcement, new_viewer_count, new_title, dao))
                     else:
                         dao.update_last_status_check(announcement['id'])
                 else:
-                    # No stream data returned - stream may have ended but webhook might have failed
-                    logger.warning(f"Stream {username} not live in API check, but announcement still active. Webhook may have failed.")
+                    logger.warning(f"Stream {username} not live in API check, but announcement still active.")
                     dao.update_last_status_check(announcement['id'])
             else:
-                # Stream not live anymore - this shouldn't happen if webhooks work correctly
                 logger.warning(f"Stream {username} not found in live data, marking check time only")
                 dao.update_last_status_check(announcement['id'])
 
@@ -110,32 +96,31 @@ async def _check_stream_status_updates(bot):
             await asyncio.gather(*update_tasks, return_exceptions=True)
 
     except Exception as e:
-        logger.error(f"Error in _check_stream_status_updates: {e}", exc_info=True)
+        logger.error(f"Error in _check_twitch_status_updates: {e}", exc_info=True)
     finally:
         dao.close()
 
 
-async def _update_announcement_viewer_count(bot, announcement: dict, new_viewer_count: int, new_title: str = None):
-    """Update Discord message with new viewer count and title"""
-    dao = TwitchAnnouncementDao()
+async def _update_twitch_announcement(bot, announcement: dict, new_viewer_count: int, new_title: str, dao: TwitchAnnouncementDao):
+    """Update Discord message with new viewer count and title."""
     try:
         guild = bot.get_guild(announcement['guild_id'])
         if not guild:
-            logger.debug(f"Guild {announcement['guild_id']} not found for announcement {announcement['id']}")
+            logger.debug(f"Guild {announcement['guild_id']} not found")
             return
 
         channel = guild.get_channel(announcement['channel_id'])
         if not channel:
-            logger.debug(f"Channel {announcement['channel_id']} not found for announcement {announcement['id']}")
+            logger.debug(f"Channel {announcement['channel_id']} not found")
             return
 
         try:
             message = await channel.fetch_message(announcement['message_id'])
         except discord.NotFound:
-            logger.warning(f"Message {announcement['message_id']} not found during status update (may have been deleted)")
+            logger.warning(f"Message {announcement['message_id']} not found (may have been deleted)")
             return
         except discord.Forbidden:
-            logger.warning(f"No permission to fetch message {announcement['message_id']} in channel {announcement['channel_id']}")
+            logger.warning(f"No permission to fetch message {announcement['message_id']}")
             return
 
         if not message.embeds:
@@ -146,11 +131,10 @@ async def _update_announcement_viewer_count(bot, announcement: dict, new_viewer_
 
         # Update the description (stream title) if provided
         if new_title:
-            # Preserve the markdown link format: ### [title](url)
             stream_link = f"https://www.twitch.tv/{announcement['streamer_username']}"
             embed.description = f"### [{new_title}]({stream_link})"
 
-        # Update the Viewers field in the embed
+        # Update the Viewers field
         updated = False
         for i, field in enumerate(embed.fields):
             if field.name == "Viewers":
@@ -167,12 +151,10 @@ async def _update_announcement_viewer_count(bot, announcement: dict, new_viewer_
                 log_parts.append(f"title to '{new_title}'")
             logger.debug(f"Updated {' and '.join(log_parts)} for stream {announcement['streamer_username']}")
 
-        # Update DAO: new viewer count and last status check time
+        # Update DAO
         dao.update_last_status_check(announcement['id'], new_viewer_count)
 
     except discord.HTTPException as e:
-        logger.error(f"Discord API error updating announcement viewer count for {announcement['id']}: {e}")
+        logger.error(f"Discord API error updating announcement {announcement['id']}: {e}")
     except Exception as e:
-        logger.error(f"Error updating announcement viewer count for {announcement['id']}: {e}", exc_info=True)
-    finally:
-        dao.close()
+        logger.error(f"Error updating announcement {announcement['id']}: {e}", exc_info=True)
