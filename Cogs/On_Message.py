@@ -134,16 +134,19 @@ class On_Message(commands.Cog):
         logger.info(f'Processing message from {message.author} in {message.guild.name}')
 
         try:
-            # Update last active timestamp
+            # Update timestamps in memory (for daily check logic)
             now = datetime.now(timezone.utc).replace(tzinfo=None)
             current_guild_user.last_active = now.strftime("%Y-%m-%d %H:%M:%S")
 
             # Note: Message count is incremented in Leveling.py, not here
             # to avoid double counting
 
-            # Update global stats
+            # Update global stats in memory
             if hasattr(current_user, 'last_seen'):
                 current_user.last_seen = now.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Note: last_active and last_seen are now managed by XP sessions
+            # and only persisted during periodic flushes (every 5 minutes)
 
             # CHECK FOR INAPPROPRIATE WORDS
             message_content_lower = message.content.lower()
@@ -175,10 +178,13 @@ class On_Message(commands.Cog):
                 perf_monitor = get_performance_monitor()
                 await perf_monitor.record_daily_reward()
 
-            # SAVE TO DATABASE
-            guild_user_dao.update_guild_user(current_guild_user)
-            user_dao.update_user(current_user)
-            logger.info(f'{message.author} updated in database for guild {message.guild.name}')
+                # ONLY save to database after daily reward
+                guild_user_dao.update_guild_user(current_guild_user)
+                user_dao.update_user(current_user)
+                logger.info(f'{message.author} database updated after daily reward in guild {message.guild.name}')
+
+            # Note: Regular messages no longer trigger DB writes!
+            # XP system handles all updates via sessions (flushed every 5 minutes)
 
             # OTHER REACTIONS
             if message.content.lower() == "yo":

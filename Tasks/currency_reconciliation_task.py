@@ -1,16 +1,17 @@
 """
-DEPRECATED: This task has been replaced by unified_stats_reconciliation_task.py
+DEPRECATED: This task has been replaced by real-time stats updates in XPSessionManager.
 
-The new task reconciles:
-- total_currency (guild + bank)
-- total_messages
-- total_reactions
-- global_exp & global_level
+All global stats are now updated in real-time:
+- total_currency: Updated via UserDao.increment_user_stats() when currency changes
+- total_messages: Updated via XPSessionManager session flushes (every 5 min)
+- total_reactions: Updated via XPSessionManager session flushes (every 5 min)
+- global_exp & global_level: Updated via XPSessionManager session flushes
 
-And runs every 6 hours instead of twice daily.
+Reconciliation tasks are no longer needed as stats are kept in sync continuously.
 
 This file is kept for reference only and is no longer loaded by the bot.
 Date deprecated: 2025-11-04
+Date reconciliation removed: 2026-01-24
 """
 
 import asyncio

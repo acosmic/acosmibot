@@ -848,6 +848,41 @@ class GuildUserDao(BaseDao[GuildUser]):
         """
         return self.update_slots_bonus_state(user_id, guild_id, 0, 0, 0)
 
+    def increment_activity_counts(
+        self,
+        user_id: int,
+        guild_id: int,
+        messages: int = 0,
+        reactions: int = 0
+    ) -> bool:
+        """
+        Atomically increment message and reaction counts.
+        Uses UPDATE to avoid creating new users (sessions ensure users exist).
+
+        Args:
+            user_id (int): Discord user ID
+            guild_id (int): Discord guild ID
+            messages (int): Number of messages to increment
+            reactions (int): Number of reactions to increment
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = """
+            UPDATE GuildUsers
+            SET messages_sent = messages_sent + %s,
+                reactions_sent = reactions_sent + %s,
+                last_active = NOW()
+            WHERE user_id = %s AND guild_id = %s
+        """
+
+        try:
+            self.execute_query(sql, (messages, reactions, user_id, guild_id), commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error incrementing activity counts for user {user_id} in guild {guild_id}: {e}")
+            return False
+
     def save(self, guild_user: GuildUser) -> Optional[GuildUser]:
         """
         Save a guild user to the database (insert if new, update if exists).

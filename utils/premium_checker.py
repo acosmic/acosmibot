@@ -32,6 +32,9 @@ class PremiumChecker:
             # Custom Commands
             'custom_commands': 1,  # Allow 1 custom command
 
+            # Embeds
+            'embeds': 5,  # Allow 5 embeds
+
             # AI
             'ai_daily_limit': 20,
             'ai_models': ['gpt-3.5-turbo'],
@@ -59,6 +62,9 @@ class PremiumChecker:
             # Custom Commands
             'custom_commands': 25,
 
+            # Embeds
+            'embeds': 100,
+
             # AI - SAME AS FREE (basic tier only)
             'ai_daily_limit': 20,  # Same as free
             'ai_models': ['gpt-3.5-turbo'],  # Same as free
@@ -85,6 +91,9 @@ class PremiumChecker:
 
             # Custom Commands - Same as premium
             'custom_commands': 25,
+
+            # Embeds - Same as premium
+            'embeds': 100,
 
             # AI - ENHANCED (all features unlocked)
             'ai_daily_limit': 100,  # 5x increase from free/premium
@@ -385,6 +394,69 @@ class PremiumChecker:
             return True, ""
 
         return False, f"❌ Premium tier allows up to {max_commands} custom commands. Delete one to create another."
+
+    @staticmethod
+    def check_embed_limit(guild_id: int, current_count: int) -> Tuple[bool, str]:
+        """
+        Check if guild can create more embeds
+
+        Args:
+            guild_id: Discord guild ID
+            current_count: Current number of embeds
+
+        Returns:
+            Tuple of (can_create: bool, message: str)
+        """
+        tier = PremiumChecker.get_guild_tier(guild_id)
+        max_embeds = PremiumChecker.TIER_LIMITS[tier]['embeds']
+
+        if max_embeds == 0:
+            return False, (
+                f"❌ **Embeds** are not available in your tier.\n"
+                f"Upgrade at https://acosmibot.com/premium"
+            )
+
+        if current_count < max_embeds:
+            return True, ""
+
+        if tier == 'free':
+            return False, (
+                f"❌ Free tier allows **{max_embeds} embeds** only.\n"
+                f"Upgrade to **Premium** for **100 embeds**!\n"
+                f"https://acosmibot.com/premium"
+            )
+        else:
+            return False, f"❌ Your tier allows up to {max_embeds} embeds. Delete one to create another."
+
+    @staticmethod
+    def get_embed_limit(guild_id: int) -> int:
+        """
+        Get embed limit for guild
+
+        Args:
+            guild_id: Discord guild ID
+
+        Returns:
+            Maximum number of embeds allowed
+        """
+        return PremiumChecker.get_limit(guild_id, 'embeds')
+
+    @staticmethod
+    def get_tier_info(guild_id: int) -> dict:
+        """
+        Get tier information for guild
+
+        Args:
+            guild_id: Discord guild ID
+
+        Returns:
+            Dictionary with tier and limits
+        """
+        tier = PremiumChecker.get_guild_tier(guild_id)
+        return {
+            'tier': tier,
+            'limits': PremiumChecker.TIER_LIMITS.get(tier, PremiumChecker.TIER_LIMITS['free'])
+        }
 
     @staticmethod
     def get_ai_daily_limit(guild_id: int) -> int:

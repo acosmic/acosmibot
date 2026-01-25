@@ -6,7 +6,6 @@ from .daily_reward_task import daily_reward_task
 from .streaming_monitor_task import streaming_monitor_task
 from .lottery_end_task import lottery_end_task
 from .check_reminders_task import check_reminders_task
-from .unified_stats_reconciliation_task import unified_stats_reconciliation_task
 from .bank_interest_task import bank_interest_task
 from .portal_manager import check_expired_portals
 
@@ -28,7 +27,6 @@ __all__ = [
     "streaming_monitor_task",
     "lottery_end_task",
     "check_reminders_task",
-    "unified_stats_reconciliation_task",
     "bank_interest_task",
     "portal_manager",
     # Twitch tasks

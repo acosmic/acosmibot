@@ -193,6 +193,31 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error updating user: {e}")
             return False
 
+    def increment_reaction_count(self, user_id: int, reactions: int) -> bool:
+        """
+        Atomically increment global reaction count.
+
+        Args:
+            user_id (int): Discord user ID
+            reactions (int): Number of reactions to increment
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        sql = """
+            UPDATE Users
+            SET total_reactions = total_reactions + %s,
+                last_seen = NOW()
+            WHERE id = %s
+        """
+
+        try:
+            self.execute_query(sql, (reactions, user_id), commit=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error incrementing reaction count for user {user_id}: {e}")
+            return False
+
     def get_user(self, id: int) -> Optional[User]:
         sql = '''SELECT id, discord_username, global_name, avatar_url, is_bot,
                         global_exp, global_level, total_currency, bank_balance,

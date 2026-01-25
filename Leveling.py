@@ -117,16 +117,13 @@ class LevelingSystem:
         config = await self.get_leveling_config(guild_id)
 
         # Get services
-        from Services.MessageCountBuffer import get_message_count_buffer
         from Services.PerformanceMonitor import get_performance_monitor
         from Services.XPSessionManager import get_xp_session_manager
 
-        message_buffer = get_message_count_buffer()
         perf_monitor = get_performance_monitor()
         session_manager = get_xp_session_manager()
 
-        # === BUFFER MESSAGE COUNTS (non-critical, batched every 30s) ===
-        await message_buffer.increment_activity(guild_id, user_id)
+        # Record message processed for monitoring
         await perf_monitor.record_message_processed()
 
         # === TRY SESSION-BASED XP TRACKING (Redis) ===
@@ -144,6 +141,9 @@ class LevelingSystem:
 
             if session is not None:
                 # === SESSION-BASED PATH (Redis available) ===
+                # Track message activity (happens even during XP cooldown)
+                await session_manager.track_message_activity(guild_id, user_id)
+
                 # Calculate XP with streak multiplier
                 base_exp = config["exp_per_message"]
                 streak = min(session["streak"], config["max_streak_bonus"])
@@ -205,6 +205,19 @@ class LevelingSystem:
             global_user = user_dao.get_user(user_id)
             if not global_user:
                 return
+
+            # Track message activity (immediate DB write since Redis unavailable)
+            guild_user_dao.increment_activity_counts(
+                user_id, guild_id, messages=1, reactions=0
+            )
+            # Update global stats (NEW - fixes fallback mode gap)
+            user_dao.increment_user_stats(
+                user_id=user_id,
+                global_exp_gain=0,
+                currency_gain=0,
+                messages_gain=1,
+                reactions_gain=0
+            )
 
             # Check cooldown
             if self.is_user_on_cooldown(user_id, guild_id, config["exp_cooldown_seconds"]):

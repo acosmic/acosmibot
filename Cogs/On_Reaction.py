@@ -19,7 +19,10 @@ class On_Reaction(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         """
-        Handle reaction additions with new dual user system.
+        Handle reaction additions with buffered reaction counting.
+
+        Reaction counts are buffered in memory and flushed to DB every 30 seconds
+        to reduce database load.
         """
         if payload.member and payload.member.bot:
             return  # Skip bot reactions
@@ -30,11 +33,11 @@ class On_Reaction(commands.Cog):
             user = await self.bot.fetch_user(payload.user_id)
             emoji = payload.emoji
 
-            # Initialize DAOs
+            # Ensure user records exist (creates if first time)
+            # This is needed for users who react before sending their first message
             user_dao = UserDao()
             guild_user_dao = GuildUserDao()
 
-            # Get or create users
             global_user = user_dao.get_or_create_user_from_discord(user)
             guild_user = guild_user_dao.get_or_create_guild_user_from_discord(payload.member, message.guild.id)
 
@@ -42,16 +45,12 @@ class On_Reaction(commands.Cog):
                 logging.error(f"Failed to get/create user records for {user.name}")
                 return
 
-            # Update reaction counts
-            guild_user.reactions_sent += 1
-            guild_user_dao.update_guild_user(guild_user)
+            # Track reaction in unified session (will be flushed to DB every 5 minutes)
+            from Services.XPSessionManager import get_xp_session_manager
+            session_manager = get_xp_session_manager()
+            await session_manager.track_reaction_activity(message.guild.id, user.id)
 
-            global_user.total_reactions += 1
-            user_dao.update_user(global_user)
-
-            logging.info(f"{user.name} added {emoji} to {message.author}'s message.")
-            logging.info(
-                f"Updated reaction counts for {user.name} - Guild: {guild_user.reactions_sent}, Global: {global_user.total_reactions}")
+            logging.debug(f"{user.name} added {emoji} to {message.author}'s message [SESSION]")
 
             # LOTTERY EVENT HANDLING
             await self.handle_lottery_reaction(payload, message, user, emoji, channel)

@@ -5,7 +5,6 @@ from discord.ext import commands
 
 from Services.ConfigCache import initialize_config_cache, cleanup_config_cache
 from Services.PerformanceMonitor import initialize_performance_monitor, cleanup_performance_monitor
-from Services.MessageCountBuffer import initialize_message_count_buffer, cleanup_message_count_buffer
 from Services.XPSessionManager import initialize_xp_session_manager, cleanup_xp_session_manager
 from logger import AppLogger
 from Tasks.task_manager import register_tasks
@@ -52,13 +51,6 @@ class Bot(commands.Bot):
             logger.warning("⚠️  XP will be written immediately to database (higher DB load)")
 
         try:
-            await initialize_message_count_buffer()
-            logger.info("✅ Message count buffer initialized")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize message count buffer: {e}")
-            logger.warning("⚠️  Message counts will be written immediately (higher DB load)")
-
-        try:
             await initialize_performance_monitor()
             logger.info("✅ Performance monitor initialized")
         except Exception as e:
@@ -84,13 +76,6 @@ class Bot(commands.Bot):
             logger.info("✅ XP session manager cleaned up")
         except Exception as e:
             logger.error(f"Error during XP session manager cleanup: {e}")
-
-        # Cleanup message count buffer (flushes remaining counts)
-        try:
-            await cleanup_message_count_buffer()
-            logger.info("✅ Message count buffer cleaned up")
-        except Exception as e:
-            logger.error(f"Error during message count buffer cleanup: {e}")
 
         # Cleanup performance monitor (generates final report)
         try:
