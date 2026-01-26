@@ -6,8 +6,10 @@ from discord import app_commands
 import json
 
 from Dao.GuildUserDao import GuildUserDao
+from Dao.UserDao import UserDao
 from Dao.GuildDao import GuildDao
 from Views.Blackjack_View import Blackjack_View
+from Services.SessionManager import get_session_manager
 from logger import AppLogger
 
 logger = AppLogger(__name__).get_logger()
@@ -153,23 +155,49 @@ class Blackjack(commands.Cog):
             )
             return
 
-        if current_guild_user.currency < cost:
+        # Get or create session for currency tracking
+        user_dao = UserDao()
+        session_manager = get_session_manager()
+        session = await session_manager.get_or_create_session(
+            guild_id=interaction.guild.id,
+            user_id=interaction.user.id,
+            guild_user_dao=guild_user_dao,
+            user_dao=user_dao
+        )
+
+        # Get current currency from session if available
+        if session:
+            current_currency = session.get("currency", current_guild_user.currency)
+        else:
+            current_currency = current_guild_user.currency
+
+        if current_currency < cost:
             await interaction.response.send_message(
                 "You don't have enough credits to place this bet.",
                 ephemeral=True
             )
             return
 
-        # Deduct bet from user's currency with global sync
-        guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -cost)
+        # Try to update currency in session
+        session_updated = await session_manager.update_currency(
+            guild_id=interaction.guild.id,
+            user_id=interaction.user.id,
+            amount=-cost
+        )
+
+        if not session_updated:
+            # Fallback to immediate DB write
+            guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, -cost)
+
         current_guild_user.currency -= cost  # Update local object
 
-        # Create and send game view
+        # Create and send game view (pass session_manager)
         game_view = Blackjack_View(
             player=interaction.user,
             bet=cost,
             guild_id=interaction.guild.id,
-            config=config
+            config=config,
+            session_manager=session_manager
         )
 
         await game_view.send(interaction)

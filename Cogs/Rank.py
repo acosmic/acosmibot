@@ -34,17 +34,17 @@ class Rank(commands.Cog):
         target_user = user if user else interaction.user
 
         try:
-            # Try to get real-time data from XP session first
-            from Services.XPSessionManager import get_xp_session_manager
+            # Try to get real-time data from session first
+            from Services.SessionManager import get_session_manager
             import json
 
-            session_manager = get_xp_session_manager()
+            session_manager = get_session_manager()
             session = None
 
-            # Check if user has active XP session (real-time data)
+            # Check if user has active session (real-time data)
             if session_manager.redis_available:
                 try:
-                    session_key = f"xp_session:{interaction.guild.id}:{target_user.id}"
+                    session_key = f"session:{interaction.guild.id}:{target_user.id}"
                     session_data = await session_manager.redis.get(session_key)
                     if session_data:
                         session = json.loads(session_data)
@@ -106,22 +106,37 @@ class Rank(commands.Cog):
             img_height = 250
             img = Image.new('RGB', (img_width, img_height), color=(24, 25, 28))
 
-            # Set font paths (try multiple common paths)
+            # Set font paths
             base_dir = os.path.dirname(os.path.dirname(__file__))
-            font_paths = [
-                os.path.join(base_dir, 'Fonts', 'MartianMonoNerdFont-Regular.ttf'),
+            font_bold_paths = [
+                os.path.join(base_dir, 'Fonts', 'Urbanist-Bold.ttf'),
                 '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',
                 '/System/Library/Fonts/Arial.ttf',  # macOS
                 'C:/Windows/Fonts/arialbd.ttf',  # Windows
-                '/usr/share/fonts/TTF/arial.ttf',  # Some Linux distros
+            ]
+
+            font_regular_paths = [
+                os.path.join(base_dir, 'Fonts', 'Urbanist-Regular.ttf'),
+                '/usr/share/fonts/truetype/msttcorefonts/arial.ttf',
+                '/System/Library/Fonts/Arial.ttf',  # macOS
+                'C:/Windows/Fonts/arial.ttf',  # Windows
             ]
 
             font_bold = None
+            font_regular = None
 
-            for path in font_paths:
+            for path in font_bold_paths:
                 if os.path.exists(path):
                     try:
                         font_bold = path
+                        break
+                    except:
+                        continue
+
+            for path in font_regular_paths:
+                if os.path.exists(path):
+                    try:
+                        font_regular = path
                         break
                     except:
                         continue
@@ -131,10 +146,10 @@ class Rank(commands.Cog):
                 font_username = ImageFont.truetype(font_bold, 48) if font_bold else ImageFont.load_default()  # Username
                 font_rank_level = ImageFont.truetype(font_bold,
                                                      32) if font_bold else ImageFont.load_default()  # Rank/Level
-                font_xp = ImageFont.truetype(font_bold, 24) if font_bold else ImageFont.load_default()  # XP text
-                font_guild = ImageFont.truetype(font_bold, 18) if font_bold else ImageFont.load_default()  # Guild name
-                font_global = ImageFont.truetype(font_bold,
-                                                 16) if font_bold else ImageFont.load_default()  # Global level (smaller)
+                font_xp = ImageFont.truetype(font_regular, 24) if font_regular else ImageFont.load_default()  # XP text
+                font_guild = ImageFont.truetype(font_regular, 18) if font_regular else ImageFont.load_default()  # Guild name
+                font_global = ImageFont.truetype(font_regular,
+                                                 16) if font_regular else ImageFont.load_default()  # Global level (smaller)
             except:
                 font_username = ImageFont.load_default()
                 font_rank_level = ImageFont.load_default()

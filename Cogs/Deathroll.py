@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from Dao.GuildUserDao import GuildUserDao
+from Dao.UserDao import UserDao
 from Views.Deathroll_View import Deathroll_View
+from Services.SessionManager import get_session_manager
 from logger import AppLogger
 
 logger = AppLogger(__name__).get_logger()
@@ -40,12 +42,6 @@ class Deathroll(commands.Cog):
                 f"You need to be registered in this server first. Send a message to get started!", ephemeral=True)
             return
 
-        if bet > current_user.currency:
-            await interaction.response.send_message(
-                f"You don't have enough to make this bet! You have {current_user.currency:,.0f} Credits.",
-                ephemeral=True)
-            return
-
         target_user = guild_user_dao.get_guild_user(target.id, interaction.guild.id)
 
         if not target_user:
@@ -54,14 +50,52 @@ class Deathroll(commands.Cog):
                 ephemeral=True)
             return
 
-        if bet > target_user.currency:
+        # Get or create sessions for both players
+        user_dao = UserDao()
+        session_manager = get_session_manager()
+
+        # Get/create initiator session
+        initiator_session = await session_manager.get_or_create_session(
+            guild_id=interaction.guild.id,
+            user_id=interaction.user.id,
+            guild_user_dao=guild_user_dao,
+            user_dao=user_dao
+        )
+
+        # Get/create target session
+        target_session = await session_manager.get_or_create_session(
+            guild_id=interaction.guild.id,
+            user_id=target.id,
+            guild_user_dao=guild_user_dao,
+            user_dao=user_dao
+        )
+
+        # Get currency from sessions if available
+        if initiator_session:
+            initiator_currency = initiator_session.get("currency", current_user.currency)
+        else:
+            initiator_currency = current_user.currency
+
+        if target_session:
+            target_currency = target_session.get("currency", target_user.currency)
+        else:
+            target_currency = target_user.currency
+
+        # Check if both players have enough
+        if bet > initiator_currency:
             await interaction.response.send_message(
-                f"{target.display_name} doesn't have enough to accept this bet! They have {target_user.currency:,.0f} Credits",
+                f"You don't have enough to make this bet! You have {initiator_currency:,.0f} Credits.",
                 ephemeral=True)
             return
 
-        # Create the Deathroll view - no need to check for existing games
-        view = Deathroll_View(timeout=120, is_matchmaking=True)
+        if bet > target_currency:
+            await interaction.response.send_message(
+                f"{target.display_name} doesn't have enough to accept this bet! They have {target_currency:,.0f} Credits",
+                ephemeral=True)
+            return
+
+        # Create the Deathroll view (pass session_manager)
+        view = Deathroll_View(timeout=120, is_matchmaking=True, session_manager=session_manager)
         view.initiator = interaction.user
         view.target = target
         view.guild_id = interaction.guild.id

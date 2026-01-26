@@ -2,6 +2,7 @@ import discord
 import logging
 import random
 import uuid
+from datetime import datetime
 from Dao.GuildUserDao import GuildUserDao
 from Dao.GamesDao import GamesDao
 
@@ -9,9 +10,10 @@ from Dao.GamesDao import GamesDao
 class Deathroll_View(discord.ui.View):
     """Combined view for both matchmaking and gameplay phases of Deathroll"""
 
-    def __init__(self, timeout=120, is_matchmaking=True):
+    def __init__(self, timeout=120, is_matchmaking=True, session_manager=None):
         super().__init__(timeout=timeout)
         self.is_matchmaking = is_matchmaking
+        self.session_manager = session_manager  # Pass SessionManager instance
         self.guild_id = None
         self.game_id = str(uuid.uuid4())  # Unique identifier for this game instance
 
@@ -267,42 +269,147 @@ class Deathroll_View(discord.ui.View):
         loser_user = guild_user_dao.get_guild_user(loser.id, self.guild_id)
 
         if winner_user and loser_user:
-            guild_user_dao.update_currency_with_global_sync(winner.id, self.guild_id, self.bet)
-            guild_user_dao.update_currency_with_global_sync(loser.id, self.guild_id, -self.bet)
+            # Try to update currency in sessions for both players
+            if self.session_manager:
+                # Winner gets the bet
+                winner_updated = await self.session_manager.update_currency(
+                    guild_id=self.guild_id,
+                    user_id=winner.id,
+                    amount=self.bet
+                )
+                # Loser loses the bet
+                loser_updated = await self.session_manager.update_currency(
+                    guild_id=self.guild_id,
+                    user_id=loser.id,
+                    amount=-self.bet
+                )
+
+                # Fallback to immediate DB writes if session updates failed
+                if not winner_updated:
+                    guild_user_dao.update_currency_with_global_sync(winner.id, self.guild_id, self.bet)
+                if not loser_updated:
+                    guild_user_dao.update_currency_with_global_sync(loser.id, self.guild_id, -self.bet)
+            else:
+                # No session manager - immediate DB writes
+                guild_user_dao.update_currency_with_global_sync(winner.id, self.guild_id, self.bet)
+                guild_user_dao.update_currency_with_global_sync(loser.id, self.guild_id, -self.bet)
+
             winner_user.currency += self.bet  # Update local objects
             loser_user.currency -= self.bet
 
-            # Record games in database
-            games_dao = GamesDao()
+            # Generate game_instance_id to link the two game entries
+            game_instance_id = str(uuid.uuid4())
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Log for winner
-            games_dao.add_game(
-                user_id=winner.id,
-                guild_id=self.guild_id,
-                game_type="deathroll",
-                amount_bet=self.bet,
-                amount_won=self.bet,
-                amount_lost=0,
-                result="win",
-                game_data={
-                    "opponent_id": loser.id,
-                    "opponent_name": loser.display_name,
-                    "final_roll": self.current_roll
-                }
-            )
+            # Try to queue games in sessions for both players
+            if self.session_manager:
+                # Queue for winner
+                winner_queued = await self.session_manager.queue_game(
+                    guild_id=self.guild_id,
+                    user_id=winner.id,
+                    game_type="deathroll",
+                    amount_bet=self.bet,
+                    amount_won=self.bet,
+                    amount_lost=0,
+                    result="win",
+                    game_data={
+                        "opponent_id": loser.id,
+                        "opponent_name": loser.display_name,
+                        "final_roll": self.current_roll,
+                        "game_instance_id": game_instance_id
+                    },
+                    timestamp=timestamp
+                )
 
-            # Log for loser
-            games_dao.add_game(
-                user_id=loser.id,
-                guild_id=self.guild_id,
-                game_type="deathroll",
-                amount_bet=self.bet,
-                amount_won=0,
-                amount_lost=self.bet,
-                result="lose",
-                game_data={
-                    "opponent_id": winner.id,
-                    "opponent_name": winner.display_name,
-                    "final_roll": self.current_roll
-                }
-            )
+                # Queue for loser
+                loser_queued = await self.session_manager.queue_game(
+                    guild_id=self.guild_id,
+                    user_id=loser.id,
+                    game_type="deathroll",
+                    amount_bet=self.bet,
+                    amount_won=0,
+                    amount_lost=self.bet,
+                    result="lose",
+                    game_data={
+                        "opponent_id": winner.id,
+                        "opponent_name": winner.display_name,
+                        "final_roll": self.current_roll,
+                        "game_instance_id": game_instance_id
+                    },
+                    timestamp=timestamp
+                )
+
+                # Fallback to immediate DB writes if queuing failed
+                if not winner_queued or not loser_queued:
+                    games_dao = GamesDao()
+
+                    if not winner_queued:
+                        games_dao.add_game(
+                            user_id=winner.id,
+                            guild_id=self.guild_id,
+                            game_type="deathroll",
+                            amount_bet=self.bet,
+                            amount_won=self.bet,
+                            amount_lost=0,
+                            result="win",
+                            game_data={
+                                "opponent_id": loser.id,
+                                "opponent_name": loser.display_name,
+                                "final_roll": self.current_roll,
+                                "game_instance_id": game_instance_id
+                            }
+                        )
+
+                    if not loser_queued:
+                        games_dao.add_game(
+                            user_id=loser.id,
+                            guild_id=self.guild_id,
+                            game_type="deathroll",
+                            amount_bet=self.bet,
+                            amount_won=0,
+                            amount_lost=self.bet,
+                            result="lose",
+                            game_data={
+                                "opponent_id": winner.id,
+                                "opponent_name": winner.display_name,
+                                "final_roll": self.current_roll,
+                                "game_instance_id": game_instance_id
+                            }
+                        )
+            else:
+                # No session manager - immediate DB writes
+                games_dao = GamesDao()
+
+                # Log for winner
+                games_dao.add_game(
+                    user_id=winner.id,
+                    guild_id=self.guild_id,
+                    game_type="deathroll",
+                    amount_bet=self.bet,
+                    amount_won=self.bet,
+                    amount_lost=0,
+                    result="win",
+                    game_data={
+                        "opponent_id": loser.id,
+                        "opponent_name": loser.display_name,
+                        "final_roll": self.current_roll,
+                        "game_instance_id": game_instance_id
+                    }
+                )
+
+                # Log for loser
+                games_dao.add_game(
+                    user_id=loser.id,
+                    guild_id=self.guild_id,
+                    game_type="deathroll",
+                    amount_bet=self.bet,
+                    amount_won=0,
+                    amount_lost=self.bet,
+                    result="lose",
+                    game_data={
+                        "opponent_id": winner.id,
+                        "opponent_name": winner.display_name,
+                        "final_roll": self.current_roll,
+                        "game_instance_id": game_instance_id
+                    }
+                )

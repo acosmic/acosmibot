@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from Services.ConfigCache import initialize_config_cache, cleanup_config_cache
 from Services.PerformanceMonitor import initialize_performance_monitor, cleanup_performance_monitor
-from Services.XPSessionManager import initialize_xp_session_manager, cleanup_xp_session_manager
+from Services.SessionManager import initialize_session_manager, cleanup_session_manager
 from logger import AppLogger
 from Tasks.task_manager import register_tasks
 from Cogs import __all__ as enabled_cogs
@@ -44,11 +44,11 @@ class Bot(commands.Bot):
             logger.warning("⚠️  Bot will continue with degraded performance")
 
         try:
-            await initialize_xp_session_manager()
-            logger.info("✅ XP session manager initialized")
+            await initialize_session_manager()
+            logger.info("✅ Session manager initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize XP session manager: {e}")
-            logger.warning("⚠️  XP will be written immediately to database (higher DB load)")
+            logger.error(f"❌ Failed to initialize session manager: {e}")
+            logger.warning("⚠️  Sessions disabled, using immediate DB writes (higher DB load)")
 
         try:
             await initialize_performance_monitor()
@@ -70,12 +70,12 @@ class Bot(commands.Bot):
         """Close the bot and clean up database connections"""
         logger.info("🛑 Bot shutting down, closing database connection pools...")
 
-        # Cleanup XP session manager FIRST (most critical data)
+        # Cleanup session manager FIRST (most critical data)
         try:
-            await cleanup_xp_session_manager()
-            logger.info("✅ XP session manager cleaned up")
+            await cleanup_session_manager()
+            logger.info("✅ Session manager cleaned up")
         except Exception as e:
-            logger.error(f"Error during XP session manager cleanup: {e}")
+            logger.error(f"Error during session manager cleanup: {e}")
 
         # Cleanup performance monitor (generates final report)
         try:

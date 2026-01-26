@@ -107,6 +107,73 @@ class GamesDao(BaseDao):
             self.logger.error(f"Error adding game: {e}")
             return None
 
+    def batch_add_games(self, games: List[Dict[str, Any]]) -> int:
+        """
+        Batch insert multiple games in a single transaction.
+
+        Args:
+            games: List of dicts with keys:
+                - user_id: int
+                - guild_id: int
+                - game_type: str
+                - amount_bet: int
+                - amount_won: int
+                - amount_lost: int
+                - result: str
+                - game_data: str (JSON string) or None
+                - timestamp: str (datetime string) or None
+
+        Returns:
+            Number of games inserted
+        """
+        if not games:
+            return 0
+
+        sql = """
+            INSERT INTO Games (user_id, guild_id, game_type, amount_bet,
+                               amount_won, amount_lost, result, game_data, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+
+        # Prepare parameter tuples for each game
+        params_list = []
+        for game in games:
+            # Use provided timestamp or current time
+            created_at = game.get("timestamp")
+            if isinstance(created_at, str):
+                # Convert ISO format string to datetime if needed
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = datetime.now()
+            elif not created_at:
+                created_at = datetime.now()
+
+            params = (
+                game["user_id"],
+                game["guild_id"],
+                game["game_type"],
+                game["amount_bet"],
+                game["amount_won"],
+                game["amount_lost"],
+                game["result"],
+                game.get("game_data"),  # Already a JSON string or None
+                created_at
+            )
+            params_list.append(params)
+
+        try:
+            success = self.execute_many(sql, params_list, commit=True)
+            if success:
+                self.logger.info(f"Batch inserted {len(games)} game records")
+                return len(games)
+            else:
+                self.logger.error("Batch insert failed")
+                return 0
+        except Exception as e:
+            self.logger.error(f"Error batch inserting games: {e}")
+            return 0
+
     def get_user_game_stats(self, user_id: int, guild_id: Optional[int] = None,
                             game_type: Optional[str] = None) -> Dict[str, Any]:
         """Get comprehensive game statistics for a user"""

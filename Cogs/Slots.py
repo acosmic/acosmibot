@@ -11,6 +11,7 @@ from Dao.GamesDao import GamesDao
 from Dao.GuildUserDao import GuildUserDao
 from Dao.UserDao import UserDao
 from Dao.GuildDao import GuildDao
+from Services.SessionManager import get_session_manager
 from logger import AppLogger
 from Dao.SlotsDao import SlotsDao
 from Entities.SlotEvent import SlotEvent
@@ -391,10 +392,27 @@ class Slots(commands.Cog):
         scatter_emoji = scatter_config["emoji"]
 
         guild_user_dao = GuildUserDao()
+        user_dao = UserDao()
+        session_manager = get_session_manager()
+
         user = guild_user_dao.get_guild_user(interaction.user.id, interaction.guild.id)
         if not user:
             await interaction.response.send_message("You need to send a message first to initialize your account!", ephemeral=True)
             return
+
+        # Get or create session for currency tracking
+        session = await session_manager.get_or_create_session(
+            guild_id=interaction.guild.id,
+            user_id=interaction.user.id,
+            guild_user_dao=guild_user_dao,
+            user_dao=user_dao
+        )
+
+        # Get current currency from session if available
+        if session:
+            current_currency = session.get("currency", user.currency)
+        else:
+            current_currency = user.currency
 
         # Check if user is in bonus round
         is_bonus_round = user.slots_free_spins_remaining > 0
@@ -418,8 +436,8 @@ class Slots(commands.Cog):
                 await interaction.response.send_message(f"Maximum bet is {self.MAX_BET:,} credits.", ephemeral=True)
                 return
 
-            # Check currency only for regular spins
-            if user.currency < cost:
+            # Check currency only for regular spins (use session currency)
+            if current_currency < cost:
                 await interaction.response.send_message("You don't have enough credits!", ephemeral=True)
                 return
 
@@ -517,15 +535,41 @@ class Slots(commands.Cog):
                 # End bonus - pay out ALL winnings
                 summary = self.end_bonus_round(user, guild_user_dao)
 
-                # Pay out all accumulated winnings at once
-                guild_user_dao.update_currency_with_global_sync(
-                    user.user_id, user.guild_id, summary['total_won']
+                # Try to update currency in session
+                session_updated = await session_manager.update_currency(
+                    guild_id=interaction.guild.id,
+                    user_id=interaction.user.id,
+                    amount=summary['total_won']
                 )
+
+                if not session_updated:
+                    # Fallback to immediate DB write
+                    guild_user_dao.update_currency_with_global_sync(
+                        user.user_id, user.guild_id, summary['total_won']
+                    )
         else:
-            # REGULAR SPIN: Update currency normally
+            # REGULAR SPIN: Update currency in session
             net = amount_won - amount_lost
-            guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, net)
-            GuildDao().add_vault_currency(interaction.guild_id, int(amount_lost * 0.1))
+
+            # Try to update currency in session
+            session_updated = await session_manager.update_currency(
+                guild_id=interaction.guild.id,
+                user_id=interaction.user.id,
+                amount=net
+            )
+
+            if not session_updated:
+                # Fallback to immediate DB write
+                guild_user_dao.update_currency_with_global_sync(interaction.user.id, interaction.guild.id, net)
+
+            # Add vault currency (10% of loss) - try cache first
+            vault_gain = int(amount_lost * 0.1)
+            vault_cached = await session_manager.add_vault_currency(interaction.guild_id, vault_gain)
+            if not vault_cached:
+                # Fallback to immediate DB write
+                guild_dao_vault = GuildDao()
+                guild_dao_vault.add_vault_currency(interaction.guild_id, vault_gain)
+                guild_dao_vault.close()
 
             # Check if scatter triggered bonus
             if scatter_free_spins > 0:
@@ -601,15 +645,18 @@ class Slots(commands.Cog):
         try:
             # Calculate match count from all_matches
             match_count = all_matches[0]["count"] if all_matches else 0
+            game_result = "win" if amount_won > 0 else "lose"
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            GamesDao().add_game(
-                user_id=interaction.user.id,
+            # Try to queue game in session
+            game_queued = await session_manager.queue_game(
                 guild_id=interaction.guild.id,
+                user_id=interaction.user.id,
                 game_type="slots",
                 amount_bet=cost,
                 amount_won=amount_won,
                 amount_lost=amount_lost,
-                result="win" if amount_won > 0 else "lose",
+                result=game_result,
                 game_data={
                     "reels": reels,
                     "matches": match_count,
@@ -618,8 +665,30 @@ class Slots(commands.Cog):
                     "scatter_count": reels.count(scatter_emoji),
                     "scatter_triggered": scatter_free_spins > 0,
                     "free_spins_awarded": scatter_free_spins
-                }
+                },
+                timestamp=timestamp
             )
+
+            if not game_queued:
+                # Fallback to immediate DB write
+                GamesDao().add_game(
+                    user_id=interaction.user.id,
+                    guild_id=interaction.guild.id,
+                    game_type="slots",
+                    amount_bet=cost,
+                    amount_won=amount_won,
+                    amount_lost=amount_lost,
+                    result=game_result,
+                    game_data={
+                        "reels": reels,
+                        "matches": match_count,
+                        "multiplier": amount_won / cost if amount_won else 0,
+                        "bonus_round": is_bonus_round,
+                        "scatter_count": reels.count(scatter_emoji),
+                        "scatter_triggered": scatter_free_spins > 0,
+                        "free_spins_awarded": scatter_free_spins
+                    }
+                )
         except Exception as e:
             logger.error(f"Failed to log slots game: {e}")
 

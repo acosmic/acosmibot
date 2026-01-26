@@ -6,6 +6,7 @@ from Dao.GuildUserDao import GuildUserDao
 from Dao.GamesDao import GamesDao
 from Dao.GuildDao import GuildDao
 from Entities.BlackjackGame import BlackjackGame
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +14,13 @@ logger = logging.getLogger(__name__)
 class Blackjack_View(discord.ui.View):
     """View for managing blackjack game state and user interactions"""
 
-    def __init__(self, player: discord.Member, bet: int, guild_id: int, config: dict, timeout=120):
+    def __init__(self, player: discord.Member, bet: int, guild_id: int, config: dict, session_manager=None, timeout=120):
         super().__init__(timeout=timeout)
         self.player = player
         self.bet = bet
         self.guild_id = guild_id
         self.config = config
+        self.session_manager = session_manager  # Pass SessionManager instance
         self.game_id = str(uuid.uuid4())  # Unique identifier for concurrent games
 
         # Initialize game logic
@@ -185,7 +187,20 @@ class Blackjack_View(discord.ui.View):
             await interaction.response.send_message("You don't have enough credits for insurance!", ephemeral=True)
             return
 
-        guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -insurance_cost)
+        # Try to update currency in session
+        if self.session_manager:
+            session_updated = await self.session_manager.update_currency(
+                guild_id=self.guild_id,
+                user_id=self.player.id,
+                amount=-insurance_cost
+            )
+            if not session_updated:
+                # Fallback to immediate DB write
+                guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -insurance_cost)
+        else:
+            # No session manager - immediate DB write
+            guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -insurance_cost)
+
         player_user.currency -= insurance_cost  # Update local object
 
         self.game.take_insurance(self.bet)
@@ -283,8 +298,20 @@ class Blackjack_View(discord.ui.View):
             await interaction.response.send_message("You don't have enough credits to double down!", ephemeral=True)
             return
 
-        # Deduct the additional bet with global sync
-        guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+        # Try to update currency in session
+        if self.session_manager:
+            session_updated = await self.session_manager.update_currency(
+                guild_id=self.guild_id,
+                user_id=self.player.id,
+                amount=-self.bet
+            )
+            if not session_updated:
+                # Fallback to immediate DB write
+                guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+        else:
+            # No session manager - immediate DB write
+            guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+
         player_user.currency -= self.bet  # Update local object
 
         self.main_game_started = True
@@ -317,8 +344,20 @@ class Blackjack_View(discord.ui.View):
             await interaction.response.send_message("You don't have enough credits to split!", ephemeral=True)
             return
 
-        # Deduct the split bet with global sync
-        guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+        # Try to update currency in session
+        if self.session_manager:
+            session_updated = await self.session_manager.update_currency(
+                guild_id=self.guild_id,
+                user_id=self.player.id,
+                amount=-self.bet
+            )
+            if not session_updated:
+                # Fallback to immediate DB write
+                guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+        else:
+            # No session manager - immediate DB write
+            guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, -self.bet)
+
         player_user.currency -= self.bet  # Update local object
 
         self.main_game_started = True
@@ -473,7 +512,20 @@ class Blackjack_View(discord.ui.View):
         player_user = guild_user_dao.get_guild_user(self.player.id, self.guild_id)
 
         if player_user:
-            guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, total_won)
+            # Try to update currency in session
+            if self.session_manager:
+                session_updated = await self.session_manager.update_currency(
+                    guild_id=self.guild_id,
+                    user_id=self.player.id,
+                    amount=total_won
+                )
+                if not session_updated:
+                    # Fallback to immediate DB write
+                    guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, total_won)
+            else:
+                # No session manager - immediate DB write
+                guild_user_dao.update_currency_with_global_sync(self.player.id, self.guild_id, total_won)
+
             player_user.currency += total_won  # Update local object
 
             # Add to vault (10% of losses)
@@ -506,17 +558,46 @@ class Blackjack_View(discord.ui.View):
 
         game_data = self.game.get_game_state()
         game_data["payout_details"] = details
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        games_dao.add_game(
-            user_id=self.player.id,
-            guild_id=self.guild_id,
-            game_type="blackjack",
-            amount_bet=total_bet,
-            amount_won=total_won if game_result != "draw" else 0,
-            amount_lost=total_lost,
-            result=game_result,
-            game_data=game_data
-        )
+        # Try to queue game in session
+        if self.session_manager:
+            game_queued = await self.session_manager.queue_game(
+                guild_id=self.guild_id,
+                user_id=self.player.id,
+                game_type="blackjack",
+                amount_bet=total_bet,
+                amount_won=total_won if game_result != "draw" else 0,
+                amount_lost=total_lost,
+                result=game_result,
+                game_data=game_data,
+                timestamp=timestamp
+            )
+
+            if not game_queued:
+                # Fallback to immediate DB write
+                games_dao.add_game(
+                    user_id=self.player.id,
+                    guild_id=self.guild_id,
+                    game_type="blackjack",
+                    amount_bet=total_bet,
+                    amount_won=total_won if game_result != "draw" else 0,
+                    amount_lost=total_lost,
+                    result=game_result,
+                    game_data=game_data
+                )
+        else:
+            # No session manager - immediate DB write
+            games_dao.add_game(
+                user_id=self.player.id,
+                guild_id=self.guild_id,
+                game_type="blackjack",
+                amount_bet=total_bet,
+                amount_won=total_won if game_result != "draw" else 0,
+                amount_lost=total_lost,
+                result=game_result,
+                game_data=game_data
+            )
 
         # Update message with final state
         embed = self.create_game_embed()

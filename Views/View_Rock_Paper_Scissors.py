@@ -1,5 +1,6 @@
 import discord
 import logging
+from datetime import datetime
 from Dao.GamesDao import GamesDao
 from Dao.GuildUserDao import GuildUserDao
 import uuid
@@ -8,9 +9,10 @@ import uuid
 class View_Rock_Paper_Scissors(discord.ui.View):
     """Combined view for both matchmaking and gameplay phases of RPS"""
 
-    def __init__(self, timeout=120, is_matchmaking=True):
+    def __init__(self, timeout=120, is_matchmaking=True, session_manager=None):
         super().__init__(timeout=timeout)
         self.is_matchmaking = is_matchmaking
+        self.session_manager = session_manager  # Pass SessionManager instance
         self.guild_id = None
         self.game_id = str(uuid.uuid4())  # Unique identifier for this game instance
 
@@ -401,7 +403,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         self.decided_users.clear()
         self.round_number += 1
 
-    def winner_payout(self):
+    async def winner_payout(self):
         """Handle winner payout"""
         if self.bet <= 0:
             return
@@ -426,47 +428,158 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             loser_player = self.player_one
 
         if winner_id and loser_id:
-            # Atomically update currency for both players
-            guild_user_dao.update_currency_with_global_sync(winner_id, self.guild_id, self.bet)
-            guild_user_dao.update_currency_with_global_sync(loser_id, self.guild_id, -self.bet)
+            # Generate game_instance_id to link the two game entries
+            game_instance_id = str(uuid.uuid4())
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Record game for winner
-            games_dao.add_game(
-                user_id=winner_id,
-                guild_id=self.guild_id,
-                game_type="rockpaperscissors",
-                amount_bet=self.bet,
-                amount_won=self.bet,
-                amount_lost=0,
-                result="win",
-                game_data={
-                    "opponent_id": loser_id,
-                    "opponent_name": loser_player.display_name,
-                    "rounds": self.round_number - 1,
-                    "player_wins": self.player_one_wins if winner_id == self.player_one.id else self.player_two_wins,
-                    "opponent_wins": self.player_two_wins if winner_id == self.player_one.id else self.player_one_wins,
-                    "draws": self.draws
-                }
-            )
+            # Try to queue games and update currency in sessions
+            if self.session_manager:
+                # Update currency for winner
+                winner_updated = await self.session_manager.update_currency(
+                    guild_id=self.guild_id,
+                    user_id=winner_id,
+                    amount=self.bet
+                )
+                # Update currency for loser
+                loser_updated = await self.session_manager.update_currency(
+                    guild_id=self.guild_id,
+                    user_id=loser_id,
+                    amount=-self.bet
+                )
 
-            # Record game for loser
-            games_dao.add_game(
-                user_id=loser_id,
-                guild_id=self.guild_id,
-                game_type="rockpaperscissors",
-                amount_bet=self.bet,
-                amount_won=0,
-                amount_lost=self.bet,
-                result="lose",
-                game_data={
-                    "opponent_id": winner_id,
-                    "opponent_name": winner_player.display_name,
-                    "rounds": self.round_number - 1,
-                    "player_wins": self.player_two_wins if loser_id == self.player_two.id else self.player_one_wins,
-                    "opponent_wins": self.player_one_wins if loser_id == self.player_two.id else self.player_two_wins,
-                    "draws": self.draws
-                }
-            )
+                # Fallback to immediate DB writes if session updates failed
+                if not winner_updated:
+                    guild_user_dao.update_currency_with_global_sync(winner_id, self.guild_id, self.bet)
+                if not loser_updated:
+                    guild_user_dao.update_currency_with_global_sync(loser_id, self.guild_id, -self.bet)
+
+                # Queue game for winner
+                winner_queued = await self.session_manager.queue_game(
+                    guild_id=self.guild_id,
+                    user_id=winner_id,
+                    game_type="rockpaperscissors",
+                    amount_bet=self.bet,
+                    amount_won=self.bet,
+                    amount_lost=0,
+                    result="win",
+                    game_data={
+                        "opponent_id": loser_id,
+                        "opponent_name": loser_player.display_name,
+                        "rounds": self.round_number - 1,
+                        "player_wins": self.player_one_wins if winner_id == self.player_one.id else self.player_two_wins,
+                        "opponent_wins": self.player_two_wins if winner_id == self.player_one.id else self.player_one_wins,
+                        "draws": self.draws,
+                        "game_instance_id": game_instance_id
+                    },
+                    timestamp=timestamp
+                )
+
+                # Queue game for loser
+                loser_queued = await self.session_manager.queue_game(
+                    guild_id=self.guild_id,
+                    user_id=loser_id,
+                    game_type="rockpaperscissors",
+                    amount_bet=self.bet,
+                    amount_won=0,
+                    amount_lost=self.bet,
+                    result="lose",
+                    game_data={
+                        "opponent_id": winner_id,
+                        "opponent_name": winner_player.display_name,
+                        "rounds": self.round_number - 1,
+                        "player_wins": self.player_two_wins if loser_id == self.player_two.id else self.player_one_wins,
+                        "opponent_wins": self.player_one_wins if loser_id == self.player_two.id else self.player_two_wins,
+                        "draws": self.draws,
+                        "game_instance_id": game_instance_id
+                    },
+                    timestamp=timestamp
+                )
+
+                # Fallback to immediate DB writes if queuing failed
+                if not winner_queued or not loser_queued:
+                    if not winner_queued:
+                        games_dao.add_game(
+                            user_id=winner_id,
+                            guild_id=self.guild_id,
+                            game_type="rockpaperscissors",
+                            amount_bet=self.bet,
+                            amount_won=self.bet,
+                            amount_lost=0,
+                            result="win",
+                            game_data={
+                                "opponent_id": loser_id,
+                                "opponent_name": loser_player.display_name,
+                                "rounds": self.round_number - 1,
+                                "player_wins": self.player_one_wins if winner_id == self.player_one.id else self.player_two_wins,
+                                "opponent_wins": self.player_two_wins if winner_id == self.player_one.id else self.player_one_wins,
+                                "draws": self.draws,
+                                "game_instance_id": game_instance_id
+                            }
+                        )
+
+                    if not loser_queued:
+                        games_dao.add_game(
+                            user_id=loser_id,
+                            guild_id=self.guild_id,
+                            game_type="rockpaperscissors",
+                            amount_bet=self.bet,
+                            amount_won=0,
+                            amount_lost=self.bet,
+                            result="lose",
+                            game_data={
+                                "opponent_id": winner_id,
+                                "opponent_name": winner_player.display_name,
+                                "rounds": self.round_number - 1,
+                                "player_wins": self.player_two_wins if loser_id == self.player_two.id else self.player_one_wins,
+                                "opponent_wins": self.player_one_wins if loser_id == self.player_two.id else self.player_two_wins,
+                                "draws": self.draws,
+                                "game_instance_id": game_instance_id
+                            }
+                        )
+            else:
+                # No session manager - immediate DB writes
+                guild_user_dao.update_currency_with_global_sync(winner_id, self.guild_id, self.bet)
+                guild_user_dao.update_currency_with_global_sync(loser_id, self.guild_id, -self.bet)
+
+                # Record game for winner
+                games_dao.add_game(
+                    user_id=winner_id,
+                    guild_id=self.guild_id,
+                    game_type="rockpaperscissors",
+                    amount_bet=self.bet,
+                    amount_won=self.bet,
+                    amount_lost=0,
+                    result="win",
+                    game_data={
+                        "opponent_id": loser_id,
+                        "opponent_name": loser_player.display_name,
+                        "rounds": self.round_number - 1,
+                        "player_wins": self.player_one_wins if winner_id == self.player_one.id else self.player_two_wins,
+                        "opponent_wins": self.player_two_wins if winner_id == self.player_one.id else self.player_one_wins,
+                        "draws": self.draws,
+                        "game_instance_id": game_instance_id
+                    }
+                )
+
+                # Record game for loser
+                games_dao.add_game(
+                    user_id=loser_id,
+                    guild_id=self.guild_id,
+                    game_type="rockpaperscissors",
+                    amount_bet=self.bet,
+                    amount_won=0,
+                    amount_lost=self.bet,
+                    result="lose",
+                    game_data={
+                        "opponent_id": winner_id,
+                        "opponent_name": winner_player.display_name,
+                        "rounds": self.round_number - 1,
+                        "player_wins": self.player_two_wins if loser_id == self.player_two.id else self.player_one_wins,
+                        "opponent_wins": self.player_one_wins if loser_id == self.player_two.id else self.player_two_wins,
+                        "draws": self.draws,
+                        "game_instance_id": game_instance_id
+                    }
+                )
 
     async def complete_game(self):
         """Complete the game"""
@@ -475,7 +588,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
             
         if self.bet > 0:
             await self.announce_winner()
-            self.winner_payout()
+            await self.winner_payout()
 
         # Disable all buttons
         for child in self.children:

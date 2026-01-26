@@ -66,9 +66,15 @@ class Polymorph(commands.Cog):
                 user.currency -= cost
                 guild_user_dao.update_guild_user(user)
 
-                # Add credits to guild vault (optional - you can adjust this percentage)
-                vault_gain = int(cost * 0.1)  # 10% goes to vault
-                guild_dao.add_vault_currency(interaction.guild.id, vault_gain)
+                # Add credits to guild vault (10% goes to vault)
+                from Services.SessionManager import get_session_manager
+                vault_gain = int(cost * 0.1)
+                session_manager = get_session_manager()
+                vault_cached = await session_manager.add_vault_currency(interaction.guild.id, vault_gain)
+
+                if not vault_cached:
+                    # Fallback to immediate DB write
+                    guild_dao.add_vault_currency(interaction.guild.id, vault_gain)
 
                 embed=discord.Embed(
                     title=f"Polymorph :sheep:",

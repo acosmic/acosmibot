@@ -46,8 +46,8 @@ class On_Reaction(commands.Cog):
                 return
 
             # Track reaction in unified session (will be flushed to DB every 5 minutes)
-            from Services.XPSessionManager import get_xp_session_manager
-            session_manager = get_xp_session_manager()
+            from Services.SessionManager import get_session_manager
+            session_manager = get_session_manager()
             await session_manager.track_reaction_activity(message.guild.id, user.id)
 
             logging.debug(f"{user.name} added {emoji} to {message.author}'s message [SESSION]")

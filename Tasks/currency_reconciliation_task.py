@@ -1,11 +1,11 @@
 """
-DEPRECATED: This task has been replaced by real-time stats updates in XPSessionManager.
+DEPRECATED: This task has been replaced by real-time stats updates in SessionManager.
 
 All global stats are now updated in real-time:
 - total_currency: Updated via UserDao.increment_user_stats() when currency changes
-- total_messages: Updated via XPSessionManager session flushes (every 5 min)
-- total_reactions: Updated via XPSessionManager session flushes (every 5 min)
-- global_exp & global_level: Updated via XPSessionManager session flushes
+- total_messages: Updated via SessionManager session flushes (every 5 min)
+- total_reactions: Updated via SessionManager session flushes (every 5 min)
+- global_exp & global_level: Updated via SessionManager session flushes
 
 Reconciliation tasks are no longer needed as stats are kept in sync continuously.
 

@@ -118,10 +118,10 @@ class LevelingSystem:
 
         # Get services
         from Services.PerformanceMonitor import get_performance_monitor
-        from Services.XPSessionManager import get_xp_session_manager
+        from Services.SessionManager import get_session_manager
 
         perf_monitor = get_performance_monitor()
-        session_manager = get_xp_session_manager()
+        session_manager = get_session_manager()
 
         # Record message processed for monitoring
         await perf_monitor.record_message_processed()
