@@ -168,7 +168,7 @@ class Deathroll_View(discord.ui.View):
             color=discord.Color.dark_theme()
         )
 
-        deathroll_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1283617949806100581/ac_deathroll-halloween.png?ex=66fcb25f&is=66fb60df&hm=532af5e01ea12f64d0f2c12eb0d593c9961a8bdd4da2209680fbe14753f71e04&"
+        deathroll_image = "https://cdn.discordapp.com/attachments/1207159417980588052/1465464575943249973/acosmibot_deathroll.png?ex=697933bd&is=6977e23d&hm=54bc57566b37ed9dff279dc245a1b6b7ecb8a9ddfd58a5546adfc1b36217dc3c&"
         embed.set_image(url=deathroll_image)
         return embed
 

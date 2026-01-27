@@ -469,13 +469,13 @@ class BlackjackGame:
         if winner == "player_blackjack":
             # Blackjack pays 3:2
             winnings = int(bet * 1.5)
-            return bet + winnings, 0
+            return bet + winnings, bet
         elif winner == "player_win":
             # Regular win pays 1:1
-            return bet * 2, 0
+            return bet * 2, bet
         elif winner == "push":
             # Return original bet
-            return bet, 0
+            return bet, bet
         else:  # dealer_win
             # Player loses bet
             return 0, bet

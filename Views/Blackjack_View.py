@@ -418,7 +418,7 @@ class Blackjack_View(discord.ui.View):
                 elif net < 0:
                     title = f"♠️ Blackjack - Dealer wins! ♥️"
                 else:
-                    title = f"♠️ Blackjack - Push! ♥️"
+                    title = f"♠️ Blackjack - Draw ♥️"
         else:
             # Game in progress - show credits at risk
             title = f"♠️ Blackjack - {total_bet:,} Credits at Risk ♥️"
@@ -491,8 +491,8 @@ class Blackjack_View(discord.ui.View):
                     description += "\n\n😢 **Dealer wins.**"
                     color = discord.Color.red()
                 else:
-                    description += "\n\n🤝 **Push!**"
-                    color = discord.Color.blue()
+                    description += "\n\n🤝 **Draw**"
+                    color = discord.Color.greyple()
 
         # Create embed
         embed = discord.Embed(title=title, description=description, color=color)
@@ -618,7 +618,7 @@ class Blackjack_View(discord.ui.View):
                 elif result == "player_win":
                     payout_text += f"**Hand 1:** Win! +{won - self.bet:,}\n"
                 elif result == "push":
-                    payout_text += f"**Hand 1:** Push (bet returned)\n"
+                    payout_text += f"**Hand 1:** Draw (bet returned)\n"
                 else:
                     payout_text += f"**Hand 1:** Loss -{lost:,}\n"
 
@@ -630,7 +630,7 @@ class Blackjack_View(discord.ui.View):
                 if result == "player_win":
                     payout_text += f"**Hand 2:** Win! +{won - self.bet:,}\n"
                 elif result == "push":
-                    payout_text += f"**Hand 2:** Push (bet returned)\n"
+                    payout_text += f"**Hand 2:** Draw (bet returned)\n"
                 else:
                     payout_text += f"**Hand 2:** Loss -{lost:,}\n"
 

@@ -166,7 +166,7 @@ class View_Rock_Paper_Scissors(discord.ui.View):
         embed = discord.Embed(title="Accept Rock, Paper, Scissors Match!?", description=desc)
 
 
-        embed.set_image(url="https://cdn.discordapp.com/attachments/1207159417980588052/1283269805520195634/ac_rock-paper-scissors-halloween.png?ex=68e53363&is=68e3e1e3&hm=3a0bb30607b2abfb7b65c5376a371c0c8d344f4cc56bd341106d9828964af141&")
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1207159417980588052/1465464612458594516/acosmibot_rock-paper-scissors.png?ex=697933c6&is=6977e246&hm=b62d0c090f5a362a57935b1884d83b442ef36c24e48509340f00cb8babc51e91&")
 
         embed.add_field(inline=True, name="✅ Joined", value=self.convert_user_list_to_str(self.joined_users))
         embed.add_field(inline=True, name="🔄 Joined - 0 Bet", value=self.convert_user_list_to_str(self.tentative_users))

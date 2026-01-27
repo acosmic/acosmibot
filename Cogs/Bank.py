@@ -178,26 +178,6 @@ class Bank(commands.Cog):
                     )
                     return
 
-                # Check daily limit
-                if config['daily_transfer_limit'] > 0:
-                    # Reset daily limit if needed
-                    user_dao.reset_daily_transfer_if_needed(interaction.user.id)
-
-                    # Get current user to check limit
-                    user = user_dao.get_user(interaction.user.id)
-                    new_daily_total = user.daily_transfer_amount + deposit_amount
-
-                    if new_daily_total > config['daily_transfer_limit']:
-                        remaining = config['daily_transfer_limit'] - user.daily_transfer_amount
-                        await interaction.followup.send(
-                            f"❌ Daily transfer limit exceeded.\n"
-                            f"Limit: {config['daily_transfer_limit']:,} credits/day\n"
-                            f"Used today: {user.daily_transfer_amount:,}\n"
-                            f"Remaining: {remaining:,}",
-                            ephemeral=True
-                        )
-                        return
-
                 # Calculate fee
                 fee = self._calculate_fee(deposit_amount, config['deposit_fee_percent'])
                 net_deposit = deposit_amount - fee
@@ -213,10 +193,6 @@ class Bank(commands.Cog):
                 if not result['success']:
                     await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
                     return
-
-                # Update daily transfer tracking
-                if config['daily_transfer_limit'] > 0:
-                    user_dao.increment_daily_transfer(interaction.user.id, deposit_amount)
 
                 # Create success embed
                 embed = discord.Embed(
@@ -314,26 +290,6 @@ class Bank(commands.Cog):
                     )
                     return
 
-                # Check daily limit
-                if config['daily_transfer_limit'] > 0:
-                    # Reset daily limit if needed
-                    user_dao.reset_daily_transfer_if_needed(interaction.user.id)
-
-                    # Get current user to check limit
-                    user = user_dao.get_user(interaction.user.id)
-                    new_daily_total = user.daily_transfer_amount + withdraw_amount
-
-                    if new_daily_total > config['daily_transfer_limit']:
-                        remaining = config['daily_transfer_limit'] - user.daily_transfer_amount
-                        await interaction.followup.send(
-                            f"❌ Daily transfer limit exceeded.\n"
-                            f"Limit: {config['daily_transfer_limit']:,} credits/day\n"
-                            f"Used today: {user.daily_transfer_amount:,}\n"
-                            f"Remaining: {remaining:,}",
-                            ephemeral=True
-                        )
-                        return
-
                 # Execute transfer
                 result = guild_user_dao.transfer_from_bank(
                     user_id=interaction.user.id,
@@ -345,10 +301,6 @@ class Bank(commands.Cog):
                 if not result['success']:
                     await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
                     return
-
-                # Update daily transfer tracking
-                if config['daily_transfer_limit'] > 0:
-                    user_dao.increment_daily_transfer(interaction.user.id, withdraw_amount)
 
                 # Create success embed
                 embed = discord.Embed(
@@ -433,21 +385,6 @@ class Bank(commands.Cog):
 
                     if total_interest > 0:
                         embed.add_field(name="📈 Total Interest Earned", value=f"{total_interest:,} credits", inline=True)
-
-                # Daily limit info (only show for self)
-                if target_user.id == interaction.user.id and config and config['daily_transfer_limit'] > 0:
-                    # Reset if needed
-                    user_dao.reset_daily_transfer_if_needed(target_user.id)
-                    # Get fresh data
-                    db_user = user_dao.get_user(target_user.id)
-
-                    remaining = config['daily_transfer_limit'] - db_user.daily_transfer_amount
-                    embed.add_field(
-                        name="📊 Daily Transfer Limit",
-                        value=f"Used: {db_user.daily_transfer_amount:,} / {config['daily_transfer_limit']:,}\n"
-                              f"Remaining: {remaining:,} credits",
-                        inline=False
-                    )
 
                 # Show interest info if enabled
                 if config and config['interest_enabled']:
