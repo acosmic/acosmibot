@@ -6,7 +6,7 @@ from .daily_reward_task import daily_reward_task
 from .streaming_monitor_task import streaming_monitor_task
 from .lottery_end_task import lottery_end_task
 from .check_reminders_task import check_reminders_task
-from .bank_interest_task import bank_interest_task
+# from .bank_interest_task import bank_interest_task  # DISABLED - using daily reward interest instead
 from .portal_manager import check_expired_portals
 
 # Twitch tasks (decoupled)
@@ -27,7 +27,7 @@ __all__ = [
     "streaming_monitor_task",
     "lottery_end_task",
     "check_reminders_task",
-    "bank_interest_task",
+    # "bank_interest_task",  # DISABLED - using daily reward interest instead
     "portal_manager",
     # Twitch tasks
     "twitch_status_update_task",

@@ -382,6 +382,7 @@ class Bank(commands.Cog):
                     embed.add_field(name="📥 Total Deposited", value=f"{total_deposited:,} credits", inline=True)
                     embed.add_field(name="📤 Total Withdrawn", value=f"{total_withdrawn:,} credits", inline=True)
                     embed.add_field(name="💸 Total Fees Paid", value=f"{total_fees:,} credits", inline=True)
+                    embed.add_field(name=":money_mouth: Interest Earned", value=f"{total_interest:,} credits", inline=True)
 
                     if total_interest > 0:
                         embed.add_field(name="📈 Total Interest Earned", value=f"{total_interest:,} credits", inline=True)

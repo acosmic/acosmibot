@@ -231,21 +231,22 @@ class On_Message(commands.Cog):
                     guild_user.streak = 1
             
             # CALCULATE AND PAY BANK INTEREST (20% APR) - ONCE PER DAY GLOBALLY
+            # Note: This is checked per-guild daily, but paid only once globally per day
             interest_amount = 0
-            # Convert last payout date string to a date object if it exists
-            last_payout_date = None
-            if global_user.last_interest_payout_date:
-                if isinstance(global_user.last_interest_payout_date, str):
-                    last_payout_date = datetime.strptime(global_user.last_interest_payout_date, "%Y-%m-%d").date()
-                else: # It's already a date object
-                    last_payout_date = global_user.last_interest_payout_date
+            interest_paid = False
 
-            if global_user.bank_balance > 0 and last_payout_date != today:
+            if global_user.bank_balance > 0:
                 daily_rate = 0.20 / 365
-                interest_amount = math.floor(global_user.bank_balance * daily_rate)
-                if interest_amount > 0:
-                    # This method now atomically updates the date
-                    user_dao.add_bank_interest(member.id, interest_amount)
+                potential_interest = math.floor(global_user.bank_balance * daily_rate)
+                if potential_interest > 0:
+                    # This method checks if interest was already paid today and only pays once
+                    # Pass guild_id to track which server triggered the interest payout
+                    interest_paid = user_dao.add_bank_interest(member.id, potential_interest, member.guild.id)
+                    if interest_paid:
+                        interest_amount = potential_interest
+                        logger.info(f"Paid {interest_amount} interest to user {member.name} (ID: {member.id})")
+                    else:
+                        logger.debug(f"Interest already paid today for user {member.name} (ID: {member.id})")
 
             # CALCULATE DAILY REWARD
             base_daily = 100
@@ -290,7 +291,8 @@ class On_Message(commands.Cog):
                     streak_bonus=f"{streak_bonus:,}"
                 )
 
-                if interest_amount > 0:
+                # Only show interest message if it was actually paid (not already paid today)
+                if interest_paid and interest_amount > 0:
                     message += f"\n> You also earned **{interest_amount:,}** credits in daily interest from your bank balance! 📈"
 
                 await daily_channel.send(message)

@@ -980,31 +980,104 @@ class UserDao(BaseDao[User]):
             self.logger.error(f"Error incrementing daily transfer for user {user_id}: {e}")
             return False
 
-    def add_bank_interest(self, user_id: int, interest_amount: int) -> bool:
+    def add_bank_interest(self, user_id: int, interest_amount: int, guild_id: int = 0) -> bool:
         """
         Add interest to a user's bank balance and total currency atomically.
+        Only pays interest if it hasn't been paid today (using database-level check).
+        Creates a transaction record for tracking.
 
         Args:
             user_id (int): User ID
             interest_amount (int): The amount of interest to add
+            guild_id (int): Guild ID where interest was triggered (0 for global/system)
 
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if interest was paid, False if already paid today or on error
         """
         if interest_amount <= 0:
             return True # Nothing to add
 
-        sql = """
-            UPDATE Users
-            SET bank_balance = bank_balance + %s,
-                total_currency = total_currency + %s,
-                last_interest_payout_date = CURDATE()
-            WHERE id = %s
-        """
+        connection = None
+        cursor = None
+
         try:
-            self.execute_query(sql, (interest_amount, interest_amount, user_id), commit=True)
-            self.logger.info(f"Added {interest_amount} interest to user {user_id}")
-            return True
+            # Get balance before update
+            balance_sql = "SELECT bank_balance FROM Users WHERE id = %s"
+            balance_result = self.execute_query(balance_sql, (user_id,))
+            if not balance_result:
+                self.logger.error(f"User {user_id} not found when adding bank interest")
+                return False
+
+            balance_before = int(balance_result[0][0])
+
+            # Get connection to check rowcount
+            connection = self.db._get_pooled_connection(retries=3, retry_delay=0.05)
+            if not connection:
+                self.logger.error(f"Failed to get database connection for user {user_id}")
+                return False
+
+            cursor = connection.cursor()
+
+            # Update bank balance and set last interest payout date
+            update_sql = """
+                UPDATE Users
+                SET bank_balance = bank_balance + %s,
+                    total_currency = total_currency + %s,
+                    last_interest_payout_date = CURDATE()
+                WHERE id = %s
+                  AND (last_interest_payout_date IS NULL OR last_interest_payout_date < CURDATE())
+            """
+            cursor.execute(update_sql, (interest_amount, interest_amount, user_id))
+
+            # Check if any rows were actually updated
+            if cursor.rowcount > 0:
+                connection.commit()
+                balance_after = balance_before + interest_amount
+
+                # Create transaction record
+                from Dao.BankTransactionDao import BankTransactionDao
+                from Entities.BankTransaction import BankTransaction
+                from datetime import datetime
+
+                transaction = BankTransaction(
+                    user_id=user_id,
+                    guild_id=guild_id,
+                    transaction_type='interest',
+                    amount=interest_amount,
+                    fee=0,
+                    balance_before=balance_before,
+                    balance_after=balance_after,
+                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                )
+
+                with BankTransactionDao() as txn_dao:
+                    txn_dao.add_transaction(transaction)
+
+                self.logger.info(f"Added {interest_amount} interest to user {user_id} (balance: {balance_before:,} → {balance_after:,})")
+                return True
+            else:
+                connection.rollback()
+                self.logger.debug(f"Interest already paid today for user {user_id}")
+                return False
+
         except Exception as e:
+            if connection:
+                try:
+                    connection.rollback()
+                except:
+                    pass
             self.logger.error(f"Error adding bank interest for user {user_id}: {e}")
             return False
+
+        finally:
+            # Clean up cursor and connection
+            if cursor:
+                try:
+                    cursor.close()
+                except:
+                    pass
+            if connection:
+                try:
+                    connection.close()  # Returns to pool
+                except:
+                    pass

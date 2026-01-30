@@ -570,7 +570,8 @@ class PremiumChecker:
         """Get display-friendly tier name"""
         tier_names = {
             'free': 'Free',
-            'premium': 'Premium 💎'
+            'premium': 'Premium 💎',
+            'premium_plus_ai': 'Premium + AI 🤖💎'
         }
         return tier_names.get(tier, 'Unknown')
 

@@ -35,12 +35,13 @@ class BankTransactionDao(BaseDao):
         """
         return self.create_table_if_not_exists(create_table_sql)
 
-    def add_transaction(self, transaction: BankTransaction) -> bool:
+    def add_transaction(self, transaction: BankTransaction, commit: bool = True) -> bool:
         """
         Add a new bank transaction to the database.
 
         Args:
             transaction (BankTransaction): Transaction to add
+            commit (bool): Whether to commit immediately (default True)
 
         Returns:
             bool: True if successful, False otherwise
@@ -63,7 +64,7 @@ class BankTransactionDao(BaseDao):
         )
 
         try:
-            self.execute_query(sql, values, commit=True)
+            self.execute_query(sql, values, commit=commit)
             self.logger.info(f"Added bank transaction for user {transaction.user_id}: {transaction.transaction_type} {transaction.amount}")
             return True
         except Exception as e:
